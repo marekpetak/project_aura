@@ -221,7 +221,7 @@ void UiController::update_sensor_cards(const AirQuality &aq, bool gas_warmup, bo
     lv_color_t pm05_col = currentData.pm05_valid ? getPM05Color(currentData.pm05) : color_inactive();
     set_dot_color(objects.dot_pm05, alert_color_for_mode(pm05_col));
 
-    const bool pm1_available = currentData.pm_valid && isfinite(currentData.pm1) && currentData.pm1 >= 0.0f;
+    const bool pm1_available = currentData.pm1_valid && isfinite(currentData.pm1) && currentData.pm1 >= 0.0f;
     const bool co_sensor_present = has_co_sensor_data(currentData);
     const bool show_pm1_in_pm10_card = co_sensor_present;
     set_visible(objects.label_pm1_title, show_pm1_in_pm10_card);

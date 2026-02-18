@@ -286,7 +286,8 @@ bool Sen66::readValues(SensorData &out) {
 
     const uint16_t co2_raw = words[8];
 
-    if (pm1_raw != 0xFFFF) {
+    out.pm1_valid = (pm1_raw != 0xFFFF);
+    if (out.pm1_valid) {
         out.pm1 = pm1_raw / 10.0f;
     } else {
         out.pm1 = 0.0f;
@@ -311,7 +312,7 @@ bool Sen66::readValues(SensorData &out) {
         out.pm05 = 0.0f;
     }
 
-    out.pm_valid = out.pm25_valid || out.pm10_valid;
+    out.pm_valid = out.pm1_valid || out.pm25_valid || out.pm10_valid;
 
     out.hum_valid = (rh_raw != 0x7FFF);
     if (out.hum_valid) {

@@ -21,6 +21,7 @@ struct SensorData {
     bool hum_valid = false;
     bool pm_valid = false;
     bool pm05_valid = false;
+    bool pm1_valid = false;
     bool pm25_valid = false;
     bool pm10_valid = false;
     bool co2_valid = false;

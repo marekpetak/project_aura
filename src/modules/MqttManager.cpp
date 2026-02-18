@@ -418,6 +418,13 @@ void MqttManager::publishDiscovery() {
     if (!mqtt_discovery_ || mqtt_discovery_sent_ || !client_.connected()) {
         return;
     }
+    // Remove legacy PM4 discovery entities (retained) from older firmware versions.
+    char legacy_topic[kTopicBufferSize];
+    build_discovery_topic(legacy_topic, sizeof(legacy_topic), "sensor", mqtt_device_id_, "pm4");
+    client_.publish(legacy_topic, "", true);
+    build_discovery_topic(legacy_topic, sizeof(legacy_topic), "sensor", mqtt_device_id_, "pm4_0");
+    client_.publish(legacy_topic, "", true);
+
     publishDiscoverySensor("temperature", "Temperature", "\\u00b0C",
                            "temperature", "measurement", "{{ value_json.temp }}", "");
     publishDiscoverySensor("humidity", "Humidity", "%",
@@ -530,7 +537,7 @@ void MqttManager::publishState(const SensorData &data, bool night_mode, bool ale
     add_int("nox_index", data.nox_valid, data.nox_index);
     add_float("hcho", data.hcho_valid, data.hcho, 1);
     add_float("pm05", data.pm05_valid, data.pm05, 1);
-    add_float("pm1", data.pm_valid, data.pm1, 1);
+    add_float("pm1", data.pm1_valid, data.pm1, 1);
     add_float("pm25", data.pm25_valid, data.pm25, 1);
     add_float("pm10", data.pm10_valid, data.pm10, 1);
     add_float("pressure", data.pressure_valid, data.pressure, 1);

@@ -159,17 +159,17 @@ bool apply_sanity_filters(SensorData &data) {
         }
     }
 
-    data.pm_valid = data.pm25_valid || data.pm10_valid;
-    if (data.pm_valid) {
-        if (isfinite(data.pm1)) {
+    if (data.pm1_valid) {
+        if (!isfinite(data.pm1)) {
+            data.pm1_valid = false;
+            data.pm1 = 0.0f;
+            changed = true;
+        } else {
             float clamped = clampf(data.pm1, Config::SEN66_PM_MIN_UGM3, Config::SEN66_PM_MAX_UGM3);
             if (clamped != data.pm1) {
                 data.pm1 = clamped;
                 changed = true;
             }
-        } else if (data.pm1 != 0.0f) {
-            data.pm1 = 0.0f;
-            changed = true;
         }
     } else {
         if (data.pm1 != 0.0f) {
@@ -177,6 +177,7 @@ bool apply_sanity_filters(SensorData &data) {
             changed = true;
         }
     }
+    data.pm_valid = data.pm1_valid || data.pm25_valid || data.pm10_valid;
 
     if (data.hcho_valid) {
         if (!isfinite(data.hcho)) {

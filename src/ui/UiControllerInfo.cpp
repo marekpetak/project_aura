@@ -278,7 +278,7 @@ void UiController::update_sensor_info_ui() {
             break;
         }
         case INFO_PM1: {
-            const bool pm1_available = currentData.pm_valid && isfinite(currentData.pm1) && currentData.pm1 >= 0.0f;
+            const bool pm1_available = currentData.pm1_valid && isfinite(currentData.pm1) && currentData.pm1 >= 0.0f;
             if (pm1_available) {
                 char buf[16];
                 if (currentData.pm1 < 10.0f) snprintf(buf, sizeof(buf), "%.1f", currentData.pm1);
