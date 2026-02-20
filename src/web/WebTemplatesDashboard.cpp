@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2025-2026 Volodymyr Papush (21CNCStudio)
+// SPDX-FileCopyrightText: 2025-2026 Volodymyr Papush (21CNCStudio)
 // SPDX-License-Identifier: GPL-3.0-or-later
 // GPL-3.0-or-later: https://www.gnu.org/licenses/gpl-3.0.html
 // Want to use this code in a commercial product while keeping modifications proprietary?
@@ -15,12 +15,19 @@ const char kDashboardPageTemplate[] PROGMEM = R"HTML_DASH(
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Aura Web Page Preview</title>
+  <script>
+    window.__auraDepFailed = [];
+    window.__auraDepFail = function (name, src) {
+      window.__auraDepFailed.push(name + ": " + src);
+    };
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/recharts@2.13.3/umd/Recharts.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.7/babel.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"
+          onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='https://unpkg.com/react@18/umd/react.development.js';}else{window.__auraDepFail('react', this.src);}"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"
+          onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='https://unpkg.com/react-dom@18/umd/react-dom.development.js';}else{window.__auraDepFail('react-dom', this.src);}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.7/babel.min.js"
+          onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='https://unpkg.com/@babel/standalone@7.26.7/babel.min.js';}else{window.__auraDepFail('babel', this.src);}"></script>
   <style>
     html, body { margin: 0; background: #030712; }
     #preview-error {
@@ -43,10 +50,51 @@ const char kDashboardPageTemplate[] PROGMEM = R"HTML_DASH(
   <pre id="preview-error"></pre>
   <div id="root"></div>
   <script>
-    window.addEventListener("error", function (event) {
+    function auraShowError(message) {
       var box = document.getElementById("preview-error");
       box.style.display = "block";
-      box.textContent = "Preview runtime error:\n" + (event.error && event.error.stack ? event.error.stack : event.message);
+      box.textContent = message;
+    }
+
+    window.addEventListener("error", function (event) {
+      // Ignore raw script resource load errors here; dependency checker handles those.
+      if (!event.error && event.target && event.target.tagName === "SCRIPT") {
+        return;
+      }
+      var where = "";
+      if (event.filename) {
+        where = "\nAt: " + event.filename + ":" + (event.lineno || 0) + ":" + (event.colno || 0);
+      }
+      auraShowError(
+        "Preview runtime error:\n" +
+        (event.error && event.error.stack ? event.error.stack : (event.message || "Unknown script error")) +
+        where
+      );
+    });
+
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        var missingCore = [];
+        if (!window.React) missingCore.push("React");
+        if (!window.ReactDOM) missingCore.push("ReactDOM");
+        if (!window.Babel) missingCore.push("Babel");
+
+        if (!missingCore.length) return;
+
+        var hint = (navigator && navigator.onLine === false)
+          ? "Phone appears offline. In AP mode, CDN scripts may be unreachable without internet."
+          : "Some CDN scripts failed to load on this network/browser.";
+        var failed = (window.__auraDepFailed && window.__auraDepFailed.length)
+          ? ("\nFailed: " + window.__auraDepFailed.join(", "))
+          : "";
+
+        auraShowError(
+          "Web dashboard dependencies failed to load.\n" +
+          "Missing: " + missingCore.join(", ") + failed + "\n" +
+          hint + "\n" +
+          "Try home Wi-Fi with internet or another browser."
+        );
+      }, 700);
     });
   </script>
   <script type="text/babel" data-presets="react">
@@ -54,7 +102,6 @@ const char kDashboardPageTemplate[] PROGMEM = R"HTML_DASH(
 // Auto-generated from web-page.ini.
 // Run .\sync-preview.ps1 after editing web-page.ini.
 const { useState, useMemo, useEffect } = React;
-const { XAxis, YAxis, ResponsiveContainer, Tooltip, AreaChart, Area, CartesianGrid } = Recharts;
 
 const iconBaseProps = {
   fill: "none",
@@ -84,27 +131,28 @@ const X = svgIcon(<path d="m6 6 12 12M18 6 6 18" />);
 
 // ============ VISUAL PLACEHOLDERS (NO SENSOR LOGIC) ============
 const SENSOR_PLACEHOLDER_ANCHORS = [
-  { time: '00:00', co2: 640, temp: 21.3, rh: 52, pm1: 4.2, pm25: 6.4, pm4: 7.6, pm10: 9.3, voc: 118, nox: 22, pressure: 1015.6, hcho: 18, co: 0.5, mold: 2.8 },
-  { time: '02:00', co2: 660, temp: 21.1, rh: 53, pm1: 4.4, pm25: 6.8, pm4: 8.1, pm10: 9.8, voc: 122, nox: 23, pressure: 1015.4, hcho: 18, co: 0.5, mold: 2.9 },
-  { time: '04:00', co2: 700, temp: 20.9, rh: 54, pm1: 4.7, pm25: 7.2, pm4: 8.6, pm10: 10.2, voc: 126, nox: 24, pressure: 1015.1, hcho: 19, co: 0.6, mold: 3.0 },
-  { time: '06:00', co2: 760, temp: 21.0, rh: 55, pm1: 5.1, pm25: 7.8, pm4: 9.2, pm10: 10.9, voc: 132, nox: 26, pressure: 1014.8, hcho: 20, co: 0.6, mold: 3.2 },
-  { time: '08:00', co2: 820, temp: 21.7, rh: 50, pm1: 5.8, pm25: 8.9, pm4: 10.3, pm10: 12.1, voc: 148, nox: 34, pressure: 1014.3, hcho: 22, co: 0.7, mold: 3.4 },
-  { time: '10:00', co2: 870, temp: 22.4, rh: 47, pm1: 6.4, pm25: 10.2, pm4: 11.8, pm10: 13.6, voc: 166, nox: 41, pressure: 1013.9, hcho: 24, co: 0.8, mold: 3.7 },
-  { time: '12:00', co2: 940, temp: 23.1, rh: 45, pm1: 8.1, pm25: 13.8, pm4: 15.4, pm10: 18.9, voc: 202, nox: 68, pressure: 1013.5, hcho: 31, co: 1.2, mold: 4.2 },
-  { time: '14:00', co2: 980, temp: 23.4, rh: 44, pm1: 9.0, pm25: 15.5, pm4: 17.2, pm10: 20.4, voc: 224, nox: 75, pressure: 1013.2, hcho: 34, co: 1.4, mold: 4.4 },
-  { time: '16:00', co2: 930, temp: 23.0, rh: 46, pm1: 7.4, pm25: 12.4, pm4: 14.1, pm10: 16.8, voc: 190, nox: 56, pressure: 1013.0, hcho: 29, co: 1.0, mold: 4.1 },
-  { time: '18:00', co2: 890, temp: 22.6, rh: 48, pm1: 6.7, pm25: 10.8, pm4: 12.5, pm10: 14.9, voc: 170, nox: 47, pressure: 1012.8, hcho: 25, co: 0.8, mold: 3.8 },
-  { time: '20:00', co2: 860, temp: 22.1, rh: 50, pm1: 6.0, pm25: 9.7, pm4: 11.1, pm10: 13.2, voc: 158, nox: 39, pressure: 1012.6, hcho: 23, co: 0.7, mold: 3.5 },
-  { time: '22:00', co2: 830, temp: 21.8, rh: 51, pm1: 5.4, pm25: 8.6, pm4: 9.9, pm10: 11.8, voc: 146, nox: 32, pressure: 1012.4, hcho: 21, co: 0.6, mold: 3.3 },
+  { time: '00:00', co2: 640, temp: 21.3, rh: 52, pm05: 92, pm1: 4.2, pm25: 6.4, pm4: 7.6, pm10: 9.3, voc: 118, nox: 22, pressure: 1015.6, hcho: 18, co: 0.5, mold: 2.8 },
+  { time: '02:00', co2: 660, temp: 21.1, rh: 53, pm05: 88, pm1: 4.4, pm25: 6.8, pm4: 8.1, pm10: 9.8, voc: 122, nox: 23, pressure: 1015.4, hcho: 18, co: 0.5, mold: 2.9 },
+  { time: '04:00', co2: 700, temp: 20.9, rh: 54, pm05: 95, pm1: 4.7, pm25: 7.2, pm4: 8.6, pm10: 10.2, voc: 126, nox: 24, pressure: 1015.1, hcho: 19, co: 0.6, mold: 3.0 },
+  { time: '06:00', co2: 760, temp: 21.0, rh: 55, pm05: 104, pm1: 5.1, pm25: 7.8, pm4: 9.2, pm10: 10.9, voc: 132, nox: 26, pressure: 1014.8, hcho: 20, co: 0.6, mold: 3.2 },
+  { time: '08:00', co2: 820, temp: 21.7, rh: 50, pm05: 126, pm1: 5.8, pm25: 8.9, pm4: 10.3, pm10: 12.1, voc: 148, nox: 34, pressure: 1014.3, hcho: 22, co: 0.7, mold: 3.4 },
+  { time: '10:00', co2: 870, temp: 22.4, rh: 47, pm05: 148, pm1: 6.4, pm25: 10.2, pm4: 11.8, pm10: 13.6, voc: 166, nox: 41, pressure: 1013.9, hcho: 24, co: 0.8, mold: 3.7 },
+  { time: '12:00', co2: 940, temp: 23.1, rh: 45, pm05: 196, pm1: 8.1, pm25: 13.8, pm4: 15.4, pm10: 18.9, voc: 202, nox: 68, pressure: 1013.5, hcho: 31, co: 1.2, mold: 4.2 },
+  { time: '14:00', co2: 980, temp: 23.4, rh: 44, pm05: 238, pm1: 9.0, pm25: 15.5, pm4: 17.2, pm10: 20.4, voc: 224, nox: 75, pressure: 1013.2, hcho: 34, co: 1.4, mold: 4.4 },
+  { time: '16:00', co2: 930, temp: 23.0, rh: 46, pm05: 176, pm1: 7.4, pm25: 12.4, pm4: 14.1, pm10: 16.8, voc: 190, nox: 56, pressure: 1013.0, hcho: 29, co: 1.0, mold: 4.1 },
+  { time: '18:00', co2: 890, temp: 22.6, rh: 48, pm05: 152, pm1: 6.7, pm25: 10.8, pm4: 12.5, pm10: 14.9, voc: 170, nox: 47, pressure: 1012.8, hcho: 25, co: 0.8, mold: 3.8 },
+  { time: '20:00', co2: 860, temp: 22.1, rh: 50, pm05: 136, pm1: 6.0, pm25: 9.7, pm4: 11.1, pm10: 13.2, voc: 158, nox: 39, pressure: 1012.6, hcho: 23, co: 0.7, mold: 3.5 },
+  { time: '22:00', co2: 830, temp: 21.8, rh: 51, pm05: 120, pm1: 5.4, pm25: 8.6, pm4: 9.9, pm10: 11.8, voc: 146, nox: 32, pressure: 1012.4, hcho: 21, co: 0.6, mold: 3.3 },
 ];
 
-const SENSOR_FIELDS = ['co2', 'temp', 'rh', 'pm1', 'pm25', 'pm4', 'pm10', 'voc', 'nox', 'pressure', 'hcho', 'co', 'mold'];
+const SENSOR_FIELDS = ['co2', 'temp', 'rh', 'pm05', 'pm1', 'pm25', 'pm4', 'pm10', 'voc', 'nox', 'pressure', 'hcho', 'co', 'mold'];
 const SENSOR_HISTORY_STEP_MIN = 5;
-const SENSOR_NON_NEGATIVE_FIELDS = new Set(['co2', 'rh', 'pm1', 'pm25', 'pm4', 'pm10', 'voc', 'nox', 'hcho', 'co', 'mold']);
+const SENSOR_NON_NEGATIVE_FIELDS = new Set(['co2', 'rh', 'pm05', 'pm1', 'pm25', 'pm4', 'pm10', 'voc', 'nox', 'hcho', 'co', 'mold']);
 const SENSOR_WIGGLE = {
   co2: 6.0,
   temp: 0.08,
   rh: 0.35,
+  pm05: 6.0,
   pm1: 0.12,
   pm25: 0.18,
   pm4: 0.22,
@@ -177,13 +225,7 @@ const SENSOR_PLACEHOLDER_DERIVED = {
   delta24h: -3.2,
   uptime: '3d 12h 45m',
 };
-// Visual-only PM0.5 placeholder until real particle-count stream is wired.
-const SENSOR_PLACEHOLDER_PM05 = 1100; // #/cm3
 
-const PREVIEW_CLOCK = {
-  time: '14:32',
-  date: '17 FEB 2026',
-};
 const PREVIEW_HOSTNAME = (() => {
   const rawHost = (typeof window !== 'undefined' && window.location && window.location.hostname)
     ? window.location.hostname
@@ -203,14 +245,32 @@ const formatChartTime = (epochSeconds) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
+const formatHeaderTime = (date) =>
+  date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+const formatHeaderDate = (date) =>
+  date
+    .toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+    .toUpperCase();
+
 const parseChartApiPayload = (payload) => {
   if (!payload || payload.success !== true || !Array.isArray(payload.timestamps) || !Array.isArray(payload.series)) {
     throw new Error('Invalid chart payload');
   }
 
-  const pointCount = payload.timestamps.length;
+  const timestamps = payload.timestamps;
+  const pointCount = timestamps.length;
   const points = Array.from({ length: pointCount }, (_, index) => ({
-    time: formatChartTime(payload.timestamps[index]),
+    time: formatChartTime(timestamps[index]),
+    epoch: typeof timestamps[index] === 'number' && Number.isFinite(timestamps[index]) ? timestamps[index] : null,
   }));
   const latest = {};
 
@@ -234,7 +294,16 @@ const parseChartApiPayload = (payload) => {
   if (Object.prototype.hasOwnProperty.call(latest, 'temperature')) latest.temp = latest.temperature;
   if (Object.prototype.hasOwnProperty.call(latest, 'humidity')) latest.rh = latest.humidity;
 
-  return { points, latest };
+  let latestEpoch = null;
+  for (let i = timestamps.length - 1; i >= 0; i--) {
+    const ts = timestamps[i];
+    if (typeof ts === 'number' && Number.isFinite(ts)) {
+      latestEpoch = ts;
+      break;
+    }
+  }
+
+  return { points, latest, latestEpoch };
 };
 
 const finiteNumberOrNull = (value) =>
@@ -373,7 +442,7 @@ const getStatus = (value, threshold) => {
 
 const statusColors = {
   good: '#22c55e',
-  moderate: '#eab308',
+  moderate: '#facc15',
   bad: '#f97316',
   critical: '#ef4444',
 };
@@ -385,37 +454,361 @@ const statusLabels = {
   critical: 'Hazard',
 };
 
+const fallbackStatusColor = '#9ca3af';
+
+const statusColorOf = (status) => statusColors[status] || fallbackStatusColor;
+
+const hexToRgb = (hexColor) => {
+  if (typeof hexColor !== 'string') return null;
+  const trimmed = hexColor.trim();
+  if (!trimmed.startsWith('#')) return null;
+
+  let hex = trimmed.slice(1);
+  if (hex.length === 3) {
+    hex = hex.split('').map((ch) => ch + ch).join('');
+  }
+  if (hex.length !== 6 || !/^[0-9a-fA-F]{6}$/.test(hex)) return null;
+
+  const num = parseInt(hex, 16);
+  return {
+    r: (num >> 16) & 255,
+    g: (num >> 8) & 255,
+    b: num & 255,
+  };
+};
+
+const rgba = (hexColor, alpha) => {
+  const rgb = hexToRgb(hexColor);
+  if (!rgb) return `rgba(156, 163, 175, ${alpha})`;
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+};
+
+const statusPillStyle = (status) => {
+  const color = statusColorOf(status);
+  return {
+    color,
+    borderColor: rgba(color, 0.38),
+    backgroundColor: rgba(color, 0.14),
+  };
+};
+
+const statusTextStyle = (status) => ({
+  color: statusColorOf(status),
+});
+
+const statusSurfaceStyle = (status) => {
+  const color = statusColorOf(status);
+  return {
+    color,
+    borderColor: rgba(color, 0.32),
+    backgroundColor: rgba(color, 0.12),
+  };
+};
+
 // ============ COMPONENTS ============
-
-const statusPillClasses = {
-  good: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  moderate: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30',
-  bad: 'bg-orange-500/15 text-orange-200 border-orange-500/30',
-  critical: 'bg-red-500/15 text-red-200 border-red-500/30',
-};
-
-const statusTextClasses = {
-  good: 'text-emerald-300',
-  moderate: 'text-yellow-300',
-  bad: 'text-orange-200',
-  critical: 'text-red-200',
-};
-
-const statusSurfaceClasses = {
-  good: 'bg-emerald-500/10 border-emerald-500/25',
-  moderate: 'bg-yellow-500/10 border-yellow-500/25',
-  bad: 'bg-orange-500/10 border-orange-500/25',
-  critical: 'bg-red-500/10 border-red-500/25',
-};
 
 const StatusPill = ({ status, compact = false }) => {
   const sizeClass = compact
     ? 'px-2 py-0.5 text-[10px] md:text-[11px]'
     : 'px-2.5 py-1 text-[11px] md:text-xs';
+  const fallbackPillStyle = {
+    color: '#e5e7eb',
+    borderColor: 'rgba(107, 114, 128, 0.35)',
+    backgroundColor: 'rgba(75, 85, 99, 0.2)',
+  };
   return (
-    <span className={`${sizeClass} rounded-full border font-semibold ${statusPillClasses[status] || 'bg-gray-600/20 text-gray-200 border-gray-500/20'}`}>
+    <span
+      className={`${sizeClass} rounded-full border font-semibold`}
+      style={status ? statusPillStyle(status) : fallbackPillStyle}
+    >
       {statusLabels[status] || 'N/A'}
     </span>
+  );
+};
+
+const isFiniteNumber = (v) => typeof v === 'number' && Number.isFinite(v);
+const clampNumber = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const splitSeriesSegments = (points) => {
+  const segments = [];
+  let current = [];
+  points.forEach((point) => {
+    if (!isFiniteNumber(point.value)) {
+      if (current.length) segments.push(current);
+      current = [];
+      return;
+    }
+    current.push(point);
+  });
+  if (current.length) segments.push(current);
+  return segments;
+};
+
+const buildSmoothPath = (segment) => {
+  if (!segment?.length) return '';
+  if (segment.length === 1) {
+    const p = segment[0];
+    return `M ${p.x.toFixed(2)} ${p.y.toFixed(2)}`;
+  }
+  if (segment.length === 2) {
+    const [p0, p1] = segment;
+    return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} L ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`;
+  }
+
+  let d = `M ${segment[0].x.toFixed(2)} ${segment[0].y.toFixed(2)}`;
+  for (let i = 0; i < segment.length - 1; i++) {
+    const p0 = segment[i - 1] || segment[i];
+    const p1 = segment[i];
+    const p2 = segment[i + 1];
+    const p3 = segment[i + 2] || p2;
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = clampNumber(p1.y + (p2.y - p0.y) / 6, 0, 100);
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = clampNumber(p2.y - (p3.y - p1.y) / 6, 0, 100);
+
+    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+  }
+  return d;
+};
+
+const formatChartValue = (value, unit = '') => {
+  if (!isFiniteNumber(value)) return '-';
+  const base = value.toFixed(1);
+  const unitTrimmed = (unit || '').trim();
+  return unitTrimmed ? `${base} ${unitTrimmed}` : base;
+};
+
+const formatMinMaxNumber = (value) => {
+  if (!isFiniteNumber(value)) return '-';
+  const abs = Math.abs(value);
+  if (abs >= 100) return value.toFixed(0);
+  return value.toFixed(1);
+};
+
+const formatMinMaxValue = (value, unit = '') => {
+  const base = formatMinMaxNumber(value);
+  const unitTrimmed = (unit || '').trim();
+  if (base === '-' || !unitTrimmed) return base;
+  return `${base} ${unitTrimmed}`;
+};
+
+const SvgTrendChart = ({ data = [], lines = [], lineColors = [], showGrid = true, unit = '' }) => {
+  const [hoverIndex, setHoverIndex] = useState(null);
+  const gradientSeed = useMemo(() => `sg_${Math.random().toString(36).slice(2, 9)}`, []);
+
+  const model = useMemo(() => {
+    const normalizedLines = lines
+      .map((line, index) => ({
+        key: line.key,
+        name: line.name || line.key.toUpperCase(),
+        color: lineColors[index] || line.color || '#22c55e',
+      }))
+      .filter((line) => line.key);
+
+    if (!normalizedLines.length || data.length < 2) return null;
+
+    const values = [];
+    normalizedLines.forEach((line) => {
+      data.forEach((row) => {
+        const raw = row?.[line.key];
+        if (isFiniteNumber(raw)) values.push(raw);
+      });
+    });
+
+    if (!values.length) return null;
+
+    let min = Math.min(...values);
+    let max = Math.max(...values);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+
+    const spread = max - min;
+    const pad = spread > 1e-6 ? spread * 0.12 : Math.max(Math.abs(max) * 0.08, 1);
+    let yMin = min - pad;
+    let yMax = max + pad;
+    if (values.every((v) => v >= 0) && yMin < 0) yMin = 0;
+    if (Math.abs(yMax - yMin) < 1e-6) {
+      yMin -= 1;
+      yMax += 1;
+    }
+
+    const xFor = (index) => (data.length <= 1 ? 0 : (index / (data.length - 1)) * 100);
+    const yFor = (value) => ((yMax - value) / (yMax - yMin)) * 100;
+
+    const lineModels = normalizedLines.map((line) => {
+      const points = data.map((row, index) => {
+        const raw = row?.[line.key];
+        const value = isFiniteNumber(raw) ? raw : null;
+        return {
+          i: index,
+          x: xFor(index),
+          y: value === null ? null : yFor(value),
+          value,
+          time: row?.time || '--:--',
+        };
+      });
+
+      const segments = splitSeriesSegments(points);
+      const linePaths = segments.map((segment) => buildSmoothPath(segment)).filter((d) => d.length > 0);
+      const areaPaths = segments
+        .filter((segment) => segment.length >= 2)
+        .map((segment) => {
+          const d = buildSmoothPath(segment);
+          const first = segment[0];
+          const last = segment[segment.length - 1];
+          return `${d} L ${last.x.toFixed(2)} 100 L ${first.x.toFixed(2)} 100 Z`;
+        });
+
+      return { ...line, points, segments, linePaths, areaPaths };
+    });
+
+    return { lineModels, xFor, yFor };
+  }, [data, lines, lineColors]);
+
+  if (!model) {
+    return (
+      <div className="w-full h-full rounded-lg border border-dashed border-gray-600/60 bg-gray-900/35 flex items-center justify-center px-3">
+        <span className="text-[11px] md:text-xs text-gray-400 text-center">No data / Awaiting data</span>
+      </div>
+    );
+  }
+
+  const hoverActive = hoverIndex !== null && hoverIndex >= 0 && hoverIndex < data.length;
+  const hoverRatio = hoverActive && data.length > 1 ? hoverIndex / (data.length - 1) : 0.5;
+  const hoverX = hoverActive ? model.xFor(hoverIndex) : null;
+  const tooltipLeft = clampNumber(hoverRatio * 100, 12, 88);
+  const hoverTimeText = hoverActive ? (data[hoverIndex]?.time || '--:--') : '--:--';
+
+  const tooltipItems = hoverActive
+    ? model.lineModels
+        .map((line) => {
+          const point = line.points[hoverIndex];
+          if (!point || !isFiniteNumber(point.value)) return null;
+          return {
+            key: line.key,
+            name: line.name,
+            color: line.color,
+            text: formatChartValue(point.value, unit),
+            y: point.y,
+          };
+        })
+        .filter(Boolean)
+    : [];
+
+  const setHoverFromClientX = (clientX, target) => {
+    const rect = target.getBoundingClientRect();
+    if (!rect.width || data.length < 2) return;
+    const ratio = clampNumber((clientX - rect.left) / rect.width, 0, 1);
+    setHoverIndex(Math.round(ratio * (data.length - 1)));
+  };
+
+  const handleMouseMove = (event) => setHoverFromClientX(event.clientX, event.currentTarget);
+  const handleTouchMove = (event) => {
+    if (!event.touches || !event.touches[0]) return;
+    setHoverFromClientX(event.touches[0].clientX, event.currentTarget);
+  };
+
+  return (
+    <div className="relative w-full h-full">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
+        <defs>
+          {model.lineModels.map((line) => (
+            <linearGradient key={`grad_${line.key}`} id={`${gradientSeed}_${line.key}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={line.color} stopOpacity={0.28} />
+              <stop offset="95%" stopColor={line.color} stopOpacity={0} />
+            </linearGradient>
+          ))}
+        </defs>
+
+        {showGrid && (
+          <>
+            <line x1="0" y1="25" x2="100" y2="25" stroke="#374151" strokeWidth="0.7" strokeDasharray="2.5 2.5" vectorEffect="non-scaling-stroke" />
+            <line x1="0" y1="50" x2="100" y2="50" stroke="#374151" strokeWidth="0.7" strokeDasharray="2.5 2.5" vectorEffect="non-scaling-stroke" />
+            <line x1="0" y1="75" x2="100" y2="75" stroke="#374151" strokeWidth="0.7" strokeDasharray="2.5 2.5" vectorEffect="non-scaling-stroke" />
+          </>
+        )}
+
+        {model.lineModels.map((line) =>
+          line.areaPaths.map((pathD, idx) => (
+            <path key={`area_${line.key}_${idx}`} d={pathD} fill={`url(#${gradientSeed}_${line.key})`} />
+          ))
+        )}
+
+        {hoverActive && hoverX !== null && (
+          <line
+            x1={hoverX}
+            y1="0"
+            x2={hoverX}
+            y2="100"
+            stroke="#64748b"
+            strokeWidth="0.8"
+            strokeDasharray="2 2"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+
+        {model.lineModels.map((line) =>
+          line.linePaths.map((pathD, idx) => (
+            <path
+              key={`line_${line.key}_${idx}`}
+              d={pathD}
+              fill="none"
+              stroke={line.color}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))
+        )}
+      </svg>
+
+      <div
+        className="absolute inset-0"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoverIndex(null)}
+        onTouchStart={handleTouchMove}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={() => setHoverIndex(null)}
+      />
+
+      {hoverActive && (
+        <div
+          className="absolute z-10 pointer-events-none bg-gray-900/95 border border-gray-600 rounded-lg shadow-xl px-2.5 py-2 text-[11px] md:text-xs"
+          style={{ left: `${tooltipLeft}%`, top: '6px', transform: 'translateX(-50%)' }}
+        >
+          <div className={`text-gray-400 font-medium ${tooltipItems.length > 0 ? 'mb-1' : ''}`}>{hoverTimeText}</div>
+          {tooltipItems.length > 0 && (
+            <div className="space-y-1">
+              {tooltipItems.map((item) => (
+                <div key={`tt_${item.key}`} className="flex items-center justify-between gap-3 min-w-[120px]">
+                  <span className="font-medium" style={{ color: item.color }}>{item.name}</span>
+                  <span className="text-white font-semibold">{item.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {hoverActive &&
+        hoverX !== null &&
+        tooltipItems.map((item) => (
+          <div
+            key={`dot_overlay_${item.key}`}
+            className="absolute pointer-events-none rounded-full border border-slate-900"
+            style={{
+              left: `${hoverX}%`,
+              top: `${item.y}%`,
+              width: '8px',
+              height: '8px',
+              backgroundColor: item.color,
+              boxShadow: `0 0 0 4px color-mix(in srgb, ${item.color} 28%, transparent)`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        ))}
+    </div>
   );
 };
 
@@ -427,18 +820,30 @@ const HeroMetric = ({ value, status, history = [] }) => {
     critical: 'Poor air quality. Ventilate immediately.',
   };
   const co2SeriesAll = history.length
-    ? history.map((point) => ({ time: point.time, co2: point.co2 }))
+    ? history.map((point) => ({ time: point.time, co2: isFiniteNumber(point.co2) ? point.co2 : null }))
     : [{ time: '--:--', co2: value }];
-  const co2Series = co2SeriesAll.slice(Math.max(0, co2SeriesAll.length - 36)); // 3h, 5-minute step
-  const co2Stats = co2Series.reduce(
+
+  const co2SeriesWindow = co2SeriesAll.slice(Math.max(0, co2SeriesAll.length - 36)); // 3h, 5-minute step
+  const co2Series = [...co2SeriesWindow];
+  const lastCo2Point = co2Series[co2Series.length - 1];
+  if (!lastCo2Point || !isFiniteNumber(lastCo2Point.co2) || Math.abs(lastCo2Point.co2 - value) > 0.01) {
+    co2Series.push({
+      time: lastCo2Point?.time || '--:--',
+      co2: value,
+    });
+  }
+
+  const co2ValidPoints = co2Series.filter((point) => isFiniteNumber(point.co2));
+  const co2Stats = co2ValidPoints.reduce(
     (acc, point) => ({
-      min: Math.min(acc.min, point.co2),
-      max: Math.max(acc.max, point.co2),
+      min: Math.min(acc.min, Number(point.co2)),
+      max: Math.max(acc.max, Number(point.co2)),
     }),
     { min: value, max: value }
   );
-  const delta24h = value - co2SeriesAll[0].co2;
-  const deltaColorClass = delta24h > 20 ? 'text-orange-300' : delta24h < -20 ? 'text-cyan-300' : 'text-gray-300';
+  const co2BasePoint = co2ValidPoints.length > 0 ? co2ValidPoints[0] : null;
+  const delta3h = co2BasePoint ? value - Number(co2BasePoint.co2) : 0;
+  const deltaColorClass = delta3h > 20 ? 'text-orange-300' : delta3h < -20 ? 'text-cyan-300' : 'text-gray-300';
 
   return (
     <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-5 md:p-7 border border-gray-700/60 shadow-xl h-full flex flex-col">
@@ -464,32 +869,17 @@ const HeroMetric = ({ value, status, history = [] }) => {
         <div className="flex items-center justify-between">
           <span className="text-[10px] md:text-xs uppercase tracking-wide text-gray-400 font-semibold">3h Trend</span>
           <span className={`text-xs md:text-sm font-semibold ${deltaColorClass}`}>
-            {delta24h > 0 ? '+' : ''}{delta24h.toFixed(0)} ppm
+            {delta3h > 0 ? '+' : ''}{delta3h.toFixed(0)} ppm
           </span>
         </div>
         <div className="mt-2 h-20 md:h-24">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={co2Series}>
-              <defs>
-                <linearGradient id="co2CardGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={statusColors[status]} stopOpacity={0.35}/>
-                  <stop offset="95%" stopColor={statusColors[status]} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-              <XAxis dataKey="time" hide />
-              <YAxis hide domain={['auto', 'auto']} />
-              <Area
-                type="monotone"
-                dataKey="co2"
-                stroke={statusColors[status]}
-                strokeWidth={2}
-                fill="url(#co2CardGradient)"
-                dot={false}
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <SvgTrendChart
+            data={co2Series}
+            lines={[{ key: 'co2' }]}
+            lineColors={[statusColors[status]]}
+            showGrid={true}
+            unit="ppm"
+          />
         </div>
         <div className="mt-2 flex items-center justify-between text-[11px] md:text-xs text-gray-400">
           <span>min {co2Stats.min.toFixed(0)} ppm</span>
@@ -539,7 +929,7 @@ const ClimateOverview = ({
             <div className="text-[10px] md:text-xs uppercase tracking-wide text-gray-400 font-semibold">Temperature</div>
             <div className="mt-2 flex items-end gap-1.5">
               <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColors[tempStatus] }}>{temp.toFixed(1)}</span>
-              <span className={unitClass}>C</span>
+              <span className={unitClass}>{'\u00B0C'}</span>
             </div>
           </div>
           <div className={miniCardClass}>
@@ -564,7 +954,7 @@ const ClimateOverview = ({
             <div className={climateLabelClass}>Dew Point</div>
             <div className="mt-1.5 flex items-end gap-1.5">
               <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColors[dewPointStatus] }}>{dewPoint.toFixed(1)}</span>
-              <span className={unitClass}>C</span>
+              <span className={unitClass}>{'\u00B0C'}</span>
             </div>
           </div>
 
@@ -572,7 +962,7 @@ const ClimateOverview = ({
             <div className={climateLabelClass}>Abs Humidity</div>
             <div className="mt-1.5 flex items-end gap-1.5">
               <span className="text-3xl md:text-4xl font-semibold leading-none" style={{ color: statusColors[ahStatus] }}>{ah.toFixed(1)}</span>
-              <span className={unitClass}>g/m3</span>
+              <span className={unitClass}>{'g/m\u00B3'}</span>
             </div>
           </div>
         </div>
@@ -587,15 +977,15 @@ const ClimateOverview = ({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2.5 sm:min-w-[200px]">
-              <div className={`rounded-md border px-3 py-2 ${pressureTrend3h.bg}`}>
+              <div className="rounded-md border px-3 py-2" style={pressureTrend3h.surfaceStyle}>
                 <div className="text-[11px] md:text-xs text-gray-400 leading-none">3h</div>
-                <div className={`mt-1 text-base md:text-lg font-semibold leading-none ${pressureTrend3h.color}`}>
+                <div className="mt-1 text-base md:text-lg font-semibold leading-none" style={pressureTrend3h.textStyle}>
                   {delta3h > 0 ? '+' : ''}{delta3h.toFixed(1)}
                 </div>
               </div>
-              <div className={`rounded-md border px-3 py-2 ${pressureTrend24h.bg}`}>
+              <div className="rounded-md border px-3 py-2" style={pressureTrend24h.surfaceStyle}>
                 <div className="text-[11px] md:text-xs text-gray-400 leading-none">24h</div>
-                <div className={`mt-1 text-base md:text-lg font-semibold leading-none ${pressureTrend24h.color}`}>
+                <div className="mt-1 text-base md:text-lg font-semibold leading-none" style={pressureTrend24h.textStyle}>
                   {delta24h > 0 ? '+' : ''}{delta24h.toFixed(1)}
                 </div>
               </div>
@@ -647,8 +1037,8 @@ const trendToken = (delta, is24h = false) => {
   return {
     status,
     label,
-    color: statusTextClasses[status] || 'text-gray-300',
-    bg: statusSurfaceClasses[status] || 'bg-gray-700/50 border-gray-600/30',
+    textStyle: statusTextStyle(status),
+    surfaceStyle: statusSurfaceStyle(status),
   };
 };
 
@@ -656,6 +1046,23 @@ const trendToken = (delta, is24h = false) => {
 const ChartSection = ({ title, data, lines, unit, color, latestValues = {} }) => {
   const fallbackPalette = ['#22c55e', '#38bdf8', '#a78bfa', '#f59e0b'];
   const lineColors = lines.map((line, index) => line.color || color || fallbackPalette[index % fallbackPalette.length]);
+  const unitTrimmed = (unit || '').trim();
+
+  const minMax = useMemo(() => {
+    const values = [];
+    lines.forEach((line) => {
+      data.forEach((row) => {
+        const raw = row?.[line.key];
+        if (typeof raw === 'number' && Number.isFinite(raw)) values.push(raw);
+      });
+    });
+
+    if (!values.length) return null;
+    return {
+      min: Math.min(...values),
+      max: Math.max(...values),
+    };
+  }, [data, lines]);
 
   const latestItems = lines.map((line, index) => {
     const fromApi = latestValues[line.key];
@@ -672,8 +1079,6 @@ const ChartSection = ({ title, data, lines, unit, color, latestValues = {} }) =>
 
     return { text: '-', color: '#9ca3af' };
   });
-
-  const gradientId = (lineKey) => `grad_${lineKey}`;
 
   return (
     <div className="bg-gray-800 rounded-xl p-3 border border-gray-700/50">
@@ -692,62 +1097,17 @@ const ChartSection = ({ title, data, lines, unit, color, latestValues = {} }) =>
         </div>
       </div>
       <div className="h-32 md:h-40 lg:h-44 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
-            <defs>
-              {lines.map((line, index) => (
-                <linearGradient key={line.key} id={gradientId(line.key)} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={lineColors[index]} stopOpacity={0.28}/>
-                  <stop offset="95%" stopColor={lineColors[index]} stopOpacity={0}/>
-                </linearGradient>
-              ))}
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-            <XAxis
-              dataKey="time"
-              stroke="#6b7280"
-              tick={{ fontSize: 9 }}
-              tickLine={false}
-              axisLine={false}
-              minTickGap={30}
-            />
-            <YAxis
-              hide
-              domain={['auto', 'auto']}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#111827',
-                border: '1px solid #374151',
-                borderRadius: '8px',
-                fontSize: '11px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)'
-              }}
-              itemStyle={{ color: '#fff' }}
-              labelStyle={{ color: '#9ca3af', marginBottom: '4px' }}
-              formatter={(value, name) => {
-                if (typeof value !== 'number' || !Number.isFinite(value)) {
-                  return ['No data', name];
-                }
-                return [`${value.toFixed(1)} ${unit}`.trim(), name];
-              }}
-            />
-            {lines.map((line, index) => (
-              <Area
-                key={line.key}
-                type="monotone"
-                dataKey={line.key}
-                name={line.name}
-                stroke={lineColors[index]}
-                fill={`url(#${gradientId(line.key)})`}
-                strokeWidth={2}
-                animationDuration={1000}
-                connectNulls={false}
-                fillOpacity={lines.length > 1 ? 0.45 : 1}
-              />
-            ))}
-          </AreaChart>
-        </ResponsiveContainer>
+        <SvgTrendChart
+          data={data}
+          lines={lines}
+          lineColors={lineColors}
+          showGrid={true}
+          unit={unit}
+        />
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[11px] md:text-xs text-gray-400">
+        <span>min {formatMinMaxValue(minMax?.min, unitTrimmed)}</span>
+        <span>max {formatMinMaxValue(minMax?.max, unitTrimmed)}</span>
       </div>
     </div>
   );
@@ -764,11 +1124,11 @@ const AlertItem = ({ time, type, message, severity }) => {
   
   return (
     <div className={`flex flex-col p-3 rounded-r-lg border-l-4 mb-2 ${severityColors[severity] || 'border-l-gray-500'}`}>
-      <div className="flex justify-between items-start">
-        <span className="text-white text-sm font-medium">{message}</span>
-        <span className="text-gray-500 text-[10px] whitespace-nowrap ml-2">{time}</span>
+      <span className="text-white text-sm md:text-[15px] font-medium leading-snug">{message}</span>
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <span className="text-xs text-gray-400 uppercase font-bold">{type}</span>
+        <span className="text-cyan-200 text-[12px] md:text-[13px] font-semibold tracking-[0.02em] whitespace-nowrap">{time}</span>
       </div>
-      <span className="text-xs text-gray-400 mt-1 uppercase font-bold">{type}</span>
     </div>
   );
 };
@@ -875,16 +1235,19 @@ const SettingGroup = ({ title, children }) => (
   </div>
 );
 
-const SettingStepper = ({ label, value, unit, stepHint, onDec, onInc }) => (
-  <div className="flex justify-between items-center">
+const SettingStepper = ({ label, value, unit, stepHint, onDec, onInc, disabled = false }) => (
+  <div className={`flex justify-between items-center ${disabled ? 'opacity-65' : ''}`}>
     <div>
       <div className="text-gray-300 text-sm">{label}</div>
       {stepHint && <div className="text-[11px] text-gray-500 mt-0.5">{stepHint}</div>}
     </div>
     <div className="flex items-center gap-2">
       <button 
+        disabled={disabled}
         onClick={onDec}
-        className="w-8 h-8 flex items-center justify-center bg-gray-800 border border-gray-700 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-colors"
+        className={`w-8 h-8 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-lg text-gray-400 transition-colors ${
+          disabled ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-700 hover:text-white'
+        }`}
       >
         <Minus size={14} />
       </button>
@@ -893,8 +1256,11 @@ const SettingStepper = ({ label, value, unit, stepHint, onDec, onInc }) => (
         <span className="ml-1 text-xs md:text-sm text-gray-400">{unit}</span>
       </div>
       <button 
+        disabled={disabled}
         onClick={onInc}
-        className="w-8 h-8 flex items-center justify-center bg-gray-800 border border-gray-700 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition-colors"
+        className={`w-8 h-8 flex items-center justify-center bg-gray-800 border border-gray-700 rounded-lg text-gray-400 transition-colors ${
+          disabled ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-700 hover:text-white'
+        }`}
       >
         <Plus size={14} />
       </button>
@@ -902,12 +1268,12 @@ const SettingStepper = ({ label, value, unit, stepHint, onDec, onInc }) => (
   </div>
 );
 
-const SettingToggle = ({ label, enabled, onClick, icon: Icon }) => (
+const SettingToggle = ({ label, enabled, onClick, icon: Icon, disabled = false }) => (
   <div 
-    className="flex justify-between items-center cursor-pointer select-none group" 
-    onClick={onClick}
+    className={`flex justify-between items-center select-none group ${disabled ? 'opacity-65 cursor-not-allowed' : 'cursor-pointer'}`} 
+    onClick={disabled ? undefined : onClick}
   >
-    <div className="flex items-center gap-2 text-gray-300 text-sm group-hover:text-white transition-colors">
+    <div className={`flex items-center gap-2 text-gray-300 text-sm transition-colors ${disabled ? '' : 'group-hover:text-white'}`}>
       {Icon && <Icon size={16} className="text-gray-500" />}
       {label}
     </div>
@@ -929,6 +1295,7 @@ function AuraDashboard() {
   const [activeTab, setActiveTab] = useState('sensors');
   const [chartRange, setChartRange] = useState('24h');
   const [chartGroup, setChartGroup] = useState('core');
+  const settingsPreviewOnly = true;
   
   // Settings State
   const [settings, setSettings] = useState({
@@ -975,15 +1342,16 @@ function AuraDashboard() {
   const [chartApiLatest, setChartApiLatest] = useState({});
   const [chartApiLoading, setChartApiLoading] = useState(false);
   const [chartApiLive, setChartApiLive] = useState(false);
+  const [sensorHistoryData, setSensorHistoryData] = useState(null);
+  const [clockTickMs, setClockTickMs] = useState(Date.now());
+  const [deviceClockRef, setDeviceClockRef] = useState(null);
   const [eventsApiAlerts, setEventsApiAlerts] = useState(null);
   const [eventsApiLive, setEventsApiLive] = useState(false);
 
-  const fallbackChartData = useMemo(() => {
-    const points = fullData.length;
-    if (chartRange === '1h') return fullData.slice(Math.max(0, points - 12)); // 12 * 5m
-    if (chartRange === '3h') return fullData.slice(Math.max(0, points - 36)); // 36 * 5m
-    return fullData;
-  }, [chartRange, fullData]);
+  useEffect(() => {
+    const intervalId = setInterval(() => setClockTickMs(Date.now()), 1000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     if (activeTab !== 'charts') return;
@@ -1006,6 +1374,12 @@ function AuraDashboard() {
         const parsed = parseChartApiPayload(payload);
         setChartApiData(parsed.points);
         setChartApiLatest(parsed.latest);
+        if (typeof parsed.latestEpoch === 'number' && Number.isFinite(parsed.latestEpoch)) {
+          setDeviceClockRef({
+            epochMs: parsed.latestEpoch * 1000,
+            capturedAtMs: Date.now(),
+          });
+        }
         setChartApiLive(true);
       })
       .catch((error) => {
@@ -1022,6 +1396,42 @@ function AuraDashboard() {
 
     return () => controller.abort();
   }, [activeTab, chartRange, chartGroup]);
+
+  useEffect(() => {
+    if (activeTab !== 'sensors') return;
+
+    let active = true;
+    const loadSensorHistory = () => {
+      fetch('/api/charts?group=core&window=24h', { cache: 'no-store' })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((payload) => {
+          if (!active) return;
+          const parsed = parseChartApiPayload(payload);
+          setSensorHistoryData(parsed.points);
+          if (typeof parsed.latestEpoch === 'number' && Number.isFinite(parsed.latestEpoch)) {
+            setDeviceClockRef({
+              epochMs: parsed.latestEpoch * 1000,
+              capturedAtMs: Date.now(),
+            });
+          }
+        })
+        .catch(() => {
+          // Keep last successful history to avoid flicker.
+        });
+    };
+
+    loadSensorHistory();
+    const intervalId = setInterval(loadSensorHistory, 30000);
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [activeTab]);
 
   useEffect(() => {
     let active = true;
@@ -1086,18 +1496,8 @@ function AuraDashboard() {
     };
   }, [activeTab]);
 
-  const chartData = chartApiData || fallbackChartData;
-  const chartLatestValues = chartApiLive ? chartApiLatest : {};
-  const chartDataWithPm05 = useMemo(() => {
-    if (chartData.some((point) => typeof point.pm05 === 'number' && Number.isFinite(point.pm05))) {
-      return chartData;
-    }
-    return chartData.map((point, index) => ({
-      ...point,
-      // Visual-only PM0.5 trend proxy until dedicated pm05 history is wired.
-      pm05: Math.max(0, Math.round((Number(point.pm4) || 0) * 28 + 40 + Math.sin(index * 0.45) * 14)),
-    }));
-  }, [chartData]);
+  const chartData = Array.isArray(chartApiData) ? chartApiData : [];
+  const sensorHistory = Array.isArray(sensorHistoryData) ? sensorHistoryData : [];
 
   const stateCurrent = stateApi?.current || {};
   const stateDerived = stateApi?.derived || {};
@@ -1108,7 +1508,7 @@ function AuraDashboard() {
     temp: stateCurrent.temp ?? placeholderCurrent.temp,
     rh: stateCurrent.rh ?? placeholderCurrent.rh,
     pressure: stateCurrent.pressure ?? placeholderCurrent.pressure,
-    pm05: stateCurrent.pm05 ?? SENSOR_PLACEHOLDER_PM05,
+    pm05: stateCurrent.pm05 ?? placeholderCurrent.pm05,
     pm1: stateCurrent.pm1 ?? placeholderCurrent.pm1,
     pm25: stateCurrent.pm25 ?? placeholderCurrent.pm25,
     pm4: stateCurrent.pm4 ?? placeholderCurrent.pm4,
@@ -1118,6 +1518,11 @@ function AuraDashboard() {
     hcho: stateCurrent.hcho ?? placeholderCurrent.hcho,
     co: stateCurrent.co ?? placeholderCurrent.co,
     mold: stateDerived.mold ?? placeholderCurrent.mold,
+  };
+  // Top-right values in Charts should match live sensor cards.
+  const chartLatestValues = {
+    ...chartApiLatest,
+    ...current,
   };
   
   const ah = stateDerived.ah ?? SENSOR_PLACEHOLDER_DERIVED.ah;
@@ -1158,6 +1563,11 @@ function AuraDashboard() {
       : connectivity.rssi > -75
         ? "text-yellow-400 text-sm font-semibold"
         : "text-red-400 text-sm font-semibold";
+  const headerNow = deviceClockRef
+    ? new Date(deviceClockRef.epochMs + (clockTickMs - deviceClockRef.capturedAtMs))
+    : new Date(clockTickMs);
+  const headerTime = formatHeaderTime(headerNow);
+  const headerDate = formatHeaderDate(headerNow);
 
   useEffect(() => {
     if (!isEditingName && stateConnectivity.hostname) {
@@ -1226,10 +1636,10 @@ function AuraDashboard() {
         </div>
         <div className="text-right">
           <div className="text-white text-xl md:text-2xl font-bold leading-none tracking-wide">
-            {PREVIEW_CLOCK.time}
+            {headerTime}
           </div>
           <div className="mt-1 text-gray-400 text-[11px] md:text-xs font-semibold uppercase tracking-[0.12em]">
-            {PREVIEW_CLOCK.date}
+            {headerDate}
           </div>
         </div>
       </div>
@@ -1240,7 +1650,7 @@ function AuraDashboard() {
         <div className="space-y-4 md:space-y-5 animate-in fade-in duration-300">
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 md:gap-5">
             <div className="xl:col-span-7">
-              <HeroMetric value={current.co2} status={co2Status} history={fullData} />
+              <HeroMetric value={current.co2} status={co2Status} history={sensorHistory} />
             </div>
             <div className="xl:col-span-5">
               <ClimateOverview
@@ -1269,11 +1679,11 @@ function AuraDashboard() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5 md:gap-3">
-            <GasMetricCard label="PM0.5" value={current.pm05} unit="#/cm3" max={thresholds.pm05.bad} status={pm05Status} decimals={0} compact />
-            <GasMetricCard label="PM1.0" value={current.pm1} unit="ug/m3" max={thresholds.pm1.bad} status={pm1Status} compact />
-            <GasMetricCard label="PM2.5" value={current.pm25} unit="ug/m3" max={thresholds.pm25.bad} status={pm25Status} compact />
-            <GasMetricCard label="PM4.0" value={current.pm4} unit="ug/m3" max={thresholds.pm4.bad} status={pm4Status} compact />
-            <GasMetricCard label="PM10" value={current.pm10} unit="ug/m3" max={thresholds.pm10.bad} status={pm10Status} compact />
+            <GasMetricCard label="PM0.5" value={current.pm05} unit="#/cm\u00B3" max={thresholds.pm05.bad} status={pm05Status} decimals={0} compact />
+            <GasMetricCard label="PM1.0" value={current.pm1} unit="\u00B5g/m\u00B3" max={thresholds.pm1.bad} status={pm1Status} compact />
+            <GasMetricCard label="PM2.5" value={current.pm25} unit="\u00B5g/m\u00B3" max={thresholds.pm25.bad} status={pm25Status} compact />
+            <GasMetricCard label="PM4.0" value={current.pm4} unit="\u00B5g/m\u00B3" max={thresholds.pm4.bad} status={pm4Status} compact />
+            <GasMetricCard label="PM10" value={current.pm10} unit="\u00B5g/m\u00B3" max={thresholds.pm10.bad} status={pm10Status} compact />
           </div>
 
         </div>
@@ -1327,13 +1737,13 @@ function AuraDashboard() {
               ? 'Loading live chart history...'
               : chartApiLive
                 ? 'Live history: /api/charts'
-                : 'Preview fallback data (API unavailable)'}
+                : 'No data / Awaiting data from /api/charts'}
           </div>
 
           {chartGroup === 'core' && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4">
               <ChartSection title="CO2 Concentration" data={chartData} lines={[{ key: 'co2', name: 'CO2' }]} unit="ppm" color="#10b981" latestValues={chartLatestValues} />
-              <ChartSection title="Temperature" data={chartData} lines={[{ key: 'temp', name: 'Temp' }]} unit=" C" color="#f59e0b" latestValues={chartLatestValues} />
+              <ChartSection title="Temperature" data={chartData} lines={[{ key: 'temp', name: 'Temp' }]} unit="\u00B0C" color="#f59e0b" latestValues={chartLatestValues} />
               <ChartSection title="Humidity" data={chartData} lines={[{ key: 'rh', name: 'RH' }]} unit="%" color="#3b82f6" latestValues={chartLatestValues} />
               <ChartSection title="Pressure" data={chartData} lines={[{ key: 'pressure', name: 'hPa' }]} unit="hPa" color="#0ea5e9" latestValues={chartLatestValues} />
             </div>
@@ -1350,9 +1760,9 @@ function AuraDashboard() {
 
           {chartGroup === 'pm' && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4">
-              <ChartSection title="PM0.5" data={chartDataWithPm05} lines={[{ key: 'pm05', name: 'PM0.5' }]} unit="#/cm3" color="#14b8a6" latestValues={chartLatestValues} />
-              <ChartSection title="PM1.0" data={chartData} lines={[{ key: 'pm1', name: 'PM1.0' }]} unit="ug/m3" color="#a78bfa" latestValues={chartLatestValues} />
-              <ChartSection title="PM2.5" data={chartData} lines={[{ key: 'pm25', name: 'PM2.5' }]} unit="ug/m3" color="#8b5cf6" latestValues={chartLatestValues} />
+              <ChartSection title="PM0.5" data={chartData} lines={[{ key: 'pm05', name: 'PM0.5' }]} unit="#/cm\u00B3" color="#14b8a6" latestValues={chartLatestValues} />
+              <ChartSection title="PM1.0" data={chartData} lines={[{ key: 'pm1', name: 'PM1.0' }]} unit="\u00B5g/m\u00B3" color="#a78bfa" latestValues={chartLatestValues} />
+              <ChartSection title="PM2.5" data={chartData} lines={[{ key: 'pm25', name: 'PM2.5' }]} unit="\u00B5g/m\u00B3" color="#8b5cf6" latestValues={chartLatestValues} />
               <ChartSection
                 title="PM10 + PM4.0"
                 data={chartData}
@@ -1360,7 +1770,7 @@ function AuraDashboard() {
                   { key: 'pm10', name: 'PM10', color: '#6d28d9' },
                   { key: 'pm4', name: 'PM4.0', color: '#0ea5e9' },
                 ]}
-                unit="ug/m3"
+                unit="\u00B5g/m\u00B3"
                 latestValues={chartLatestValues}
               />
             </div>
@@ -1369,8 +1779,8 @@ function AuraDashboard() {
       )}
 
       {activeTab === 'events' && (
-        <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-3 md:gap-4 md:items-start animate-in fade-in duration-300">
-          <div className="bg-gray-800 rounded-xl p-4 md:p-5 border border-gray-700/50 md:col-span-2">
+        <div className="space-y-3 animate-in fade-in duration-300">
+          <div className="bg-gray-800 rounded-xl p-4 md:p-5 border border-gray-700/50">
              <div className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-3">System Log</div>
              <div className="text-[11px] text-gray-500 mb-2">
                {eventsApiLive ? 'Live log: /api/events' : 'Preview fallback log (API unavailable)'}
@@ -1383,68 +1793,38 @@ function AuraDashboard() {
                <div className="text-sm text-gray-400 py-3">No events yet.</div>
              )}
           </div>
-          
-          <div className="bg-gray-800 rounded-xl p-4 md:p-5 border border-gray-700/50 md:self-start">
-            <div className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-3">Device Info</div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="rounded-lg border border-gray-600/40 bg-gray-700/30 p-3">
-                <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Uptime</div>
-                <div className="mt-1 text-sm md:text-base font-semibold text-gray-100">{uptime}</div>
-              </div>
-              <div className="rounded-lg border border-gray-600/40 bg-gray-700/30 p-3">
-                <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">WiFi</div>
-                <div className={connectivity.rssi > -67 ? "mt-1 text-sm md:text-base font-semibold text-emerald-400" : "mt-1 text-sm md:text-base font-semibold text-yellow-400"}>
-                  {connectivity.rssi} dBm
-                </div>
-              </div>
-              <div className="rounded-lg border border-gray-600/40 bg-gray-700/30 p-3">
-                <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">IP</div>
-                <div className="mt-1 text-sm md:text-base font-semibold text-gray-100 font-mono">{connectivity.ip}</div>
-              </div>
-              <div className="rounded-lg border border-gray-600/40 bg-gray-700/30 p-3">
-                <div className="text-[10px] uppercase tracking-wide text-gray-500 font-semibold">Sensors</div>
-                <div className="mt-1 text-sm md:text-base font-semibold text-emerald-400">OK</div>
-              </div>
-            </div>
-
-            <div className="mt-2.5 rounded-lg border border-gray-600/40 bg-gray-700/25 p-3 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] text-gray-400">Hostname</span>
-                <span className="text-xs md:text-sm text-gray-200 font-mono truncate">{connectivity.hostname}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] text-gray-400">MQTT</span>
-                <span className={connectivity.mqttConnected ? "text-xs md:text-sm font-semibold text-emerald-400" : "text-xs md:text-sm font-semibold text-red-400"}>
-                  {connectivity.mqttConnected ? 'Connected' : 'Disconnected'}
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
       {activeTab === 'settings' && (
         <div className="space-y-3 md:space-y-4 animate-in fade-in duration-300">
+          {settingsPreviewOnly && (
+            <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-[11px] md:text-xs text-yellow-200">
+              Preview only: settings controls are disabled in this web prototype.
+            </div>
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
             <SettingGroup title="Quick Actions">
               <SettingToggle 
                 label="Night Mode" 
                 icon={Moon}
                 enabled={settings.nightMode} 
-                onClick={() => toggleSetting('nightMode')} 
+                onClick={() => toggleSetting('nightMode')}
+                disabled={settingsPreviewOnly}
               />
               <SettingToggle 
                 label="Alert Blink" 
                 icon={Bell}
                 enabled={settings.alertBlink} 
-                onClick={() => toggleSetting('alertBlink')} 
+                onClick={() => toggleSetting('alertBlink')}
+                disabled={settingsPreviewOnly}
               />
               <SettingToggle 
                 label="Display Backlight" 
                 icon={Sun}
                 enabled={settings.backlight} 
-                onClick={() => toggleSetting('backlight')} 
+                onClick={() => toggleSetting('backlight')}
+                disabled={settingsPreviewOnly}
               />
             </SettingGroup>
 
@@ -1452,10 +1832,11 @@ function AuraDashboard() {
               <SettingStepper 
                 label="Temperature Offset" 
                 value={settings.tempOffset} 
-                unit="°C"
-                stepHint="Step: 0.1 °C"
+                unit="\u00B0C"
+                stepHint="Step: 0.1 \u00B0C"
                 onDec={() => updateOffset('tempOffset', -0.1)}
                 onInc={() => updateOffset('tempOffset', 0.1)}
+                disabled={settingsPreviewOnly}
               />
               <SettingStepper 
                 label="Humidity Offset" 
@@ -1464,6 +1845,7 @@ function AuraDashboard() {
                 stepHint="Step: 1 %"
                 onDec={() => updateOffset('humOffset', -1)}
                 onInc={() => updateOffset('humOffset', 1)}
+                disabled={settingsPreviewOnly}
               />
             </SettingGroup>
 
@@ -1487,7 +1869,14 @@ function AuraDashboard() {
                 <SettingInfoRow label="Uptime" value={uptime} valueClassName="text-gray-200 text-sm" mono />
                 <SettingInfoRow label="Web URL" value={localWebUrl} valueClassName="text-cyan-300 text-sm" mono />
               </div>
-              <button className="w-full mt-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/40 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+              <button
+                disabled={settingsPreviewOnly}
+                className={`w-full mt-2 border py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 ${
+                  settingsPreviewOnly
+                    ? 'bg-gray-700/35 text-gray-400 border-gray-600/50 cursor-not-allowed'
+                    : 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/40 transition-colors'
+                }`}
+              >
                 <RotateCw size={14} /> Reboot Device
               </button>
             </SettingGroup>
@@ -1497,93 +1886,12 @@ function AuraDashboard() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<AuraDashboard />);
 /*__INLINE_APP_END__*/
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 )HTML_DASH";
 
 } // namespace WebTemplates
