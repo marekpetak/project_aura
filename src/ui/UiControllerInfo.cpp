@@ -92,7 +92,6 @@ void format_relative_time_label(uint32_t offset_s, char *buf, size_t buf_size) {
 }
 
 constexpr uint8_t kTempGraphTimeTickCount = 7;
-constexpr uint8_t kTempGraphThresholdZoneCount = 7;
 
 } // namespace
 
@@ -105,6 +104,54 @@ uint16_t UiController::temperature_graph_points() const {
         case TEMP_GRAPH_RANGE_3H:
         default:
             return Config::CHART_HISTORY_3H_STEPS;
+    }
+}
+
+UiController::SensorGraphProfile UiController::build_temperature_graph_profile() const {
+    SensorGraphProfile profile{};
+    profile.min_span = temp_units_c ? 2.0f : 3.5f;
+    profile.fallback_value = temp_units_c ? 22.0f : 71.6f;
+    profile.vertical_divisions = 15;
+    profile.horizontal_divisions_min = 3;
+    profile.horizontal_divisions_max = 12;
+    profile.unit = temp_units_c ? UiText::UnitC() : UiText::UnitF();
+    profile.label_min = "MIN";
+    profile.label_now = "NOW";
+    profile.label_max = "MAX";
+    profile.zone_count = 7;
+
+    const float bounds_c[kMaxGraphZoneBounds] = {-1000.0f, 16.0f, 18.0f, 20.0f, 25.0f, 26.0f, 28.0f, 1000.0f};
+    for (uint8_t i = 0; i < kMaxGraphZoneBounds; ++i) {
+        const bool edge = (i == 0) || (i == (kMaxGraphZoneBounds - 1));
+        profile.zone_bounds[i] = edge ? bounds_c[i] : temperature_to_display(bounds_c[i], temp_units_c);
+    }
+
+    profile.zone_tones[0] = GRAPH_ZONE_RED;
+    profile.zone_tones[1] = GRAPH_ZONE_ORANGE;
+    profile.zone_tones[2] = GRAPH_ZONE_YELLOW;
+    profile.zone_tones[3] = GRAPH_ZONE_GREEN;
+    profile.zone_tones[4] = GRAPH_ZONE_YELLOW;
+    profile.zone_tones[5] = GRAPH_ZONE_ORANGE;
+    profile.zone_tones[6] = GRAPH_ZONE_RED;
+
+    return profile;
+}
+
+lv_color_t UiController::resolve_graph_zone_color(GraphZoneTone tone, lv_color_t chart_bg) {
+    switch (tone) {
+        case GRAPH_ZONE_RED:
+            return lv_color_mix(color_red(), chart_bg, LV_OPA_40);
+        case GRAPH_ZONE_ORANGE:
+            return lv_color_mix(color_orange(), chart_bg, LV_OPA_40);
+        case GRAPH_ZONE_YELLOW:
+            return lv_color_mix(color_yellow(), chart_bg, LV_OPA_40);
+        case GRAPH_ZONE_GREEN:
+            return lv_color_mix(color_green(), chart_bg, LV_OPA_40);
+        case GRAPH_ZONE_BLUE:
+            return lv_color_mix(color_blue(), chart_bg, LV_OPA_40);
+        case GRAPH_ZONE_NONE:
+        default:
+            return lv_color_mix(color_card_border(), chart_bg, LV_OPA_40);
     }
 }
 
@@ -153,7 +200,7 @@ void UiController::set_temperature_info_mode(bool graph_mode) {
     set_checked(objects.btn_temp_range_24h, temp_graph_range_ == TEMP_GRAPH_RANGE_24H);
 }
 
-void UiController::apply_temperature_graph_theme() {
+void UiController::apply_temperature_graph_theme(const SensorGraphProfile &profile) {
     if (!objects.chart_temp_info) {
         return;
     }
@@ -171,10 +218,9 @@ void UiController::apply_temperature_graph_theme() {
 
     lv_chart_set_type(objects.chart_temp_info, LV_CHART_TYPE_LINE);
     lv_chart_set_update_mode(objects.chart_temp_info, LV_CHART_UPDATE_MODE_SHIFT);
-    // Vertical grid density is fixed for time axis readability; horizontal is adjusted in graph update.
-    constexpr uint8_t kGraphHorizontalDivisions = 5;
-    constexpr uint8_t kGraphVerticalDivisions = 15;
-    lv_chart_set_div_line_count(objects.chart_temp_info, kGraphHorizontalDivisions, kGraphVerticalDivisions);
+    const uint8_t initial_horizontal = (profile.horizontal_divisions_min > 0) ? profile.horizontal_divisions_min : 3;
+    const uint8_t initial_vertical = (profile.vertical_divisions > 0) ? profile.vertical_divisions : 15;
+    lv_chart_set_div_line_count(objects.chart_temp_info, initial_horizontal, initial_vertical);
 
     lv_obj_set_style_bg_color(objects.chart_temp_info, card_bg, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(objects.chart_temp_info, LV_OPA_30, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -218,7 +264,11 @@ void UiController::ensure_temperature_graph_overlays() {
     ensure_label(temp_graph_label_max_, LV_ALIGN_TOP_RIGHT, -8, 6);
 }
 
-void UiController::update_temperature_graph_overlays(bool has_values, float min_temp, float max_temp, float latest_temp) {
+void UiController::update_temperature_graph_overlays(const SensorGraphProfile &profile,
+                                                     bool has_values,
+                                                     float min_temp,
+                                                     float max_temp,
+                                                     float latest_temp) {
     if (!objects.chart_temp_info) {
         return;
     }
@@ -241,19 +291,25 @@ void UiController::update_temperature_graph_overlays(bool has_values, float min_
     }
 
     if (!has_values) {
-        safe_label_set_text(temp_graph_label_min_, "MIN --");
-        safe_label_set_text(temp_graph_label_now_, "NOW --");
-        safe_label_set_text(temp_graph_label_max_, "MAX --");
+        char min_empty[24];
+        char now_empty[24];
+        char max_empty[24];
+        snprintf(min_empty, sizeof(min_empty), "%s --", profile.label_min ? profile.label_min : "MIN");
+        snprintf(now_empty, sizeof(now_empty), "%s --", profile.label_now ? profile.label_now : "NOW");
+        snprintf(max_empty, sizeof(max_empty), "%s --", profile.label_max ? profile.label_max : "MAX");
+        safe_label_set_text(temp_graph_label_min_, min_empty);
+        safe_label_set_text(temp_graph_label_now_, now_empty);
+        safe_label_set_text(temp_graph_label_max_, max_empty);
         return;
     }
 
-    const char *unit = temp_units_c ? UiText::UnitC() : UiText::UnitF();
+    const char *unit = profile.unit;
     char min_buf[32];
     char now_buf[32];
     char max_buf[32];
-    snprintf(min_buf, sizeof(min_buf), "MIN %.1f%s", min_temp, unit ? unit : "");
-    snprintf(now_buf, sizeof(now_buf), "NOW %.1f%s", latest_temp, unit ? unit : "");
-    snprintf(max_buf, sizeof(max_buf), "MAX %.1f%s", max_temp, unit ? unit : "");
+    snprintf(min_buf, sizeof(min_buf), "%s %.1f%s", profile.label_min ? profile.label_min : "MIN", min_temp, unit ? unit : "");
+    snprintf(now_buf, sizeof(now_buf), "%s %.1f%s", profile.label_now ? profile.label_now : "NOW", latest_temp, unit ? unit : "");
+    snprintf(max_buf, sizeof(max_buf), "%s %.1f%s", profile.label_max ? profile.label_max : "MAX", max_temp, unit ? unit : "");
     safe_label_set_text(temp_graph_label_min_, min_buf);
     safe_label_set_text(temp_graph_label_now_, now_buf);
     safe_label_set_text(temp_graph_label_max_, max_buf);
@@ -287,7 +343,7 @@ void UiController::ensure_temperature_zone_overlay() {
                             lv_obj_get_style_radius(objects.chart_temp_info, LV_PART_MAIN),
                             LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    for (uint8_t i = 0; i < kTempGraphThresholdZoneCount; ++i) {
+    for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
         lv_obj_t *&band = temp_graph_zone_bands_[i];
         if (!band || !lv_obj_is_valid(band) || lv_obj_get_parent(band) != temp_graph_zone_overlay_) {
             band = lv_obj_create(temp_graph_zone_overlay_);
@@ -306,7 +362,9 @@ void UiController::ensure_temperature_zone_overlay() {
     lv_obj_move_foreground(objects.chart_temp_info);
 }
 
-void UiController::update_temperature_zone_overlay(float y_min_display, float y_max_display) {
+void UiController::update_temperature_zone_overlay(const SensorGraphProfile &profile,
+                                                   float y_min_display,
+                                                   float y_max_display) {
     ensure_temperature_zone_overlay();
     if (!temp_graph_zone_overlay_ || !lv_obj_is_valid(temp_graph_zone_overlay_)) {
         return;
@@ -315,7 +373,7 @@ void UiController::update_temperature_zone_overlay(float y_min_display, float y_
     const lv_coord_t width = lv_obj_get_width(temp_graph_zone_overlay_);
     const lv_coord_t height = lv_obj_get_height(temp_graph_zone_overlay_);
     if (width <= 0 || height <= 0 || !isfinite(y_min_display) || !isfinite(y_max_display) || y_max_display <= y_min_display) {
-        for (uint8_t i = 0; i < kTempGraphThresholdZoneCount; ++i) {
+        for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
             if (temp_graph_zone_bands_[i]) {
                 lv_obj_add_flag(temp_graph_zone_bands_[i], LV_OBJ_FLAG_HIDDEN);
             }
@@ -324,33 +382,36 @@ void UiController::update_temperature_zone_overlay(float y_min_display, float y_
     }
 
     const lv_color_t chart_bg = lv_obj_get_style_bg_color(objects.chart_temp_info, LV_PART_MAIN);
-    const lv_color_t base_colors[kTempGraphThresholdZoneCount] = {
-        color_red(),    // below 16C
-        color_orange(), // 16..18
-        color_yellow(), // 18..20
-        color_green(),  // 20..25
-        color_yellow(), // 25..26
-        color_orange(), // 26..28
-        color_red()     // above 28C
-    };
-
-    const float thresholds_c[6] = {16.0f, 18.0f, 20.0f, 25.0f, 26.0f, 28.0f};
-    float bounds[kTempGraphThresholdZoneCount + 1];
-    bounds[0] = -1000.0f;
-    for (uint8_t i = 0; i < 6; ++i) {
-        bounds[i + 1] = temperature_to_display(thresholds_c[i], temp_units_c);
+    uint8_t zone_count = profile.zone_count;
+    if (zone_count > kMaxGraphZoneBands) {
+        zone_count = kMaxGraphZoneBands;
     }
-    bounds[kTempGraphThresholdZoneCount] = 1000.0f;
+    if (zone_count == 0) {
+        for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
+            if (temp_graph_zone_bands_[i]) {
+                lv_obj_add_flag(temp_graph_zone_bands_[i], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+        return;
+    }
 
     const float denom = y_max_display - y_min_display;
-    for (uint8_t i = 0; i < kTempGraphThresholdZoneCount; ++i) {
+    for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
         lv_obj_t *band = temp_graph_zone_bands_[i];
         if (!band) {
             continue;
         }
+        if (i >= zone_count) {
+            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
 
-        const float zone_low = bounds[i];
-        const float zone_high = bounds[i + 1];
+        const float zone_low = profile.zone_bounds[i];
+        const float zone_high = profile.zone_bounds[i + 1];
+        if (!isfinite(zone_low) || !isfinite(zone_high) || zone_high <= zone_low) {
+            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
         const float visible_low = fmaxf(zone_low, y_min_display);
         const float visible_high = fminf(zone_high, y_max_display);
         if (!(visible_high > visible_low)) {
@@ -379,13 +440,12 @@ void UiController::update_temperature_zone_overlay(float y_min_display, float y_
 
         lv_obj_set_pos(band, 0, top);
         lv_obj_set_size(band, width, static_cast<lv_coord_t>(bottom - top));
-        lv_color_t zone_color = lv_color_mix(base_colors[i], chart_bg, LV_OPA_40);
+        lv_color_t zone_color = resolve_graph_zone_color(profile.zone_tones[i], chart_bg);
         lv_obj_set_style_bg_color(band, zone_color, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_bg_opa(band, LV_OPA_30, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_clear_flag(band, LV_OBJ_FLAG_HIDDEN);
         lv_obj_move_background(band);
     }
-
 }
 
 void UiController::ensure_temperature_time_labels() {
@@ -515,7 +575,8 @@ void UiController::update_temperature_info_graph() {
         return;
     }
 
-    apply_temperature_graph_theme();
+    const SensorGraphProfile profile = build_temperature_graph_profile();
+    apply_temperature_graph_theme(profile);
 
     const uint16_t points = temperature_graph_points();
     lv_chart_set_point_count(objects.chart_temp_info, points);
@@ -571,7 +632,7 @@ void UiController::update_temperature_info_graph() {
         lv_chart_set_value_by_id(objects.chart_temp_info, series, i, point_value);
     }
 
-    const float fallback = temp_units_c ? 22.0f : 71.6f;
+    const float fallback = profile.fallback_value;
 
     float scale_min = min_temp;
     float scale_max = max_temp;
@@ -584,7 +645,7 @@ void UiController::update_temperature_info_graph() {
         latest_temp = fallback;
     }
 
-    const float min_span = temp_units_c ? 2.0f : 3.5f;
+    const float min_span = profile.min_span;
     const float span = scale_max - scale_min;
     float scale_span = span;
     if (!isfinite(scale_span) || scale_span < min_span) {
@@ -617,26 +678,33 @@ void UiController::update_temperature_info_graph() {
         y_max = static_cast<lv_coord_t>(center + 5);
     }
     int32_t horizontal_divisions = static_cast<int32_t>(lroundf((y_max_f - y_min_f) / step));
-    if (horizontal_divisions < 3) {
-        horizontal_divisions = 3;
+    const int32_t horizontal_min = (profile.horizontal_divisions_min > 0)
+        ? static_cast<int32_t>(profile.horizontal_divisions_min)
+        : 3;
+    const int32_t horizontal_max = (profile.horizontal_divisions_max >= profile.horizontal_divisions_min &&
+                                    profile.horizontal_divisions_max > 0)
+        ? static_cast<int32_t>(profile.horizontal_divisions_max)
+        : 12;
+    if (horizontal_divisions < horizontal_min) {
+        horizontal_divisions = horizontal_min;
     }
-    if (horizontal_divisions > 12) {
-        horizontal_divisions = 12;
+    if (horizontal_divisions > horizontal_max) {
+        horizontal_divisions = horizontal_max;
     }
-    constexpr uint8_t kVerticalDivisions = 15;
+    const uint8_t vertical_divisions = (profile.vertical_divisions > 0) ? profile.vertical_divisions : 15;
     lv_chart_set_div_line_count(objects.chart_temp_info,
                                 static_cast<uint8_t>(horizontal_divisions),
-                                kVerticalDivisions);
+                                vertical_divisions);
     lv_chart_set_range(objects.chart_temp_info, LV_CHART_AXIS_PRIMARY_Y, y_min, y_max);
-    update_temperature_zone_overlay(y_min_f, y_max_f);
+    update_temperature_zone_overlay(profile, y_min_f, y_max_f);
 
     if (has_values) {
         if (!isfinite(latest_temp)) {
             latest_temp = max_temp;
         }
-        update_temperature_graph_overlays(true, min_temp, max_temp, latest_temp);
+        update_temperature_graph_overlays(profile, true, min_temp, max_temp, latest_temp);
     } else {
-        update_temperature_graph_overlays(false, fallback, fallback, fallback);
+        update_temperature_graph_overlays(profile, false, fallback, fallback, fallback);
     }
     update_temperature_time_labels();
 
