@@ -103,6 +103,12 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_rh_range_1h, UiController::on_rh_range_1h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_rh_range_3h, UiController::on_rh_range_3h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_rh_range_24h, UiController::on_rh_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co2_range_1h, UiController::on_co2_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co2_range_3h, UiController::on_co2_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co2_range_24h, UiController::on_co2_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pressure_range_1h, UiController::on_pressure_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pressure_range_3h, UiController::on_pressure_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pressure_range_24h, UiController::on_pressure_range_24h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_info_graph, UiController::on_info_graph_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_temp_range_1h, UiController::on_temp_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_temp_range_3h, UiController::on_temp_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
@@ -110,6 +116,12 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_rh_range_1h, UiController::on_rh_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_rh_range_3h, UiController::on_rh_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_rh_range_24h, UiController::on_rh_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_co2_range_1h, UiController::on_co2_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_co2_range_3h, UiController::on_co2_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_co2_range_24h, UiController::on_co2_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pressure_range_1h, UiController::on_pressure_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pressure_range_3h, UiController::on_pressure_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pressure_range_24h, UiController::on_pressure_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_3h_pressure_info, UiController::on_pressure_3h_info_event_cb, LV_EVENT_CLICKED},
         {objects.btn_24h_pressure_info, UiController::on_pressure_24h_info_event_cb, LV_EVENT_CLICKED},
         {objects.btn_wifi, UiController::on_wifi_settings_event_cb, LV_EVENT_CLICKED},
@@ -207,6 +219,12 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_rh_range_1h, UiController::on_rh_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_rh_range_3h, UiController::on_rh_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_rh_range_24h, UiController::on_rh_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_co2_range_1h, UiController::on_co2_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_co2_range_3h, UiController::on_co2_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_co2_range_24h, UiController::on_co2_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pressure_range_1h, UiController::on_pressure_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pressure_range_3h, UiController::on_pressure_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pressure_range_24h, UiController::on_pressure_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_dac_manual_on, UiController::on_dac_manual_on_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_dac_auto_on, UiController::on_dac_auto_on_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_dak_manual_toggle_1, UiController::on_dac_manual_level_event_cb, LV_EVENT_VALUE_CHANGED},
@@ -303,6 +321,12 @@ void UiEventBinder::applyToggleStylesForAvailableObjects(UiController &owner, in
         objects.btn_rh_range_1h,
         objects.btn_rh_range_3h,
         objects.btn_rh_range_24h,
+        objects.btn_co2_range_1h,
+        objects.btn_co2_range_3h,
+        objects.btn_co2_range_24h,
+        objects.btn_pressure_range_1h,
+        objects.btn_pressure_range_3h,
+        objects.btn_pressure_range_24h,
         objects.btn_pm10_info,
         objects.btn_pm1_info,
         objects.btn_mr_info,
@@ -370,9 +394,14 @@ void UiEventBinder::applyCheckedStatesForAvailableObjects(UiController &owner, i
     set_checked(objects.btn_ah_info, owner.info_sensor == UiController::INFO_AH);
     set_checked(objects.btn_mr_info, owner.info_sensor == UiController::INFO_MR);
     set_checked(objects.btn_dp_info, owner.info_sensor == UiController::INFO_DP);
+    const bool pressure_info_selected =
+        owner.info_sensor == UiController::INFO_PRESSURE_3H ||
+        owner.info_sensor == UiController::INFO_PRESSURE_24H;
     const bool info_graph_checked =
         ((owner.info_sensor == UiController::INFO_TEMP) && owner.temp_graph_mode_) ||
-        ((owner.info_sensor == UiController::INFO_RH) && owner.rh_graph_mode_);
+        ((owner.info_sensor == UiController::INFO_RH) && owner.rh_graph_mode_) ||
+        ((owner.info_sensor == UiController::INFO_CO2) && owner.co2_graph_mode_) ||
+        (pressure_info_selected && owner.pressure_graph_mode_);
     set_checked(objects.btn_info_graph, info_graph_checked);
     set_checked(objects.btn_temp_range_1h, owner.temp_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_temp_range_3h, owner.temp_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
@@ -380,7 +409,14 @@ void UiEventBinder::applyCheckedStatesForAvailableObjects(UiController &owner, i
     set_checked(objects.btn_rh_range_1h, owner.rh_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_rh_range_3h, owner.rh_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_rh_range_24h, owner.rh_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
-    set_checked(objects.btn_3h_pressure_info, true);
+    set_checked(objects.btn_co2_range_1h, owner.co2_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_co2_range_3h, owner.co2_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_co2_range_24h, owner.co2_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_pressure_range_1h, owner.pressure_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_pressure_range_3h, owner.pressure_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_pressure_range_24h, owner.pressure_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_3h_pressure_info, owner.info_sensor != UiController::INFO_PRESSURE_24H);
+    set_checked(objects.btn_24h_pressure_info, owner.info_sensor == UiController::INFO_PRESSURE_24H);
 }
 
 void UiEventBinder::initThemeControlsIfAvailable(UiController &owner) {

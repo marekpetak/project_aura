@@ -124,6 +124,10 @@ void UiController::update_sensor_info_ui() {
             safe_label_set_text(objects.label_sensor_info_unit, unit);
             lv_color_t co2_col = currentData.co2_valid ? getCO2Color(currentData.co2) : color_inactive();
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(co2_col));
+            set_co2_info_mode(co2_graph_mode_);
+            if (co2_graph_mode_) {
+                update_co2_info_graph();
+            }
             break;
         }
         case INFO_RH: {
@@ -346,7 +350,7 @@ void UiController::update_sensor_info_ui() {
             } else {
                 strcpy(buf, UiText::ValueMissingShort());
             }
-            safe_label_set_text(objects.label_delta_3h_value_1, buf);
+            safe_label_set_text(objects.label_delta_5, buf);
 
             if (currentData.pressure_delta_24h_valid) {
                 if (currentData.pressure_delta_24h > 0.05f) {
@@ -357,7 +361,7 @@ void UiController::update_sensor_info_ui() {
             } else {
                 strcpy(buf, UiText::ValueMissingShort());
             }
-            safe_label_set_text(objects.label_delta_24h_value_1, buf);
+            safe_label_set_text(objects.label_delta_26, buf);
 
             lv_color_t delta_3h_color = night_mode
                 ? color_card_border()
@@ -365,9 +369,13 @@ void UiController::update_sensor_info_ui() {
             lv_color_t delta_24h_color = night_mode
                 ? color_card_border()
                 : getPressureDeltaColor(currentData.pressure_delta_24h, currentData.pressure_delta_24h_valid, true);
-            set_chip_color(objects.chip_delta_3h_1, delta_3h_color);
-            set_chip_color(objects.chip_delta_24h_1, delta_24h_color);
+            set_chip_color(objects.chip_delta_4, delta_3h_color);
+            set_chip_color(objects.chip_delta_25, delta_24h_color);
             set_dot_color(objects.dot_sensor_info, delta_3h_color);
+            set_pressure_info_mode(pressure_graph_mode_);
+            if (pressure_graph_mode_) {
+                update_pressure_info_graph();
+            }
             break;
         }
         case INFO_NONE:
@@ -466,6 +474,7 @@ void UiController::restore_sensor_info_selection() {
                 unit = "ppm";
             }
             safe_label_set_text(objects.label_sensor_info_unit, unit);
+            set_co2_info_mode(co2_graph_mode_);
             update_sensor_info_ui();
             break;
         }
@@ -595,6 +604,7 @@ void UiController::select_pressure_info(InfoSensor sensor) {
     };
     set_checked(objects.btn_3h_pressure_info, sensor == INFO_PRESSURE_3H);
     set_checked(objects.btn_24h_pressure_info, sensor == INFO_PRESSURE_24H);
+    set_pressure_info_mode(pressure_graph_mode_);
 
     const char *title = nullptr;
     if (objects.label_pressure_title_1) {
@@ -624,6 +634,8 @@ void UiController::hide_all_sensor_info_containers() {
     set_visible(objects.temperature_info_graph, false);
     set_visible(objects.container_thresholds_dots, false);
     set_visible(objects.co2_info, false);
+    set_visible(objects.co2_info_thresholds, false);
+    set_visible(objects.co2_info_graph, false);
     set_visible(objects.voc_info, false);
     set_visible(objects.nox_info, false);
     set_visible(objects.hcho_info, false);
@@ -639,6 +651,7 @@ void UiController::hide_all_sensor_info_containers() {
     set_visible(objects.pressure_info, false);
     set_visible(objects.pressure_3h_info, false);
     set_visible(objects.pressure_24h_info, false);
+    set_visible(objects.pressure_info_graph, false);
     set_visible(objects.pm_info, false);
     set_visible(objects.pm1_pm10_info, false);
     set_visible(objects.pm05_info, false);

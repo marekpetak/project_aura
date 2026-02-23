@@ -155,12 +155,18 @@ private:
     void sync_threshold_dots_visibility();
     void set_temperature_info_mode(bool graph_mode);
     void set_rh_info_mode(bool graph_mode);
+    void set_co2_info_mode(bool graph_mode);
+    void set_pressure_info_mode(bool graph_mode);
     uint16_t humidity_graph_points() const;
+    uint16_t co2_graph_points() const;
+    uint16_t pressure_graph_points() const;
     SensorGraphProfile build_temperature_graph_profile() const;
     lv_color_t resolve_graph_zone_color(GraphZoneTone tone, lv_color_t chart_bg);
     void apply_temperature_graph_theme(const SensorGraphProfile &profile);
     void update_temperature_info_graph();
     void update_humidity_info_graph();
+    void update_co2_info_graph();
+    void update_pressure_info_graph();
     void ensure_temperature_graph_overlays();
     void update_temperature_graph_overlays(const SensorGraphProfile &profile,
                                            bool has_values,
@@ -180,6 +186,22 @@ private:
     void update_humidity_zone_overlay(float y_min_display, float y_max_display);
     void ensure_humidity_time_labels();
     void update_humidity_time_labels();
+    void ensure_co2_graph_overlays();
+    void update_co2_graph_overlays(bool has_values,
+                                   float min_co2,
+                                   float max_co2,
+                                   float latest_co2);
+    void ensure_co2_zone_overlay();
+    void update_co2_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_co2_time_labels();
+    void update_co2_time_labels();
+    void ensure_pressure_graph_overlays();
+    void update_pressure_graph_overlays(bool has_values,
+                                        float min_pressure,
+                                        float max_pressure,
+                                        float latest_pressure);
+    void ensure_pressure_time_labels();
+    void update_pressure_time_labels();
     uint16_t temperature_graph_points() const;
     void update_sensor_cards(const AirQuality &aq, bool gas_warmup, bool show_co2_bar);
     void update_settings_header();
@@ -363,6 +385,12 @@ private:
     void on_rh_range_1h_event(lv_event_t *e);
     void on_rh_range_3h_event(lv_event_t *e);
     void on_rh_range_24h_event(lv_event_t *e);
+    void on_co2_range_1h_event(lv_event_t *e);
+    void on_co2_range_3h_event(lv_event_t *e);
+    void on_co2_range_24h_event(lv_event_t *e);
+    void on_pressure_range_1h_event(lv_event_t *e);
+    void on_pressure_range_3h_event(lv_event_t *e);
+    void on_pressure_range_24h_event(lv_event_t *e);
     void on_pm10_info_event(lv_event_t *e);
     void on_pm1_info_event(lv_event_t *e);
     void on_card_pm05_event(lv_event_t *e);
@@ -486,6 +514,12 @@ private:
     static void on_rh_range_1h_event_cb(lv_event_t *e);
     static void on_rh_range_3h_event_cb(lv_event_t *e);
     static void on_rh_range_24h_event_cb(lv_event_t *e);
+    static void on_co2_range_1h_event_cb(lv_event_t *e);
+    static void on_co2_range_3h_event_cb(lv_event_t *e);
+    static void on_co2_range_24h_event_cb(lv_event_t *e);
+    static void on_pressure_range_1h_event_cb(lv_event_t *e);
+    static void on_pressure_range_3h_event_cb(lv_event_t *e);
+    static void on_pressure_range_24h_event_cb(lv_event_t *e);
     static void on_pm10_info_event_cb(lv_event_t *e);
     static void on_pm1_info_event_cb(lv_event_t *e);
     static void on_card_pm05_event_cb(lv_event_t *e);
@@ -610,6 +644,10 @@ private:
     bool temp_graph_mode_ = false;
     bool rh_graph_mode_ = false;
     TempGraphRange rh_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool co2_graph_mode_ = false;
+    TempGraphRange co2_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool pressure_graph_mode_ = false;
+    TempGraphRange pressure_graph_range_ = TEMP_GRAPH_RANGE_3H;
     lv_obj_t *temp_graph_label_min_ = nullptr;
     lv_obj_t *temp_graph_label_now_ = nullptr;
     lv_obj_t *temp_graph_label_max_ = nullptr;
@@ -622,4 +660,14 @@ private:
     lv_obj_t *rh_graph_zone_overlay_ = nullptr;
     lv_obj_t *rh_graph_zone_bands_[kMaxGraphZoneBands] = {};
     lv_obj_t *rh_graph_time_labels_[7] = {};
+    lv_obj_t *co2_graph_label_min_ = nullptr;
+    lv_obj_t *co2_graph_label_now_ = nullptr;
+    lv_obj_t *co2_graph_label_max_ = nullptr;
+    lv_obj_t *co2_graph_zone_overlay_ = nullptr;
+    lv_obj_t *co2_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *co2_graph_time_labels_[7] = {};
+    lv_obj_t *pressure_graph_label_min_ = nullptr;
+    lv_obj_t *pressure_graph_label_now_ = nullptr;
+    lv_obj_t *pressure_graph_label_max_ = nullptr;
+    lv_obj_t *pressure_graph_time_labels_[7] = {};
 };
