@@ -47,7 +47,8 @@ namespace Config {
     constexpr uint32_t I2C_FREQ_HZ = 100000;
     constexpr uint32_t I2C_TIMEOUT_MS = 50;
     constexpr uint8_t LOG_LEVEL = 3; // 0=error, 1=warn, 2=info, 3=debug
-    constexpr bool LOG_SERIAL_OUTPUT = false;
+    constexpr bool LOG_SERIAL_OUTPUT = true;
+    constexpr bool LOG_SERIAL_SENSORS_OUTPUT = false;
     constexpr uint32_t MEM_LOG_INTERVAL_MS = 15UL * 60UL * 1000UL;
     constexpr uint32_t SAFE_BOOT_STABLE_MS = 60UL * 1000UL;
     constexpr uint8_t SAFE_BOOT_MAX_REBOOTS = 5;
@@ -229,6 +230,9 @@ namespace Config {
     constexpr float AQ_PM05_GREEN_MAX_PPCM3 = 250.0f;
     constexpr float AQ_PM05_YELLOW_MAX_PPCM3 = 600.0f;
     constexpr float AQ_PM05_ORANGE_MAX_PPCM3 = 1200.0f;
+    constexpr float AQ_HCHO_GREEN_MAX_PPB = 30.0f;
+    constexpr float AQ_HCHO_YELLOW_MAX_PPB = 60.0f;
+    constexpr float AQ_HCHO_ORANGE_MAX_PPB = 100.0f;
     constexpr int AQ_VOC_GREEN_MAX_INDEX = 150;
     constexpr int AQ_VOC_YELLOW_MAX_INDEX = 250;
     constexpr int AQ_VOC_ORANGE_MAX_INDEX = 350;

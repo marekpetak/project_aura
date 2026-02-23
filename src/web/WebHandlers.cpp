@@ -484,6 +484,17 @@ void wifi_handle_root() {
         return;
     }
     WebServer &server = *context->server;
+
+    if (server.hasArg("scan_status")) {
+        ArduinoJson::JsonDocument doc;
+        doc["success"] = true;
+        doc["scan_in_progress"] = context->wifi_scan_in_progress && *context->wifi_scan_in_progress;
+        String json;
+        serializeJson(doc, json);
+        server.send(200, "application/json", json);
+        return;
+    }
+
     if (server.hasArg("scan") && context->wifi_start_scan) {
         context->wifi_start_scan();
     }
@@ -515,6 +526,12 @@ void dashboard_handle_root() {
     // Keep captive-portal setup flow intact on AP root.
     if (ap_mode && uri == "/") {
         wifi_handle_root();
+        return;
+    }
+
+    // In AP mode (usually no internet), serve a CDN-free dashboard variant.
+    if (ap_mode) {
+        context->server->send_P(200, "text/html", WebTemplates::kDashboardPageTemplateAp);
         return;
     }
 
@@ -567,6 +584,23 @@ void wifi_handle_not_found() {
     if (!context || !context->server) {
         return;
     }
+    if (context->wifi_is_ap_mode && context->wifi_is_ap_mode()) {
+        IPAddress ap_ip = WiFi.softAPIP();
+        String portal_url = "http://";
+        if (ap_ip[0] != 0 || ap_ip[1] != 0 || ap_ip[2] != 0 || ap_ip[3] != 0) {
+            portal_url += ap_ip.toString();
+        } else {
+            portal_url += "192.168.4.1";
+        }
+        portal_url += "/";
+
+        context->server->sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        context->server->sendHeader("Pragma", "no-cache");
+        context->server->sendHeader("Location", portal_url, true);
+        context->server->send(302, "text/plain", "Redirecting to captive portal");
+        return;
+    }
+
     context->server->send(404, "text/plain", "Not found");
 }
 

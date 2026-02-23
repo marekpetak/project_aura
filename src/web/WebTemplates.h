@@ -10,6 +10,7 @@
 namespace WebTemplates {
 
 extern const char kDashboardPageTemplate[] PROGMEM;
+extern const char kDashboardPageTemplateAp[] PROGMEM;
 
 static const char kWifiIconSvg[] PROGMEM = R"SVG(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>)SVG";
 
@@ -342,6 +343,28 @@ static const char kWifiPageTemplate[] PROGMEM = R"HTML(
             selectNetwork(ssid, element);
         }
 
+        function watchScanProgress() {
+            var poll = function() {
+                fetch('/wifi?scan_status=1&ts=' + Date.now(), { cache: 'no-store' })
+                    .then(function(response) {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.json();
+                    })
+                    .then(function(payload) {
+                        if (!payload || payload.success !== true) return;
+                        if (payload.scan_in_progress === false) {
+                            window.location.replace('/');
+                            return;
+                        }
+                        setTimeout(poll, 1500);
+                    })
+                    .catch(function() {
+                        setTimeout(poll, 2500);
+                    });
+            };
+            setTimeout(poll, 1200);
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             setupNetworkItems();
 
@@ -353,7 +376,7 @@ static const char kWifiPageTemplate[] PROGMEM = R"HTML(
                     rescanBtn.style.pointerEvents = 'none';
                     rescanBtn.style.opacity = '0.7';
                 }
-                setTimeout(function() { window.location.href = '/'; }, 2500);
+                watchScanProgress();
             }
         });
 

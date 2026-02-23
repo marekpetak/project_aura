@@ -717,6 +717,13 @@ lv_color_t UiController::getPM25Color(float pm) {
     return color_red();
 }
 
+lv_color_t UiController::getPM4Color(float pm) {
+    if (pm <= AQ_PM4_GREEN_MAX_UGM3) return color_green();
+    if (pm <= AQ_PM4_YELLOW_MAX_UGM3) return color_yellow();
+    if (pm <= AQ_PM4_ORANGE_MAX_UGM3) return color_orange();
+    return color_red();
+}
+
 lv_color_t UiController::getPM10Color(float pm) {
     if (pm <= 54.0f) return color_green();
     if (pm <= 154.0f) return color_yellow();
@@ -769,9 +776,9 @@ lv_color_t UiController::getNOxColor(int nox) {
 
 lv_color_t UiController::getHCHOColor(float hcho_ppb, bool valid) {
     if (!valid || !isfinite(hcho_ppb) || hcho_ppb < 0.0f) return color_inactive();
-    if (hcho_ppb < 30.0f) return color_green();
-    if (hcho_ppb <= 60.0f) return color_yellow();
-    if (hcho_ppb <= 100.0f) return color_orange();
+    if (hcho_ppb < AQ_HCHO_GREEN_MAX_PPB) return color_green();
+    if (hcho_ppb <= AQ_HCHO_YELLOW_MAX_PPB) return color_yellow();
+    if (hcho_ppb <= AQ_HCHO_ORANGE_MAX_PPB) return color_orange();
     return color_red();
 }
 
@@ -811,7 +818,11 @@ AirQuality UiController::getAirQuality(const SensorData &data) {
     }
 
     if (data.hcho_valid && isfinite(data.hcho) && data.hcho >= 0.0f) {
-        int score = score_from_thresholds(data.hcho, 0.0f, 30.0f, 60.0f, 100.0f);
+        int score = score_from_thresholds(data.hcho,
+                                          0.0f,
+                                          AQ_HCHO_GREEN_MAX_PPB,
+                                          AQ_HCHO_YELLOW_MAX_PPB,
+                                          AQ_HCHO_ORANGE_MAX_PPB);
         max_score = max(max_score, score);
         has_valid = true;
     }
@@ -1452,6 +1463,90 @@ void UiController::init_ui_defaults() {
     if (objects.btn_temp_range_24h) {
         lv_obj_add_flag(objects.btn_temp_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
         lv_obj_set_ext_click_area(objects.btn_temp_range_24h, 12);
+    }
+    if (objects.btn_voc_range_1h) {
+        lv_obj_add_flag(objects.btn_voc_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_voc_range_1h, 12);
+    }
+    if (objects.btn_voc_range_3h) {
+        lv_obj_add_flag(objects.btn_voc_range_3h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_voc_range_3h, 12);
+    }
+    if (objects.btn_voc_range_24h) {
+        lv_obj_add_flag(objects.btn_voc_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_voc_range_24h, 12);
+    }
+    if (objects.btn_nox_range_1h) {
+        lv_obj_add_flag(objects.btn_nox_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_nox_range_1h, 12);
+    }
+    if (objects.btn_nox_range_3h) {
+        lv_obj_add_flag(objects.btn_nox_range_3h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_nox_range_3h, 12);
+    }
+    if (objects.btn_nox_range_24h) {
+        lv_obj_add_flag(objects.btn_nox_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_nox_range_24h, 12);
+    }
+    if (objects.btn_hcho_range_1h) {
+        lv_obj_add_flag(objects.btn_hcho_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_hcho_range_1h, 12);
+    }
+    if (objects.btn_hcho_range_3h) {
+        lv_obj_add_flag(objects.btn_hcho_range_3h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_hcho_range_3h, 12);
+    }
+    if (objects.btn_hcho_range_24h) {
+        lv_obj_add_flag(objects.btn_hcho_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_hcho_range_24h, 12);
+    }
+    if (objects.btn_pm05_range_1h) {
+        lv_obj_add_flag(objects.btn_pm05_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm05_range_1h, 12);
+    }
+    if (objects.btn_pm05_range_3h) {
+        lv_obj_add_flag(objects.btn_pm05_range_3h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm05_range_3h, 12);
+    }
+    if (objects.btn_pm05_range_24h) {
+        lv_obj_add_flag(objects.btn_pm05_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm05_range_24h, 12);
+    }
+    if (objects.btn_pm25_4_range_1h) {
+        lv_obj_add_flag(objects.btn_pm25_4_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm25_4_range_1h, 12);
+    }
+    if (objects.btn_pm25_4_range_3h) {
+        lv_obj_add_flag(objects.btn_pm25_4_range_3h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm25_4_range_3h, 12);
+    }
+    if (objects.btn_pm25_4_range_24h) {
+        lv_obj_add_flag(objects.btn_pm25_4_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm25_4_range_24h, 12);
+    }
+    if (objects.btn_pm1_10_range_1h) {
+        lv_obj_add_flag(objects.btn_pm1_10_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm1_10_range_1h, 12);
+    }
+    if (objects.btn_pm1_10_range_3h) {
+        lv_obj_add_flag(objects.btn_pm1_10_range_3h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm1_10_range_3h, 12);
+    }
+    if (objects.btn_pm1_10_range_24h) {
+        lv_obj_add_flag(objects.btn_pm1_10_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_pm1_10_range_24h, 12);
+    }
+    if (objects.btn_co_range_1h) {
+        lv_obj_add_flag(objects.btn_co_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_co_range_1h, 12);
+    }
+    if (objects.btn_co_range_3h) {
+        lv_obj_add_flag(objects.btn_co_range_3h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_co_range_3h, 12);
+    }
+    if (objects.btn_co_range_24h) {
+        lv_obj_add_flag(objects.btn_co_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_co_range_24h, 12);
     }
 
     if (objects.wifi_status_icon_1) lv_obj_add_flag(objects.wifi_status_icon_1, LV_OBJ_FLAG_HIDDEN);

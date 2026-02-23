@@ -8,6 +8,7 @@
 
 #include <ESPmDNS.h>
 #include <WiFi.h>
+#include <esp_heap_caps.h>
 #include <esp_wifi.h>
 #include <PubSubClient.h>
 #include "core/Logger.h"
@@ -18,6 +19,15 @@ namespace {
 
 AuraNetworkManager *g_network = nullptr;
 const uint32_t kInitialWifiConnectDelayMs = 1000;
+constexpr uint32_t kWifiInternalHeapMinFreeForStart = 32UL * 1024UL;
+constexpr uint32_t kWifiInternalHeapMinLargestForStart = 16UL * 1024UL;
+
+bool has_internal_heap_for_wifi_start(uint32_t &free_bytes, uint32_t &largest_block_bytes) {
+    free_bytes = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    largest_block_bytes = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    return (free_bytes >= kWifiInternalHeapMinFreeForStart) &&
+           (largest_block_bytes >= kWifiInternalHeapMinLargestForStart);
+}
 
 uint32_t mac_suffix_24bit() {
     return static_cast<uint32_t>(ESP.getEfuseMac() & 0xFFFFFFULL);
@@ -453,6 +463,22 @@ void AuraNetworkManager::startSta() {
     if (wifi_ssid_.isEmpty()) {
         return;
     }
+
+    uint32_t internal_free = 0;
+    uint32_t internal_largest = 0;
+    if (!has_internal_heap_for_wifi_start(internal_free, internal_largest)) {
+        wifi_state_ = WIFI_STATE_OFF;
+        wifi_retry_at_ms_ = millis() + Config::WIFI_CONNECT_RETRY_DELAY_MS;
+        wifi_ui_dirty_ = true;
+        Logger::log(Logger::Warn, "WiFi",
+                    "defer STA start: low internal heap free=%u largest=%u (need free>=%u largest>=%u)",
+                    internal_free,
+                    internal_largest,
+                    static_cast<unsigned>(kWifiInternalHeapMinFreeForStart),
+                    static_cast<unsigned>(kWifiInternalHeapMinLargestForStart));
+        return;
+    }
+
     stopAp();
     WiFi.persistent(false);
     const bool force_reset = (wifi_retry_count_ > 0);

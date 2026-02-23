@@ -51,6 +51,11 @@ void UiScreenFlow::processPendingScreen(UiController &owner, uint32_t now_ms) {
             // Delay unload slightly to avoid racing with screen transition animation.
             owner.deferred_unload_.scheduleOnSwitch(previous_screen, owner.current_screen_id, now_ms);
 
+            if (previous_screen == SCREEN_ID_PAGE_SENSORS_INFO &&
+                owner.current_screen_id != SCREEN_ID_PAGE_SENSORS_INFO) {
+                owner.release_all_sensor_graph_runtime_objects();
+            }
+
             if (owner.current_screen_id == SCREEN_ID_PAGE_SETTINGS) {
                 owner.temp_offset_ui_dirty = true;
                 owner.hum_offset_ui_dirty = true;

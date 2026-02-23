@@ -102,6 +102,7 @@ private:
         INFO_DP,
         INFO_PM05,
         INFO_PM25,
+        INFO_PM4,
         INFO_PM10,
         INFO_PM1,
         INFO_CO,
@@ -137,6 +138,12 @@ private:
         float zone_bounds[kMaxGraphZoneBounds] = {};
         GraphZoneTone zone_tones[kMaxGraphZoneBands] = {};
     };
+    struct GraphSeriesStats {
+        bool has_values = false;
+        float min_value = 0.0f;
+        float max_value = 0.0f;
+        float latest_value = 0.0f;
+    };
 
     void update_temp_offset_label();
     void update_hum_offset_label();
@@ -150,11 +157,55 @@ private:
     void select_humidity_info(InfoSensor sensor);
     void select_pm_info(InfoSensor sensor);
     void select_pressure_info(InfoSensor sensor);
+    void sync_info_graph_button_state();
+    bool should_show_threshold_dots() const;
+    void sync_threshold_dots_visibility();
     void set_temperature_info_mode(bool graph_mode);
+    void set_rh_info_mode(bool graph_mode);
+    void set_voc_info_mode(bool graph_mode);
+    void set_nox_info_mode(bool graph_mode);
+    void set_hcho_info_mode(bool graph_mode);
+    void set_co2_info_mode(bool graph_mode);
+    void set_co_info_mode(bool graph_mode);
+    void set_pm05_info_mode(bool graph_mode);
+    void set_pm25_4_info_mode(bool graph_mode);
+    void set_pm1_10_info_mode(bool graph_mode);
+    void set_pressure_info_mode(bool graph_mode);
+    uint16_t graph_points_for_range(TempGraphRange range) const;
+    uint8_t graph_vertical_divisions_for_range(TempGraphRange range) const;
+    void apply_standard_info_chart_theme(lv_obj_t *chart, uint8_t horizontal_divisions, uint8_t vertical_divisions);
+    lv_chart_series_t *ensure_info_chart_series(lv_obj_t *chart, uint16_t points);
+    GraphSeriesStats populate_info_chart_series(lv_obj_t *chart,
+                                                lv_chart_series_t *series,
+                                                uint16_t points,
+                                                int metric_id,
+                                                float point_scale,
+                                                bool require_non_negative,
+                                                bool convert_temperature_to_display = false);
+    uint16_t humidity_graph_points() const;
+    uint16_t voc_graph_points() const;
+    uint16_t nox_graph_points() const;
+    uint16_t hcho_graph_points() const;
+    uint16_t co2_graph_points() const;
+    uint16_t co_graph_points() const;
+    uint16_t pm05_graph_points() const;
+    uint16_t pm25_4_graph_points() const;
+    uint16_t pm1_10_graph_points() const;
+    uint16_t pressure_graph_points() const;
     SensorGraphProfile build_temperature_graph_profile() const;
     lv_color_t resolve_graph_zone_color(GraphZoneTone tone, lv_color_t chart_bg);
     void apply_temperature_graph_theme(const SensorGraphProfile &profile);
     void update_temperature_info_graph();
+    void update_humidity_info_graph();
+    void update_voc_info_graph();
+    void update_nox_info_graph();
+    void update_hcho_info_graph();
+    void update_co2_info_graph();
+    void update_co_info_graph();
+    void update_pm05_info_graph();
+    void update_pm25_4_info_graph();
+    void update_pm1_10_info_graph();
+    void update_pressure_info_graph();
     void ensure_temperature_graph_overlays();
     void update_temperature_graph_overlays(const SensorGraphProfile &profile,
                                            bool has_values,
@@ -163,8 +214,112 @@ private:
                                            float latest_temp);
     void ensure_temperature_zone_overlay();
     void update_temperature_zone_overlay(const SensorGraphProfile &profile, float y_min_display, float y_max_display);
+    void ensure_graph_time_labels(lv_obj_t *graph_container, lv_obj_t *chart, lv_obj_t **labels, uint8_t label_count);
+    void update_graph_time_labels(lv_obj_t *graph_container,
+                                  lv_obj_t *chart,
+                                  lv_obj_t **labels,
+                                  uint8_t label_count,
+                                  uint16_t points,
+                                  bool clear_when_points_lt_two = false,
+                                  bool chart_layout_before_position = false,
+                                  bool move_foreground_after_position = true);
+    void ensure_graph_stat_overlays(lv_obj_t *chart, lv_obj_t *&label_min, lv_obj_t *&label_now, lv_obj_t *&label_max);
+    void style_graph_stat_overlays(lv_obj_t *chart, lv_obj_t *label_min, lv_obj_t *label_now, lv_obj_t *label_max);
     void ensure_temperature_time_labels();
     void update_temperature_time_labels();
+    void ensure_humidity_graph_overlays();
+    void update_humidity_graph_overlays(bool has_values,
+                                        float min_humidity,
+                                        float max_humidity,
+                                        float latest_humidity);
+    void ensure_humidity_zone_overlay();
+    void update_humidity_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_humidity_time_labels();
+    void update_humidity_time_labels();
+    void ensure_voc_graph_overlays();
+    void update_voc_graph_overlays(bool has_values,
+                                   float min_voc,
+                                   float max_voc,
+                                   float latest_voc);
+    void ensure_voc_zone_overlay();
+    void update_voc_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_voc_time_labels();
+    void update_voc_time_labels();
+    void ensure_nox_graph_overlays();
+    void update_nox_graph_overlays(bool has_values,
+                                   float min_nox,
+                                   float max_nox,
+                                   float latest_nox);
+    void ensure_nox_zone_overlay();
+    void update_nox_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_nox_time_labels();
+    void update_nox_time_labels();
+    void ensure_hcho_graph_overlays();
+    void update_hcho_graph_overlays(bool has_values,
+                                    float min_hcho,
+                                    float max_hcho,
+                                    float latest_hcho);
+    void ensure_hcho_zone_overlay();
+    void update_hcho_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_hcho_time_labels();
+    void update_hcho_time_labels();
+    void ensure_co2_graph_overlays();
+    void update_co2_graph_overlays(bool has_values,
+                                   float min_co2,
+                                   float max_co2,
+                                   float latest_co2);
+    void ensure_co2_zone_overlay();
+    void update_co2_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_co2_time_labels();
+    void update_co2_time_labels();
+    void ensure_co_graph_overlays();
+    void update_co_graph_overlays(bool has_values,
+                                  float min_co,
+                                  float max_co,
+                                  float latest_co);
+    void ensure_co_zone_overlay();
+    void update_co_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_co_time_labels();
+    void update_co_time_labels();
+    void ensure_pm05_graph_overlays();
+    void update_pm05_graph_overlays(bool has_values,
+                                    float min_value,
+                                    float max_value,
+                                    float latest_value);
+    void ensure_pm05_zone_overlay();
+    void update_pm05_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_pm05_time_labels();
+    void update_pm05_time_labels();
+    void ensure_pm25_4_graph_overlays();
+    void update_pm25_4_graph_overlays(bool has_values,
+                                      float min_value,
+                                      float max_value,
+                                      float latest_value);
+    void ensure_pm25_4_zone_overlay();
+    void update_pm25_4_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_pm25_4_time_labels();
+    void update_pm25_4_time_labels();
+    void ensure_pm1_10_graph_overlays();
+    void update_pm1_10_graph_overlays(bool has_values,
+                                      float min_value,
+                                      float max_value,
+                                      float latest_value);
+    void ensure_pm1_10_zone_overlay();
+    void update_pm1_10_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_pm1_10_time_labels();
+    void update_pm1_10_time_labels();
+    void ensure_pressure_graph_overlays();
+    void update_pressure_graph_overlays(bool has_values,
+                                        float min_pressure,
+                                        float max_pressure,
+                                        float latest_pressure);
+    void ensure_pressure_time_labels();
+    void update_pressure_time_labels();
+    void release_all_sensor_graph_runtime_objects();
+    bool should_refresh_active_graph(InfoSensor sensor, TempGraphRange range, uint16_t points);
+    void mark_active_graph_refreshed(InfoSensor sensor, TempGraphRange range, uint16_t points);
+    void invalidate_active_graph_refresh_cache();
+    uint32_t active_graph_theme_signature();
     uint16_t temperature_graph_points() const;
     void update_sensor_cards(const AirQuality &aq, bool gas_warmup, bool show_co2_bar);
     void update_settings_header();
@@ -209,6 +364,7 @@ private:
     lv_color_t getCOColor(float co_ppm);
     lv_color_t getPM05Color(float pm);
     lv_color_t getPM25Color(float pm);
+    lv_color_t getPM4Color(float pm);
     lv_color_t getPM10Color(float pm);
     lv_color_t getPM1Color(float pm);
     lv_color_t getPressureDeltaColor(float delta, bool valid, bool is24h);
@@ -345,6 +501,38 @@ private:
     void on_temp_range_1h_event(lv_event_t *e);
     void on_temp_range_3h_event(lv_event_t *e);
     void on_temp_range_24h_event(lv_event_t *e);
+    void on_rh_range_1h_event(lv_event_t *e);
+    void on_rh_range_3h_event(lv_event_t *e);
+    void on_rh_range_24h_event(lv_event_t *e);
+    void on_voc_range_1h_event(lv_event_t *e);
+    void on_voc_range_3h_event(lv_event_t *e);
+    void on_voc_range_24h_event(lv_event_t *e);
+    void on_nox_range_1h_event(lv_event_t *e);
+    void on_nox_range_3h_event(lv_event_t *e);
+    void on_nox_range_24h_event(lv_event_t *e);
+    void on_hcho_range_1h_event(lv_event_t *e);
+    void on_hcho_range_3h_event(lv_event_t *e);
+    void on_hcho_range_24h_event(lv_event_t *e);
+    void on_co2_range_1h_event(lv_event_t *e);
+    void on_co2_range_3h_event(lv_event_t *e);
+    void on_co2_range_24h_event(lv_event_t *e);
+    void on_pm05_range_1h_event(lv_event_t *e);
+    void on_pm05_range_3h_event(lv_event_t *e);
+    void on_pm05_range_24h_event(lv_event_t *e);
+    void on_pm25_4_range_1h_event(lv_event_t *e);
+    void on_pm25_4_range_3h_event(lv_event_t *e);
+    void on_pm25_4_range_24h_event(lv_event_t *e);
+    void on_pm1_10_range_1h_event(lv_event_t *e);
+    void on_pm1_10_range_3h_event(lv_event_t *e);
+    void on_pm1_10_range_24h_event(lv_event_t *e);
+    void on_co_range_1h_event(lv_event_t *e);
+    void on_co_range_3h_event(lv_event_t *e);
+    void on_co_range_24h_event(lv_event_t *e);
+    void on_pressure_range_1h_event(lv_event_t *e);
+    void on_pressure_range_3h_event(lv_event_t *e);
+    void on_pressure_range_24h_event(lv_event_t *e);
+    void on_pm25_info_event(lv_event_t *e);
+    void on_pm4_info_event(lv_event_t *e);
     void on_pm10_info_event(lv_event_t *e);
     void on_pm1_info_event(lv_event_t *e);
     void on_card_pm05_event(lv_event_t *e);
@@ -465,6 +653,38 @@ private:
     static void on_temp_range_1h_event_cb(lv_event_t *e);
     static void on_temp_range_3h_event_cb(lv_event_t *e);
     static void on_temp_range_24h_event_cb(lv_event_t *e);
+    static void on_rh_range_1h_event_cb(lv_event_t *e);
+    static void on_rh_range_3h_event_cb(lv_event_t *e);
+    static void on_rh_range_24h_event_cb(lv_event_t *e);
+    static void on_voc_range_1h_event_cb(lv_event_t *e);
+    static void on_voc_range_3h_event_cb(lv_event_t *e);
+    static void on_voc_range_24h_event_cb(lv_event_t *e);
+    static void on_nox_range_1h_event_cb(lv_event_t *e);
+    static void on_nox_range_3h_event_cb(lv_event_t *e);
+    static void on_nox_range_24h_event_cb(lv_event_t *e);
+    static void on_hcho_range_1h_event_cb(lv_event_t *e);
+    static void on_hcho_range_3h_event_cb(lv_event_t *e);
+    static void on_hcho_range_24h_event_cb(lv_event_t *e);
+    static void on_co2_range_1h_event_cb(lv_event_t *e);
+    static void on_co2_range_3h_event_cb(lv_event_t *e);
+    static void on_co2_range_24h_event_cb(lv_event_t *e);
+    static void on_pm05_range_1h_event_cb(lv_event_t *e);
+    static void on_pm05_range_3h_event_cb(lv_event_t *e);
+    static void on_pm05_range_24h_event_cb(lv_event_t *e);
+    static void on_pm25_4_range_1h_event_cb(lv_event_t *e);
+    static void on_pm25_4_range_3h_event_cb(lv_event_t *e);
+    static void on_pm25_4_range_24h_event_cb(lv_event_t *e);
+    static void on_pm1_10_range_1h_event_cb(lv_event_t *e);
+    static void on_pm1_10_range_3h_event_cb(lv_event_t *e);
+    static void on_pm1_10_range_24h_event_cb(lv_event_t *e);
+    static void on_co_range_1h_event_cb(lv_event_t *e);
+    static void on_co_range_3h_event_cb(lv_event_t *e);
+    static void on_co_range_24h_event_cb(lv_event_t *e);
+    static void on_pressure_range_1h_event_cb(lv_event_t *e);
+    static void on_pressure_range_3h_event_cb(lv_event_t *e);
+    static void on_pressure_range_24h_event_cb(lv_event_t *e);
+    static void on_pm25_info_event_cb(lv_event_t *e);
+    static void on_pm4_info_event_cb(lv_event_t *e);
     static void on_pm10_info_event_cb(lv_event_t *e);
     static void on_pm1_info_event_cb(lv_event_t *e);
     static void on_card_pm05_event_cb(lv_event_t *e);
@@ -587,10 +807,97 @@ private:
     InfoSensor info_sensor = INFO_NONE;
     TempGraphRange temp_graph_range_ = TEMP_GRAPH_RANGE_3H;
     bool temp_graph_mode_ = false;
+    bool rh_graph_mode_ = false;
+    TempGraphRange rh_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool voc_graph_mode_ = false;
+    TempGraphRange voc_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool nox_graph_mode_ = false;
+    TempGraphRange nox_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool hcho_graph_mode_ = false;
+    TempGraphRange hcho_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool co2_graph_mode_ = false;
+    TempGraphRange co2_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool pm05_graph_mode_ = false;
+    TempGraphRange pm05_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool pm25_4_graph_mode_ = false;
+    TempGraphRange pm25_4_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool pm1_10_graph_mode_ = false;
+    TempGraphRange pm1_10_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool co_graph_mode_ = false;
+    TempGraphRange co_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    bool pressure_graph_mode_ = false;
+    TempGraphRange pressure_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    InfoSensor graph_refresh_sensor_ = INFO_NONE;
+    TempGraphRange graph_refresh_range_ = TEMP_GRAPH_RANGE_3H;
+    uint16_t graph_refresh_points_ = 0;
+    uint16_t graph_refresh_history_count_ = 0;
+    uint32_t graph_refresh_epoch_ = 0;
+    bool graph_refresh_units_c_ = true;
+    bool graph_refresh_night_mode_ = false;
+    uint32_t graph_refresh_theme_sig_ = 0;
+    uint32_t graph_refresh_last_ms_ = 0;
     lv_obj_t *temp_graph_label_min_ = nullptr;
     lv_obj_t *temp_graph_label_now_ = nullptr;
     lv_obj_t *temp_graph_label_max_ = nullptr;
     lv_obj_t *temp_graph_zone_overlay_ = nullptr;
     lv_obj_t *temp_graph_zone_bands_[kMaxGraphZoneBands] = {};
     lv_obj_t *temp_graph_time_labels_[7] = {};
+    lv_obj_t *rh_graph_label_min_ = nullptr;
+    lv_obj_t *rh_graph_label_now_ = nullptr;
+    lv_obj_t *rh_graph_label_max_ = nullptr;
+    lv_obj_t *rh_graph_zone_overlay_ = nullptr;
+    lv_obj_t *rh_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *rh_graph_time_labels_[7] = {};
+    lv_obj_t *voc_graph_label_min_ = nullptr;
+    lv_obj_t *voc_graph_label_now_ = nullptr;
+    lv_obj_t *voc_graph_label_max_ = nullptr;
+    lv_obj_t *voc_graph_zone_overlay_ = nullptr;
+    lv_obj_t *voc_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *voc_graph_time_labels_[7] = {};
+    lv_obj_t *nox_graph_label_min_ = nullptr;
+    lv_obj_t *nox_graph_label_now_ = nullptr;
+    lv_obj_t *nox_graph_label_max_ = nullptr;
+    lv_obj_t *nox_graph_zone_overlay_ = nullptr;
+    lv_obj_t *nox_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *nox_graph_time_labels_[7] = {};
+    lv_obj_t *hcho_graph_label_min_ = nullptr;
+    lv_obj_t *hcho_graph_label_now_ = nullptr;
+    lv_obj_t *hcho_graph_label_max_ = nullptr;
+    lv_obj_t *hcho_graph_zone_overlay_ = nullptr;
+    lv_obj_t *hcho_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *hcho_graph_time_labels_[7] = {};
+    lv_obj_t *co2_graph_label_min_ = nullptr;
+    lv_obj_t *co2_graph_label_now_ = nullptr;
+    lv_obj_t *co2_graph_label_max_ = nullptr;
+    lv_obj_t *co2_graph_zone_overlay_ = nullptr;
+    lv_obj_t *co2_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *co2_graph_time_labels_[7] = {};
+    lv_obj_t *co_graph_label_min_ = nullptr;
+    lv_obj_t *co_graph_label_now_ = nullptr;
+    lv_obj_t *co_graph_label_max_ = nullptr;
+    lv_obj_t *co_graph_zone_overlay_ = nullptr;
+    lv_obj_t *co_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *co_graph_time_labels_[7] = {};
+    lv_obj_t *pm05_graph_label_min_ = nullptr;
+    lv_obj_t *pm05_graph_label_now_ = nullptr;
+    lv_obj_t *pm05_graph_label_max_ = nullptr;
+    lv_obj_t *pm05_graph_zone_overlay_ = nullptr;
+    lv_obj_t *pm05_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *pm05_graph_time_labels_[7] = {};
+    lv_obj_t *pm25_4_graph_label_min_ = nullptr;
+    lv_obj_t *pm25_4_graph_label_now_ = nullptr;
+    lv_obj_t *pm25_4_graph_label_max_ = nullptr;
+    lv_obj_t *pm25_4_graph_zone_overlay_ = nullptr;
+    lv_obj_t *pm25_4_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *pm25_4_graph_time_labels_[7] = {};
+    lv_obj_t *pm1_10_graph_label_min_ = nullptr;
+    lv_obj_t *pm1_10_graph_label_now_ = nullptr;
+    lv_obj_t *pm1_10_graph_label_max_ = nullptr;
+    lv_obj_t *pm1_10_graph_zone_overlay_ = nullptr;
+    lv_obj_t *pm1_10_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *pm1_10_graph_time_labels_[7] = {};
+    lv_obj_t *pressure_graph_label_min_ = nullptr;
+    lv_obj_t *pressure_graph_label_now_ = nullptr;
+    lv_obj_t *pressure_graph_label_max_ = nullptr;
+    lv_obj_t *pressure_graph_time_labels_[7] = {};
 };

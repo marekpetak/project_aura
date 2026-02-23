@@ -25,6 +25,41 @@
 
 using namespace Config;
 
+namespace {
+
+constexpr uint32_t kWifiActionFeedbackMs = 220;
+
+void wifi_action_feedback_timer_cb(lv_timer_t *timer) {
+    if (!timer) {
+        return;
+    }
+
+    lv_obj_t *btn = static_cast<lv_obj_t *>(timer->user_data);
+    if (btn && lv_obj_is_valid(btn)) {
+        lv_obj_clear_state(btn, LV_STATE_CHECKED);
+        lv_obj_invalidate(btn);
+    }
+    lv_timer_del(timer);
+}
+
+void show_wifi_action_feedback(lv_obj_t *btn) {
+    if (!btn || !lv_obj_is_valid(btn)) {
+        return;
+    }
+
+    lv_obj_add_state(btn, LV_STATE_CHECKED);
+    lv_obj_invalidate(btn);
+    lv_timer_t *timer = lv_timer_create(wifi_action_feedback_timer_cb, kWifiActionFeedbackMs, btn);
+    if (timer) {
+        lv_timer_set_repeat_count(timer, 1);
+    } else {
+        lv_obj_clear_state(btn, LV_STATE_CHECKED);
+        lv_obj_invalidate(btn);
+    }
+}
+
+} // namespace
+
 void UiController::on_settings_event_cb(lv_event_t *e) { if (instance_) instance_->on_settings_event(e); }
 void UiController::on_back_event_cb(lv_event_t *e) { if (instance_) instance_->on_back_event(e); }
 void UiController::on_about_event_cb(lv_event_t *e) { if (instance_) instance_->on_about_event(e); }
@@ -117,6 +152,38 @@ void UiController::on_info_graph_event_cb(lv_event_t *e) { if (instance_) instan
 void UiController::on_temp_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_temp_range_1h_event(e); }
 void UiController::on_temp_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_temp_range_3h_event(e); }
 void UiController::on_temp_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_temp_range_24h_event(e); }
+void UiController::on_rh_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_rh_range_1h_event(e); }
+void UiController::on_rh_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_rh_range_3h_event(e); }
+void UiController::on_rh_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_rh_range_24h_event(e); }
+void UiController::on_voc_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_voc_range_1h_event(e); }
+void UiController::on_voc_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_voc_range_3h_event(e); }
+void UiController::on_voc_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_voc_range_24h_event(e); }
+void UiController::on_nox_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_nox_range_1h_event(e); }
+void UiController::on_nox_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_nox_range_3h_event(e); }
+void UiController::on_nox_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_nox_range_24h_event(e); }
+void UiController::on_hcho_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_hcho_range_1h_event(e); }
+void UiController::on_hcho_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_hcho_range_3h_event(e); }
+void UiController::on_hcho_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_hcho_range_24h_event(e); }
+void UiController::on_co2_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_co2_range_1h_event(e); }
+void UiController::on_co2_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_co2_range_3h_event(e); }
+void UiController::on_co2_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_co2_range_24h_event(e); }
+void UiController::on_pm05_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm05_range_1h_event(e); }
+void UiController::on_pm05_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm05_range_3h_event(e); }
+void UiController::on_pm05_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm05_range_24h_event(e); }
+void UiController::on_pm25_4_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm25_4_range_1h_event(e); }
+void UiController::on_pm25_4_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm25_4_range_3h_event(e); }
+void UiController::on_pm25_4_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm25_4_range_24h_event(e); }
+void UiController::on_pm1_10_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm1_10_range_1h_event(e); }
+void UiController::on_pm1_10_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm1_10_range_3h_event(e); }
+void UiController::on_pm1_10_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm1_10_range_24h_event(e); }
+void UiController::on_co_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_co_range_1h_event(e); }
+void UiController::on_co_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_co_range_3h_event(e); }
+void UiController::on_co_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_co_range_24h_event(e); }
+void UiController::on_pressure_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pressure_range_1h_event(e); }
+void UiController::on_pressure_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pressure_range_3h_event(e); }
+void UiController::on_pressure_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_pressure_range_24h_event(e); }
+void UiController::on_pm25_info_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm25_info_event(e); }
+void UiController::on_pm4_info_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm4_info_event(e); }
 void UiController::on_pm10_info_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm10_info_event(e); }
 void UiController::on_pm1_info_event_cb(lv_event_t *e) { if (instance_) instance_->on_pm1_info_event(e); }
 void UiController::on_card_pm05_event_cb(lv_event_t *e) { if (instance_) instance_->on_card_pm05_event(e); }
@@ -425,6 +492,8 @@ void UiController::on_wifi_reconnect_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
+    lv_obj_t *btn = lv_event_get_target(e);
+    show_wifi_action_feedback(btn);
     if (!networkManager.isEnabled()) {
         networkManager.setEnabled(true);
     } else if (networkManager.ssid().isEmpty()) {
@@ -432,7 +501,7 @@ void UiController::on_wifi_reconnect_event(lv_event_t *e) {
     } else {
         networkManager.connectSta();
     }
-    sync_wifi_toggle_state();
+    update_wifi_ui();
     mqtt_sync_with_wifi();
     datetime_ui_dirty = true;
 }
@@ -441,8 +510,10 @@ void UiController::on_wifi_start_ap_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
+    lv_obj_t *btn = lv_event_get_target(e);
+    show_wifi_action_feedback(btn);
     networkManager.startApOnDemand();
-    sync_wifi_toggle_state();
+    update_wifi_ui();
     mqtt_sync_with_wifi();
     datetime_ui_dirty = true;
 }
@@ -702,19 +773,7 @@ void UiController::on_card_voc_event(lv_event_t *e) {
         return;
     }
     info_sensor = INFO_VOC;
-    hide_all_sensor_info_containers();
-    set_visible(objects.voc_info, true);
-    if (objects.label_sensor_info_title) {
-        safe_label_set_text(objects.label_sensor_info_title, "VOC");
-    }
-    const char *unit = nullptr;
-    if (objects.label_voc_unit_1) {
-        unit = lv_label_get_text(objects.label_voc_unit_1);
-    } else {
-        unit = UiText::UnitIndex();
-    }
-    safe_label_set_text(objects.label_sensor_info_unit, unit);
-    update_sensor_info_ui();
+    restore_sensor_info_selection();
     pending_screen_id = SCREEN_ID_PAGE_SENSORS_INFO;
 }
 
@@ -723,19 +782,7 @@ void UiController::on_card_nox_event(lv_event_t *e) {
         return;
     }
     info_sensor = INFO_NOX;
-    hide_all_sensor_info_containers();
-    set_visible(objects.nox_info, true);
-    if (objects.label_sensor_info_title) {
-        safe_label_set_text(objects.label_sensor_info_title, "NOx");
-    }
-    const char *unit = nullptr;
-    if (objects.label_nox_unit_1) {
-        unit = lv_label_get_text(objects.label_nox_unit_1);
-    } else {
-        unit = UiText::UnitIndex();
-    }
-    safe_label_set_text(objects.label_sensor_info_unit, unit);
-    update_sensor_info_ui();
+    restore_sensor_info_selection();
     pending_screen_id = SCREEN_ID_PAGE_SENSORS_INFO;
 }
 
@@ -744,19 +791,7 @@ void UiController::on_card_hcho_event(lv_event_t *e) {
         return;
     }
     info_sensor = INFO_HCHO;
-    hide_all_sensor_info_containers();
-    set_visible(objects.hcho_info, true);
-    if (objects.label_sensor_info_title) {
-        safe_label_set_text(objects.label_sensor_info_title, UiText::SensorInfoTitleFormaldehyde());
-    }
-    const char *unit = nullptr;
-    if (objects.label_hcho_unit_1) {
-        unit = lv_label_get_text(objects.label_hcho_unit_1);
-    } else {
-        unit = UiText::UnitPpb();
-    }
-    safe_label_set_text(objects.label_sensor_info_unit, unit);
-    update_sensor_info_ui();
+    restore_sensor_info_selection();
     pending_screen_id = SCREEN_ID_PAGE_SENSORS_INFO;
 }
 
@@ -825,13 +860,86 @@ void UiController::on_info_graph_event(lv_event_t *e) {
     if (code != LV_EVENT_VALUE_CHANGED) {
         return;
     }
-    LOGD("UI", "info/graph pressed, code=%d info_sensor=%d mode=%d", static_cast<int>(code), static_cast<int>(info_sensor), temp_graph_mode_ ? 1 : 0);
-    if (info_sensor != INFO_TEMP) {
-        info_sensor = INFO_TEMP;
-        restore_sensor_info_selection();
+    LOGD("UI",
+         "info/graph pressed, code=%d info_sensor=%d temp_mode=%d rh_mode=%d voc_mode=%d nox_mode=%d hcho_mode=%d co2_mode=%d pm05_mode=%d pm25_4_mode=%d pm_mode=%d co_mode=%d pressure_mode=%d",
+         static_cast<int>(code),
+         static_cast<int>(info_sensor),
+         temp_graph_mode_ ? 1 : 0,
+         rh_graph_mode_ ? 1 : 0,
+         voc_graph_mode_ ? 1 : 0,
+         nox_graph_mode_ ? 1 : 0,
+         hcho_graph_mode_ ? 1 : 0,
+         co2_graph_mode_ ? 1 : 0,
+         pm05_graph_mode_ ? 1 : 0,
+         pm25_4_graph_mode_ ? 1 : 0,
+         pm1_10_graph_mode_ ? 1 : 0,
+         co_graph_mode_ ? 1 : 0,
+         pressure_graph_mode_ ? 1 : 0);
+
+    const bool was_graph_mode =
+        (info_sensor == INFO_TEMP) ? temp_graph_mode_ :
+        (info_sensor == INFO_RH) ? rh_graph_mode_ :
+        (info_sensor == INFO_VOC) ? voc_graph_mode_ :
+        (info_sensor == INFO_NOX) ? nox_graph_mode_ :
+        (info_sensor == INFO_HCHO) ? hcho_graph_mode_ :
+        (info_sensor == INFO_CO2) ? co2_graph_mode_ :
+        (info_sensor == INFO_PM05) ? pm05_graph_mode_ :
+        ((info_sensor == INFO_PM25 || info_sensor == INFO_PM4) ? pm25_4_graph_mode_ :
+         ((info_sensor == INFO_PM1 || info_sensor == INFO_PM10) ? pm1_10_graph_mode_ :
+          ((info_sensor == INFO_CO) ? co_graph_mode_ :
+           ((info_sensor == INFO_PRESSURE_3H || info_sensor == INFO_PRESSURE_24H) ? pressure_graph_mode_ : false))));
+
+    if (info_sensor == INFO_TEMP) {
+        set_temperature_info_mode(!temp_graph_mode_);
+    } else if (info_sensor == INFO_RH) {
+        set_rh_info_mode(!rh_graph_mode_);
+    } else if (info_sensor == INFO_VOC) {
+        set_voc_info_mode(!voc_graph_mode_);
+    } else if (info_sensor == INFO_NOX) {
+        set_nox_info_mode(!nox_graph_mode_);
+    } else if (info_sensor == INFO_HCHO) {
+        set_hcho_info_mode(!hcho_graph_mode_);
+    } else if (info_sensor == INFO_CO2) {
+        set_co2_info_mode(!co2_graph_mode_);
+    } else if (info_sensor == INFO_PM05) {
+        set_pm05_info_mode(!pm05_graph_mode_);
+    } else if (info_sensor == INFO_PM25 || info_sensor == INFO_PM4) {
+        set_pm25_4_info_mode(!pm25_4_graph_mode_);
+    } else if (info_sensor == INFO_PM1 || info_sensor == INFO_PM10) {
+        set_pm1_10_info_mode(!pm1_10_graph_mode_);
+    } else if (info_sensor == INFO_CO) {
+        set_co_info_mode(!co_graph_mode_);
+    } else if (info_sensor == INFO_PRESSURE_3H || info_sensor == INFO_PRESSURE_24H) {
+        set_pressure_info_mode(!pressure_graph_mode_);
+    } else {
+        if (rh_graph_mode_) {
+            set_rh_info_mode(false);
+        } else {
+            sync_info_graph_button_state();
+        }
+        return;
     }
-    set_temperature_info_mode(!temp_graph_mode_);
-    update_sensor_info_ui();
+
+    const bool is_graph_mode =
+        (info_sensor == INFO_TEMP) ? temp_graph_mode_ :
+        (info_sensor == INFO_RH) ? rh_graph_mode_ :
+        (info_sensor == INFO_VOC) ? voc_graph_mode_ :
+        (info_sensor == INFO_NOX) ? nox_graph_mode_ :
+        (info_sensor == INFO_HCHO) ? hcho_graph_mode_ :
+        (info_sensor == INFO_CO2) ? co2_graph_mode_ :
+        (info_sensor == INFO_PM05) ? pm05_graph_mode_ :
+        ((info_sensor == INFO_PM25 || info_sensor == INFO_PM4) ? pm25_4_graph_mode_ :
+         ((info_sensor == INFO_PM1 || info_sensor == INFO_PM10) ? pm1_10_graph_mode_ :
+          ((info_sensor == INFO_CO) ? co_graph_mode_ :
+           ((info_sensor == INFO_PRESSURE_3H || info_sensor == INFO_PRESSURE_24H) ? pressure_graph_mode_ : false))));
+
+    if (is_graph_mode && !was_graph_mode) {
+        invalidate_active_graph_refresh_cache();
+        update_sensor_info_ui();
+        return;
+    }
+
+    data_dirty = true;
 }
 
 void UiController::on_temp_range_1h_event(lv_event_t *e) {
@@ -877,6 +985,454 @@ void UiController::on_temp_range_24h_event(lv_event_t *e) {
     temp_graph_range_ = TEMP_GRAPH_RANGE_24H;
     set_temperature_info_mode(true);
     update_sensor_info_ui();
+}
+
+void UiController::on_rh_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "rh range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_RH) {
+        select_humidity_info(INFO_RH);
+    }
+    rh_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_rh_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_rh_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "rh range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_RH) {
+        select_humidity_info(INFO_RH);
+    }
+    rh_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_rh_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_rh_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "rh range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_RH) {
+        select_humidity_info(INFO_RH);
+    }
+    rh_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_rh_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_voc_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "voc range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_VOC) {
+        info_sensor = INFO_VOC;
+        restore_sensor_info_selection();
+    }
+    voc_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_voc_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_voc_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "voc range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_VOC) {
+        info_sensor = INFO_VOC;
+        restore_sensor_info_selection();
+    }
+    voc_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_voc_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_voc_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "voc range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_VOC) {
+        info_sensor = INFO_VOC;
+        restore_sensor_info_selection();
+    }
+    voc_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_voc_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_nox_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "nox range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_NOX) {
+        info_sensor = INFO_NOX;
+        restore_sensor_info_selection();
+    }
+    nox_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_nox_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_nox_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "nox range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_NOX) {
+        info_sensor = INFO_NOX;
+        restore_sensor_info_selection();
+    }
+    nox_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_nox_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_nox_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "nox range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_NOX) {
+        info_sensor = INFO_NOX;
+        restore_sensor_info_selection();
+    }
+    nox_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_nox_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_hcho_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "hcho range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_HCHO) {
+        info_sensor = INFO_HCHO;
+        restore_sensor_info_selection();
+    }
+    hcho_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_hcho_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_hcho_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "hcho range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_HCHO) {
+        info_sensor = INFO_HCHO;
+        restore_sensor_info_selection();
+    }
+    hcho_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_hcho_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_hcho_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "hcho range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_HCHO) {
+        info_sensor = INFO_HCHO;
+        restore_sensor_info_selection();
+    }
+    hcho_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_hcho_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_co2_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "co2 range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_CO2) {
+        info_sensor = INFO_CO2;
+        restore_sensor_info_selection();
+    }
+    co2_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_co2_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_co2_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "co2 range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_CO2) {
+        info_sensor = INFO_CO2;
+        restore_sensor_info_selection();
+    }
+    co2_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_co2_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_co2_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "co2 range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_CO2) {
+        info_sensor = INFO_CO2;
+        restore_sensor_info_selection();
+    }
+    co2_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_co2_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm05_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm05 range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM05) {
+        select_pm_info(INFO_PM05);
+    }
+    pm05_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_pm05_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm05_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm05 range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM05) {
+        select_pm_info(INFO_PM05);
+    }
+    pm05_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_pm05_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm05_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm05 range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM05) {
+        select_pm_info(INFO_PM05);
+    }
+    pm05_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_pm05_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm25_4_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm25_4 range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM25 && info_sensor != INFO_PM4) {
+        select_pm_info(INFO_PM25);
+    }
+    pm25_4_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_pm25_4_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm25_4_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm25_4 range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM25 && info_sensor != INFO_PM4) {
+        select_pm_info(INFO_PM25);
+    }
+    pm25_4_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_pm25_4_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm25_4_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm25_4 range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM25 && info_sensor != INFO_PM4) {
+        select_pm_info(INFO_PM25);
+    }
+    pm25_4_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_pm25_4_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm1_10_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm1_10 range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM1 && info_sensor != INFO_PM10) {
+        select_pm_info(INFO_PM10);
+    }
+    pm1_10_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_pm1_10_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm1_10_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm1_10 range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM1 && info_sensor != INFO_PM10) {
+        select_pm_info(INFO_PM10);
+    }
+    pm1_10_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_pm1_10_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm1_10_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pm1_10 range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PM1 && info_sensor != INFO_PM10) {
+        select_pm_info(INFO_PM10);
+    }
+    pm1_10_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_pm1_10_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_co_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "co range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_CO) {
+        select_pm_info(INFO_CO);
+    }
+    co_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_co_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_co_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "co range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_CO) {
+        select_pm_info(INFO_CO);
+    }
+    co_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_co_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_co_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "co range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_CO) {
+        select_pm_info(INFO_CO);
+    }
+    co_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_co_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pressure_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pressure range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PRESSURE_3H && info_sensor != INFO_PRESSURE_24H) {
+        select_pressure_info(INFO_PRESSURE_3H);
+    }
+    pressure_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_pressure_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pressure_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pressure range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PRESSURE_3H && info_sensor != INFO_PRESSURE_24H) {
+        select_pressure_info(INFO_PRESSURE_3H);
+    }
+    pressure_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_pressure_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pressure_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "pressure range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_PRESSURE_3H && info_sensor != INFO_PRESSURE_24H) {
+        select_pressure_info(INFO_PRESSURE_3H);
+    }
+    pressure_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_pressure_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_pm25_info_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_CLICKED && code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    select_pm_info(INFO_PM25);
+}
+
+void UiController::on_pm4_info_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_CLICKED && code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    select_pm_info(INFO_PM4);
 }
 
 void UiController::on_pm10_info_event(lv_event_t *e) {

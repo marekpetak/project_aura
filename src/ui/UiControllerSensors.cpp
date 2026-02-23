@@ -393,10 +393,10 @@ void UiController::update_sensor_cards(const AirQuality &aq, bool gas_warmup, bo
         } else {
             snprintf(buf, sizeof(buf), "%.1f", currentData.pressure_delta_3h);
         }
-        safe_label_set_text(objects.label_delta_3h_value_1, buf);
+        safe_label_set_text(objects.label_delta_5, buf);
         safe_label_set_text(objects.label_delta_5, buf);
     } else {
-        safe_label_set_text_static(objects.label_delta_3h_value_1, UiText::ValueMissingShort());
+        safe_label_set_text_static(objects.label_delta_5, UiText::ValueMissingShort());
         safe_label_set_text_static(objects.label_delta_5, UiText::ValueMissingShort());
     }
 
@@ -406,10 +406,10 @@ void UiController::update_sensor_cards(const AirQuality &aq, bool gas_warmup, bo
         } else {
             snprintf(buf, sizeof(buf), "%.1f", currentData.pressure_delta_24h);
         }
-        safe_label_set_text(objects.label_delta_24h_value_1, buf);
+        safe_label_set_text(objects.label_delta_26, buf);
         safe_label_set_text(objects.label_delta_26, buf);
     } else {
-        safe_label_set_text_static(objects.label_delta_24h_value_1, UiText::ValueMissingShort());
+        safe_label_set_text_static(objects.label_delta_26, UiText::ValueMissingShort());
         safe_label_set_text_static(objects.label_delta_26, UiText::ValueMissingShort());
     }
 
@@ -419,8 +419,8 @@ void UiController::update_sensor_cards(const AirQuality &aq, bool gas_warmup, bo
     lv_color_t delta_24h_color = night_mode
         ? color_card_border()
         : getPressureDeltaColor(currentData.pressure_delta_24h, currentData.pressure_delta_24h_valid, true);
-    set_chip_color(objects.chip_delta_3h_1, delta_3h_color);
-    set_chip_color(objects.chip_delta_24h_1, delta_24h_color);
+    set_chip_color(objects.chip_delta_4, delta_3h_color);
+    set_chip_color(objects.chip_delta_25, delta_24h_color);
     set_chip_color(objects.chip_delta_4, delta_3h_color);
     set_chip_color(objects.chip_delta_25, delta_24h_color);
 }

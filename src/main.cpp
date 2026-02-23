@@ -91,6 +91,7 @@ void setup()
     Serial.begin(115200);
     Logger::begin(Serial, static_cast<Logger::Level>(Config::LOG_LEVEL));
     Logger::setSerialOutputEnabled(Config::LOG_SERIAL_OUTPUT);
+    Logger::setSensorsSerialOutputEnabled(Config::LOG_SERIAL_SENSORS_OUTPUT);
 
     // Log IPC task stack size to verify CONFIG_IPC_TASK_STACK_SIZE is applied
     #ifdef CONFIG_ESP_IPC_TASK_STACK_SIZE

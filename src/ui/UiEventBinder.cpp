@@ -88,6 +88,8 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.card_pm25_pro, UiController::on_card_pm25_event_cb, LV_EVENT_CLICKED},
         {objects.card_pm10_pro, UiController::on_card_pm10_event_cb, LV_EVENT_CLICKED},
         {objects.card_co_pro, UiController::on_card_co_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm25_info, UiController::on_pm25_info_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm4_info, UiController::on_pm4_info_event_cb, LV_EVENT_CLICKED},
         {objects.btn_pm10_info, UiController::on_pm10_info_event_cb, LV_EVENT_CLICKED},
         {objects.btn_pm1_info, UiController::on_pm1_info_event_cb, LV_EVENT_CLICKED},
         {objects.card_pressure_pro, UiController::on_card_pressure_event_cb, LV_EVENT_CLICKED},
@@ -100,10 +102,70 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_temp_range_1h, UiController::on_temp_range_1h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_temp_range_3h, UiController::on_temp_range_3h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_temp_range_24h, UiController::on_temp_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_rh_range_1h, UiController::on_rh_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_rh_range_3h, UiController::on_rh_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_rh_range_24h, UiController::on_rh_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_voc_range_1h, UiController::on_voc_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_voc_range_3h, UiController::on_voc_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_voc_range_24h, UiController::on_voc_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_nox_range_1h, UiController::on_nox_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_nox_range_3h, UiController::on_nox_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_nox_range_24h, UiController::on_nox_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_hcho_range_1h, UiController::on_hcho_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_hcho_range_3h, UiController::on_hcho_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_hcho_range_24h, UiController::on_hcho_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co2_range_1h, UiController::on_co2_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co2_range_3h, UiController::on_co2_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co2_range_24h, UiController::on_co2_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm05_range_1h, UiController::on_pm05_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm05_range_3h, UiController::on_pm05_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm05_range_24h, UiController::on_pm05_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm25_4_range_1h, UiController::on_pm25_4_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm25_4_range_3h, UiController::on_pm25_4_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm25_4_range_24h, UiController::on_pm25_4_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm1_10_range_1h, UiController::on_pm1_10_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm1_10_range_3h, UiController::on_pm1_10_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pm1_10_range_24h, UiController::on_pm1_10_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co_range_1h, UiController::on_co_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co_range_3h, UiController::on_co_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co_range_24h, UiController::on_co_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pressure_range_1h, UiController::on_pressure_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pressure_range_3h, UiController::on_pressure_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_pressure_range_24h, UiController::on_pressure_range_24h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_info_graph, UiController::on_info_graph_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_temp_range_1h, UiController::on_temp_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_temp_range_3h, UiController::on_temp_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_temp_range_24h, UiController::on_temp_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_rh_range_1h, UiController::on_rh_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_rh_range_3h, UiController::on_rh_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_rh_range_24h, UiController::on_rh_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_voc_range_1h, UiController::on_voc_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_voc_range_3h, UiController::on_voc_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_voc_range_24h, UiController::on_voc_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_nox_range_1h, UiController::on_nox_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_nox_range_3h, UiController::on_nox_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_nox_range_24h, UiController::on_nox_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_hcho_range_1h, UiController::on_hcho_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_hcho_range_3h, UiController::on_hcho_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_hcho_range_24h, UiController::on_hcho_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_co2_range_1h, UiController::on_co2_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_co2_range_3h, UiController::on_co2_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_co2_range_24h, UiController::on_co2_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pm05_range_1h, UiController::on_pm05_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pm05_range_3h, UiController::on_pm05_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pm05_range_24h, UiController::on_pm05_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pm25_4_range_1h, UiController::on_pm25_4_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pm25_4_range_3h, UiController::on_pm25_4_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pm25_4_range_24h, UiController::on_pm25_4_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pm1_10_range_1h, UiController::on_pm1_10_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pm1_10_range_3h, UiController::on_pm1_10_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pm1_10_range_24h, UiController::on_pm1_10_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_co_range_1h, UiController::on_co_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_co_range_3h, UiController::on_co_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_co_range_24h, UiController::on_co_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pressure_range_1h, UiController::on_pressure_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pressure_range_3h, UiController::on_pressure_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_pressure_range_24h, UiController::on_pressure_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_3h_pressure_info, UiController::on_pressure_3h_info_event_cb, LV_EVENT_CLICKED},
         {objects.btn_24h_pressure_info, UiController::on_pressure_24h_info_event_cb, LV_EVENT_CLICKED},
         {objects.btn_wifi, UiController::on_wifi_settings_event_cb, LV_EVENT_CLICKED},
@@ -192,12 +254,44 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_alert_blink, UiController::on_alert_blink_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_co2_calib_asc, UiController::on_co2_calib_asc_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_ntp_toggle, UiController::on_ntp_toggle_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm25_info, UiController::on_pm25_info_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm4_info, UiController::on_pm4_info_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_pm10_info, UiController::on_pm10_info_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_pm1_info, UiController::on_pm1_info_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_info_graph, UiController::on_info_graph_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_temp_range_1h, UiController::on_temp_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_temp_range_3h, UiController::on_temp_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_temp_range_24h, UiController::on_temp_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_rh_range_1h, UiController::on_rh_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_rh_range_3h, UiController::on_rh_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_rh_range_24h, UiController::on_rh_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_voc_range_1h, UiController::on_voc_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_voc_range_3h, UiController::on_voc_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_voc_range_24h, UiController::on_voc_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_nox_range_1h, UiController::on_nox_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_nox_range_3h, UiController::on_nox_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_nox_range_24h, UiController::on_nox_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_hcho_range_1h, UiController::on_hcho_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_hcho_range_3h, UiController::on_hcho_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_hcho_range_24h, UiController::on_hcho_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_co2_range_1h, UiController::on_co2_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_co2_range_3h, UiController::on_co2_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_co2_range_24h, UiController::on_co2_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm05_range_1h, UiController::on_pm05_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm05_range_3h, UiController::on_pm05_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm05_range_24h, UiController::on_pm05_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm25_4_range_1h, UiController::on_pm25_4_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm25_4_range_3h, UiController::on_pm25_4_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm25_4_range_24h, UiController::on_pm25_4_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm1_10_range_1h, UiController::on_pm1_10_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm1_10_range_3h, UiController::on_pm1_10_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pm1_10_range_24h, UiController::on_pm1_10_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_co_range_1h, UiController::on_co_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_co_range_3h, UiController::on_co_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_co_range_24h, UiController::on_co_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pressure_range_1h, UiController::on_pressure_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pressure_range_3h, UiController::on_pressure_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_pressure_range_24h, UiController::on_pressure_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_dac_manual_on, UiController::on_dac_manual_on_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_dac_auto_on, UiController::on_dac_auto_on_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_dak_manual_toggle_1, UiController::on_dac_manual_level_event_cb, LV_EVENT_VALUE_CHANGED},
@@ -270,6 +364,8 @@ void UiEventBinder::applyToggleStylesForAvailableObjects(UiController &owner, in
         objects.btn_head_status_1,
         objects.btn_wifi,
         objects.btn_mqtt,
+        objects.btn_wifi_reconnect,
+        objects.btn_wifi_start_ap,
         objects.btn_units_c_f,
         objects.btn_units_mdy,
         objects.btn_led_indicators,
@@ -291,6 +387,38 @@ void UiEventBinder::applyToggleStylesForAvailableObjects(UiController &owner, in
         objects.btn_temp_range_1h,
         objects.btn_temp_range_3h,
         objects.btn_temp_range_24h,
+        objects.btn_rh_range_1h,
+        objects.btn_rh_range_3h,
+        objects.btn_rh_range_24h,
+        objects.btn_voc_range_1h,
+        objects.btn_voc_range_3h,
+        objects.btn_voc_range_24h,
+        objects.btn_nox_range_1h,
+        objects.btn_nox_range_3h,
+        objects.btn_nox_range_24h,
+        objects.btn_hcho_range_1h,
+        objects.btn_hcho_range_3h,
+        objects.btn_hcho_range_24h,
+        objects.btn_co2_range_1h,
+        objects.btn_co2_range_3h,
+        objects.btn_co2_range_24h,
+        objects.btn_pm05_range_1h,
+        objects.btn_pm05_range_3h,
+        objects.btn_pm05_range_24h,
+        objects.btn_pm25_4_range_1h,
+        objects.btn_pm25_4_range_3h,
+        objects.btn_pm25_4_range_24h,
+        objects.btn_pm1_10_range_1h,
+        objects.btn_pm1_10_range_3h,
+        objects.btn_pm1_10_range_24h,
+        objects.btn_co_range_1h,
+        objects.btn_co_range_3h,
+        objects.btn_co_range_24h,
+        objects.btn_pressure_range_1h,
+        objects.btn_pressure_range_3h,
+        objects.btn_pressure_range_24h,
+        objects.btn_pm25_info,
+        objects.btn_pm4_info,
         objects.btn_pm10_info,
         objects.btn_pm1_info,
         objects.btn_mr_info,
@@ -354,12 +482,63 @@ void UiEventBinder::applyCheckedStatesForAvailableObjects(UiController &owner, i
     set_checked(objects.btn_led_indicators, owner.led_indicators_enabled);
     set_checked(objects.btn_alert_blink, owner.alert_blink_enabled);
     set_checked(objects.btn_co2_calib_asc, owner.co2_asc_enabled);
-    set_checked(objects.btn_rh_info, true);
-    set_checked(objects.btn_info_graph, owner.temp_graph_mode_);
+    set_checked(objects.btn_rh_info, owner.info_sensor == UiController::INFO_RH);
+    set_checked(objects.btn_ah_info, owner.info_sensor == UiController::INFO_AH);
+    set_checked(objects.btn_mr_info, owner.info_sensor == UiController::INFO_MR);
+    set_checked(objects.btn_dp_info, owner.info_sensor == UiController::INFO_DP);
+    const bool pressure_info_selected =
+        owner.info_sensor == UiController::INFO_PRESSURE_3H ||
+        owner.info_sensor == UiController::INFO_PRESSURE_24H;
+    const bool info_graph_checked =
+        ((owner.info_sensor == UiController::INFO_TEMP) && owner.temp_graph_mode_) ||
+        ((owner.info_sensor == UiController::INFO_RH) && owner.rh_graph_mode_) ||
+        ((owner.info_sensor == UiController::INFO_VOC) && owner.voc_graph_mode_) ||
+        ((owner.info_sensor == UiController::INFO_NOX) && owner.nox_graph_mode_) ||
+        ((owner.info_sensor == UiController::INFO_HCHO) && owner.hcho_graph_mode_) ||
+        ((owner.info_sensor == UiController::INFO_CO2) && owner.co2_graph_mode_) ||
+        ((owner.info_sensor == UiController::INFO_PM05) && owner.pm05_graph_mode_) ||
+        (((owner.info_sensor == UiController::INFO_PM25) || (owner.info_sensor == UiController::INFO_PM4)) && owner.pm25_4_graph_mode_) ||
+        (((owner.info_sensor == UiController::INFO_PM1) || (owner.info_sensor == UiController::INFO_PM10)) && owner.pm1_10_graph_mode_) ||
+        ((owner.info_sensor == UiController::INFO_CO) && owner.co_graph_mode_) ||
+        (pressure_info_selected && owner.pressure_graph_mode_);
+    set_checked(objects.btn_info_graph, info_graph_checked);
     set_checked(objects.btn_temp_range_1h, owner.temp_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_temp_range_3h, owner.temp_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_temp_range_24h, owner.temp_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
-    set_checked(objects.btn_3h_pressure_info, true);
+    set_checked(objects.btn_rh_range_1h, owner.rh_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_rh_range_3h, owner.rh_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_rh_range_24h, owner.rh_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_voc_range_1h, owner.voc_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_voc_range_3h, owner.voc_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_voc_range_24h, owner.voc_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_nox_range_1h, owner.nox_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_nox_range_3h, owner.nox_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_nox_range_24h, owner.nox_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_hcho_range_1h, owner.hcho_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_hcho_range_3h, owner.hcho_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_hcho_range_24h, owner.hcho_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_co2_range_1h, owner.co2_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_co2_range_3h, owner.co2_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_co2_range_24h, owner.co2_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_pm05_range_1h, owner.pm05_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_pm05_range_3h, owner.pm05_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_pm05_range_24h, owner.pm05_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_pm25_4_range_1h, owner.pm25_4_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_pm25_4_range_3h, owner.pm25_4_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_pm25_4_range_24h, owner.pm25_4_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_pm1_10_range_1h, owner.pm1_10_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_pm1_10_range_3h, owner.pm1_10_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_pm1_10_range_24h, owner.pm1_10_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_pm25_info, owner.info_sensor == UiController::INFO_PM25);
+    set_checked(objects.btn_pm4_info, owner.info_sensor == UiController::INFO_PM4);
+    set_checked(objects.btn_co_range_1h, owner.co_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_co_range_3h, owner.co_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_co_range_24h, owner.co_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_pressure_range_1h, owner.pressure_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_pressure_range_3h, owner.pressure_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_pressure_range_24h, owner.pressure_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_3h_pressure_info, owner.info_sensor != UiController::INFO_PRESSURE_24H);
+    set_checked(objects.btn_24h_pressure_info, owner.info_sensor == UiController::INFO_PRESSURE_24H);
 }
 
 void UiEventBinder::initThemeControlsIfAvailable(UiController &owner) {
