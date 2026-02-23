@@ -150,11 +150,17 @@ private:
     void select_humidity_info(InfoSensor sensor);
     void select_pm_info(InfoSensor sensor);
     void select_pressure_info(InfoSensor sensor);
+    void sync_info_graph_button_state();
+    bool should_show_threshold_dots() const;
+    void sync_threshold_dots_visibility();
     void set_temperature_info_mode(bool graph_mode);
+    void set_rh_info_mode(bool graph_mode);
+    uint16_t humidity_graph_points() const;
     SensorGraphProfile build_temperature_graph_profile() const;
     lv_color_t resolve_graph_zone_color(GraphZoneTone tone, lv_color_t chart_bg);
     void apply_temperature_graph_theme(const SensorGraphProfile &profile);
     void update_temperature_info_graph();
+    void update_humidity_info_graph();
     void ensure_temperature_graph_overlays();
     void update_temperature_graph_overlays(const SensorGraphProfile &profile,
                                            bool has_values,
@@ -165,6 +171,15 @@ private:
     void update_temperature_zone_overlay(const SensorGraphProfile &profile, float y_min_display, float y_max_display);
     void ensure_temperature_time_labels();
     void update_temperature_time_labels();
+    void ensure_humidity_graph_overlays();
+    void update_humidity_graph_overlays(bool has_values,
+                                        float min_humidity,
+                                        float max_humidity,
+                                        float latest_humidity);
+    void ensure_humidity_zone_overlay();
+    void update_humidity_zone_overlay(float y_min_display, float y_max_display);
+    void ensure_humidity_time_labels();
+    void update_humidity_time_labels();
     uint16_t temperature_graph_points() const;
     void update_sensor_cards(const AirQuality &aq, bool gas_warmup, bool show_co2_bar);
     void update_settings_header();
@@ -345,6 +360,9 @@ private:
     void on_temp_range_1h_event(lv_event_t *e);
     void on_temp_range_3h_event(lv_event_t *e);
     void on_temp_range_24h_event(lv_event_t *e);
+    void on_rh_range_1h_event(lv_event_t *e);
+    void on_rh_range_3h_event(lv_event_t *e);
+    void on_rh_range_24h_event(lv_event_t *e);
     void on_pm10_info_event(lv_event_t *e);
     void on_pm1_info_event(lv_event_t *e);
     void on_card_pm05_event(lv_event_t *e);
@@ -465,6 +483,9 @@ private:
     static void on_temp_range_1h_event_cb(lv_event_t *e);
     static void on_temp_range_3h_event_cb(lv_event_t *e);
     static void on_temp_range_24h_event_cb(lv_event_t *e);
+    static void on_rh_range_1h_event_cb(lv_event_t *e);
+    static void on_rh_range_3h_event_cb(lv_event_t *e);
+    static void on_rh_range_24h_event_cb(lv_event_t *e);
     static void on_pm10_info_event_cb(lv_event_t *e);
     static void on_pm1_info_event_cb(lv_event_t *e);
     static void on_card_pm05_event_cb(lv_event_t *e);
@@ -587,10 +608,18 @@ private:
     InfoSensor info_sensor = INFO_NONE;
     TempGraphRange temp_graph_range_ = TEMP_GRAPH_RANGE_3H;
     bool temp_graph_mode_ = false;
+    bool rh_graph_mode_ = false;
+    TempGraphRange rh_graph_range_ = TEMP_GRAPH_RANGE_3H;
     lv_obj_t *temp_graph_label_min_ = nullptr;
     lv_obj_t *temp_graph_label_now_ = nullptr;
     lv_obj_t *temp_graph_label_max_ = nullptr;
     lv_obj_t *temp_graph_zone_overlay_ = nullptr;
     lv_obj_t *temp_graph_zone_bands_[kMaxGraphZoneBands] = {};
     lv_obj_t *temp_graph_time_labels_[7] = {};
+    lv_obj_t *rh_graph_label_min_ = nullptr;
+    lv_obj_t *rh_graph_label_now_ = nullptr;
+    lv_obj_t *rh_graph_label_max_ = nullptr;
+    lv_obj_t *rh_graph_zone_overlay_ = nullptr;
+    lv_obj_t *rh_graph_zone_bands_[kMaxGraphZoneBands] = {};
+    lv_obj_t *rh_graph_time_labels_[7] = {};
 };
