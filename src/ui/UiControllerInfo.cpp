@@ -70,6 +70,10 @@ void UiController::update_sensor_info_ui() {
             lv_color_t voc_col = gas_warmup ? color_blue()
                                             : (currentData.voc_valid ? getVOCColor(currentData.voc_index) : color_inactive());
             set_dot_color(objects.dot_sensor_info, gas_warmup ? voc_col : alert_color_for_mode(voc_col));
+            set_voc_info_mode(voc_graph_mode_);
+            if (voc_graph_mode_) {
+                update_voc_info_graph();
+            }
             break;
         }
         case INFO_NOX: {
@@ -426,6 +430,7 @@ void UiController::restore_sensor_info_selection() {
                 unit = UiText::UnitIndex();
             }
             safe_label_set_text(objects.label_sensor_info_unit, unit);
+            set_voc_info_mode(voc_graph_mode_);
             update_sensor_info_ui();
             break;
         }
@@ -637,6 +642,8 @@ void UiController::hide_all_sensor_info_containers() {
     set_visible(objects.co2_info_thresholds, false);
     set_visible(objects.co2_info_graph, false);
     set_visible(objects.voc_info, false);
+    set_visible(objects.voc_info_thresholds, false);
+    set_visible(objects.voc_info_graph, false);
     set_visible(objects.nox_info, false);
     set_visible(objects.hcho_info, false);
     set_visible(objects.co_info, false);
