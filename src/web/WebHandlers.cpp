@@ -41,6 +41,7 @@ constexpr uint32_t kDeferredRestartDelayMs = 1500;
 bool g_deferred_wifi_start_sta = false;
 bool g_deferred_mqtt_sync = false;
 bool g_deferred_restart = false;
+bool g_restart_requested = false;
 uint32_t g_deferred_wifi_start_sta_due_ms = 0;
 uint32_t g_deferred_mqtt_sync_due_ms = 0;
 uint32_t g_deferred_restart_due_ms = 0;
@@ -389,6 +390,7 @@ void WebHandlersInit(WebHandlerContext *context) {
     g_deferred_wifi_start_sta = false;
     g_deferred_mqtt_sync = false;
     g_deferred_restart = false;
+    g_restart_requested = false;
     g_deferred_wifi_start_sta_due_ms = 0;
     g_deferred_mqtt_sync_due_ms = 0;
     g_deferred_restart_due_ms = 0;
@@ -396,7 +398,15 @@ void WebHandlersInit(WebHandlerContext *context) {
 }
 
 bool WebHandlersIsOtaBusy() {
-    return g_ota_upload_active || g_deferred_restart;
+    return g_ota_upload_active || g_deferred_restart || g_restart_requested;
+}
+
+bool WebHandlersConsumeRestartRequest() {
+    if (!g_restart_requested) {
+        return false;
+    }
+    g_restart_requested = false;
+    return true;
 }
 
 void WebHandlersPollDeferred() {
@@ -425,18 +435,8 @@ void WebHandlersPollDeferred() {
     if (g_deferred_restart && deadline_reached(now_ms, g_deferred_restart_due_ms)) {
         g_deferred_restart = false;
         g_deferred_restart_due_ms = 0;
-        LOGI("OTA", "deferred reboot: stopping web/wifi stack");
-        if (context->server) {
-            context->server->stop();
-        }
-        if (WiFi.getMode() != WIFI_MODE_NULL) {
-            WiFi.disconnect(true, true);
-            delay(80);
-            WiFi.mode(WIFI_OFF);
-            delay(120);
-        }
-        LOGI("OTA", "restarting now");
-        ESP.restart();
+        g_restart_requested = true;
+        LOGI("OTA", "deferred reboot: restart requested");
     }
 }
 

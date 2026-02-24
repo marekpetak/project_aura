@@ -141,6 +141,13 @@ void setup()
 
 void loop()
 {
+    if (WebHandlersConsumeRestartRequest()) {
+        LOGI("OTA", "restarting now (main loop)");
+        delay(20);
+        ESP.restart();
+        return;
+    }
+
     SensorManager::PollResult sensor_poll =
         sensorManager.poll(currentData, storage, pressureHistory, co2_asc_enabled);
     uiController.onSensorPoll(sensor_poll);
