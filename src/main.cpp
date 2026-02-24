@@ -141,6 +141,13 @@ void setup()
 
 void loop()
 {
+    if (WebHandlersConsumeRestartRequest()) {
+        LOGI("OTA", "restarting now (main loop)");
+        delay(20);
+        ESP.restart();
+        return;
+    }
+
     SensorManager::PollResult sensor_poll =
         sensorManager.poll(currentData, storage, pressureHistory, co2_asc_enabled);
     uiController.onSensorPoll(sensor_poll);
@@ -157,9 +164,13 @@ void loop()
     uiController.onTimePoll(time_poll);
     fanControl.poll(now, &currentData, sensorManager.isWarmupActive());
     mqttManager.poll(currentData, night_mode, alert_blink_enabled, backlightManager.isOn());
+    const bool ota_busy = WebHandlersIsOtaBusy();
+    if (ota_busy) {
+        networkManager.poll();
+    }
     storage.poll(now);
     memoryMonitor.poll(now);
     uiController.poll(now);
     Watchdog::kick();
-    delay(10);
+    delay(ota_busy ? 1 : 10);
 }
