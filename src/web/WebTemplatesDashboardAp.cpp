@@ -50,6 +50,26 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       margin-bottom: 14px;
       flex-wrap: wrap;
     }
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #34d399;
+      box-shadow: 0 0 8px #34d399;
+      flex: 0 0 auto;
+    }
     .title {
       font-size: 22px;
       font-weight: 700;
@@ -64,6 +84,24 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+    }
+    .clock {
+      text-align: right;
+      min-width: 110px;
+    }
+    .clock-time {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.03em;
+    }
+    .clock-date {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
     button, .link-btn, select, input[type="number"], input[type="text"] {
       border: 1px solid var(--border);
@@ -240,6 +278,33 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       flex-wrap: wrap;
       margin-top: 10px;
     }
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #0d162c;
+    }
+    .seg-btn {
+      border: 0;
+      border-right: 1px solid var(--line);
+      border-radius: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .seg-btn:last-child {
+      border-right: 0;
+    }
+    .seg-btn.active {
+      color: #082321;
+      background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    }
     .charts {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -322,6 +387,7 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       .title { font-size: 20px; }
       .card .v { font-size: 19px; }
       svg { height: 76px; }
+      .clock-time { font-size: 19px; }
     }
   </style>
 </head>
@@ -329,12 +395,21 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
   <div class="wrap">
     <div class="top">
       <div>
-        <div class="title">Aura Dashboard</div>
-        <div class="subtitle">AP offline mode (no CDN dependencies)</div>
+        <div class="brand">
+          <span class="brand-dot"></span>
+          <div class="title">AURA</div>
+        </div>
+        <div id="deviceNameLabel" class="subtitle">Device</div>
       </div>
-      <div class="actions">
-        <button id="refreshBtn" type="button">Refresh</button>
-        <a class="link-btn" href="/">WiFi Setup</a>
+      <div class="top-right">
+        <div class="clock">
+          <div id="headerTime" class="clock-time">--:--</div>
+          <div id="headerDate" class="clock-date">-- --- ----</div>
+        </div>
+        <div class="actions">
+          <button id="refreshBtn" type="button">Refresh</button>
+          <a class="link-btn" href="/">WiFi Setup</a>
+        </div>
       </div>
     </div>
 
@@ -364,20 +439,20 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
         <h3>Charts</h3>
         <div class="row">
           <div class="field">
-            <label for="chartGroup">Group</label>
-            <select id="chartGroup">
-              <option value="core">Core</option>
-              <option value="gases">Gases</option>
-              <option value="pm">PM</option>
-            </select>
+            <label>Group</label>
+            <div class="seg" id="chartGroupSeg">
+              <button class="seg-btn active" type="button" data-group="core">Core</button>
+              <button class="seg-btn" type="button" data-group="gases">Gases</button>
+              <button class="seg-btn" type="button" data-group="pm">PM</button>
+            </div>
           </div>
           <div class="field">
-            <label for="chartWindow">Range</label>
-            <select id="chartWindow">
-              <option value="1h">1h</option>
-              <option value="3h">3h</option>
-              <option value="24h" selected>24h</option>
-            </select>
+            <label>Range</label>
+            <div class="seg" id="chartWindowSeg">
+              <button class="seg-btn" type="button" data-window="1h">1h</button>
+              <button class="seg-btn" type="button" data-window="3h">3h</button>
+              <button class="seg-btn active" type="button" data-window="24h">24h</button>
+            </div>
           </div>
         </div>
         <div id="charts" class="charts" style="margin-top:10px;"></div>
@@ -434,6 +509,10 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       <div class="sec">
         <h3>System</h3>
         <div id="deviceMeta" class="meta muted">Loading...</div>
+        <div class="btn-row">
+          <button id="rebootNowBtn" class="danger-btn" type="button">Reboot Device</button>
+          <button id="openDacBtn" type="button">Open DAC Page</button>
+        </div>
       </div>
       <div class="sec">
         <h3>Firmware OTA</h3>
@@ -552,6 +631,8 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
     let stateCache = null;
     let settingsDirty = false;
     let refreshBusy = false;
+    let deviceClockRef = null;
+    let otaUploadInFlight = false;
 
     function selectTab(tab) {
       activeTab = tab;
@@ -567,6 +648,52 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       } else if (tab === "events") {
         refreshEvents().catch(() => {});
       }
+    }
+
+    function formatHeaderDate(date) {
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      }).toUpperCase();
+    }
+
+    function updateHeaderClock() {
+      const nowMs = Date.now();
+      const now = deviceClockRef
+        ? new Date(deviceClockRef.epochMs + (nowMs - deviceClockRef.capturedAtMs))
+        : new Date(nowMs);
+      $("headerTime").textContent = now.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      });
+      $("headerDate").textContent = formatHeaderDate(now);
+    }
+
+    function renderHeader(statePayload) {
+      const network = (statePayload && statePayload.network) || {};
+      const settings = (statePayload && statePayload.settings) || {};
+      const display = (typeof settings.display_name === "string" && settings.display_name.trim())
+        ? settings.display_name.trim()
+        : (network.hostname || "aura");
+      $("deviceNameLabel").textContent = display;
+
+      if (isNum(statePayload && statePayload.time_epoch_s)) {
+        deviceClockRef = {
+          epochMs: statePayload.time_epoch_s * 1000,
+          capturedAtMs: Date.now()
+        };
+      }
+      updateHeaderClock();
+    }
+
+    function setSegmentActive(containerId, attrName, value) {
+      const container = $(containerId);
+      if (!container) return;
+      container.querySelectorAll(".seg-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.getAttribute(attrName) === value);
+      });
     }
 
     function renderMetrics(statePayload) {
@@ -622,6 +749,11 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
         const cls = key === "MQTT" ? (mqttConnected ? "ok" : "danger") : "";
         return '<div><b>' + esc(key) + ':</b><span class="' + cls + '">' + esc(value) + "</span></div>";
       }).join("");
+
+      const dacBtn = $("openDacBtn");
+      if (dacBtn) {
+        dacBtn.disabled = system.dac_available !== true;
+      }
     }
 
     function chartLiveValue(key) {
@@ -789,13 +921,21 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       const fileInput = $("otaFile");
       const statusEl = $("otaStatus");
       const progressEl = $("otaProgress");
+      const uploadBtn = $("otaUploadBtn");
       const file = fileInput.files && fileInput.files[0];
+      if (otaUploadInFlight) {
+        return;
+      }
       if (!file) {
         statusEl.textContent = "Select firmware file first.";
         statusEl.className = "note warn-c";
         return;
       }
 
+      otaUploadInFlight = true;
+      if (uploadBtn) {
+        uploadBtn.disabled = true;
+      }
       statusEl.textContent = "Uploading firmware...";
       statusEl.className = "note muted";
       progressEl.style.width = "0%";
@@ -814,6 +954,10 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
 
       xhr.onreadystatechange = () => {
         if (xhr.readyState !== XMLHttpRequest.DONE) return;
+        otaUploadInFlight = false;
+        if (uploadBtn) {
+          uploadBtn.disabled = false;
+        }
         let payload = null;
         try { payload = JSON.parse(xhr.responseText || "{}"); } catch (_e) {}
 
@@ -831,6 +975,10 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       };
 
       xhr.onerror = () => {
+        otaUploadInFlight = false;
+        if (uploadBtn) {
+          uploadBtn.disabled = false;
+        }
         statusEl.textContent = "Upload failed. Check AP connection and retry.";
         statusEl.className = "note danger";
       };
@@ -839,8 +987,10 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
     }
 
     async function refreshState() {
+      if (otaUploadInFlight) return;
       const payload = await getJson("/api/state");
       stateCache = payload;
+      renderHeader(payload);
       renderMetrics(payload);
       renderDerived(payload);
       renderSystemMeta(payload);
@@ -848,6 +998,7 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
     }
 
     async function refreshCharts() {
+      if (otaUploadInFlight) return;
       const payload = await getJson(
         "/api/charts?group=" + encodeURIComponent(chartGroup) +
         "&window=" + encodeURIComponent(chartWindow)
@@ -856,12 +1007,13 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
     }
 
     async function refreshEvents() {
+      if (otaUploadInFlight) return;
       const payload = await getJson("/api/events");
       renderEvents(payload);
     }
 
     async function refreshActive() {
-      if (refreshBusy) return;
+      if (refreshBusy || otaUploadInFlight) return;
       refreshBusy = true;
       let hadError = false;
 
@@ -903,6 +1055,10 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       });
 
       $("refreshBtn").addEventListener("click", async () => {
+        if (otaUploadInFlight) {
+          statusText("OTA upload in progress. Wait for completion.", "warn");
+          return;
+        }
         try {
           await refreshState();
           await refreshCharts();
@@ -917,13 +1073,19 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
         }
       });
 
-      $("chartGroup").addEventListener("change", () => {
-        chartGroup = $("chartGroup").value;
-        refreshCharts().catch(() => {});
+      document.querySelectorAll("#chartGroupSeg .seg-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          chartGroup = btn.getAttribute("data-group") || "core";
+          setSegmentActive("chartGroupSeg", "data-group", chartGroup);
+          refreshCharts().catch(() => {});
+        });
       });
-      $("chartWindow").addEventListener("change", () => {
-        chartWindow = $("chartWindow").value;
-        refreshCharts().catch(() => {});
+      document.querySelectorAll("#chartWindowSeg .seg-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          chartWindow = btn.getAttribute("data-window") || "24h";
+          setSegmentActive("chartWindowSeg", "data-window", chartWindow);
+          refreshCharts().catch(() => {});
+        });
       });
 
       ["setNightMode", "setBacklight", "setUnitsC", "setTempOffset", "setHumOffset", "setDisplayName"].forEach((id) => {
@@ -942,13 +1104,28 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
       $("saveSettingsBtn").addEventListener("click", () => saveSettings(false));
       $("restartBtn").addEventListener("click", () => saveSettings(true));
       $("otaUploadBtn").addEventListener("click", uploadOta);
+      $("rebootNowBtn").addEventListener("click", async () => {
+        try {
+          await postJson("/api/settings", { restart: true });
+          statusText("Restart requested.", "ok");
+        } catch (err) {
+          statusText("Restart request failed: " + (err && err.message ? err.message : "unknown"), "warn");
+        }
+      });
+      $("openDacBtn").addEventListener("click", () => {
+        window.location.href = "/dac";
+      });
     }
 
     bindUi();
+    updateHeaderClock();
+    setSegmentActive("chartGroupSeg", "data-group", chartGroup);
+    setSegmentActive("chartWindowSeg", "data-window", chartWindow);
     refreshState().then(() => applySettingsForm(stateCache, true)).catch(() => {});
     refreshCharts().catch(() => {});
     refreshEvents().catch(() => {});
     setInterval(refreshActive, 10000);
+    setInterval(updateHeaderClock, 1000);
   </script>
 </body>
 </html>

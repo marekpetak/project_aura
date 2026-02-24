@@ -1344,6 +1344,7 @@ function AuraDashboard() {
   const [otaUploadState, setOtaUploadState] = useState('idle'); // idle | uploading | success | error
   const [otaUploadProgress, setOtaUploadProgress] = useState(0);
   const [otaUploadMessage, setOtaUploadMessage] = useState('');
+  const otaUploadInProgress = otaUploadState === 'uploading';
 
   // Device Name Editing
   const [deviceName, setDeviceName] = useState(PREVIEW_HOSTNAME);
@@ -1575,7 +1576,7 @@ function AuraDashboard() {
   }, []);
 
   useEffect(() => {
-    if (activeTab !== 'charts') return;
+    if (activeTab !== 'charts' || otaUploadInProgress) return;
 
     const controller = new AbortController();
     const apiGroup = chartGroup === 'core' ? 'core' : chartGroup;
@@ -1602,14 +1603,15 @@ function AuraDashboard() {
       });
 
     return () => controller.abort();
-  }, [activeTab, chartRange, chartGroup]);
+  }, [activeTab, chartRange, chartGroup, otaUploadInProgress]);
 
   useEffect(() => {
-    if (activeTab !== 'sensors') return;
+    if (activeTab !== 'sensors' || otaUploadInProgress) return;
 
     let active = true;
+    const controller = new AbortController();
     const loadSensorHistory = () => {
-      fetch('/api/charts?group=core&window=24h', { cache: 'no-store' })
+      fetch('/api/charts?group=core&window=24h', { cache: 'no-store', signal: controller.signal })
         .then((response) => {
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -1621,7 +1623,8 @@ function AuraDashboard() {
           const parsed = parseChartApiPayload(payload);
           setSensorHistoryData(parsed.points);
         })
-        .catch(() => {
+        .catch((error) => {
+          if (error?.name === 'AbortError') return;
           // Keep last successful history to avoid flicker.
         });
     };
@@ -1631,14 +1634,18 @@ function AuraDashboard() {
     return () => {
       active = false;
       clearInterval(intervalId);
+      controller.abort();
     };
-  }, [activeTab]);
+  }, [activeTab, otaUploadInProgress]);
 
   useEffect(() => {
+    if (otaUploadInProgress) return;
+
     let active = true;
+    const controller = new AbortController();
 
     const loadState = () => {
-      fetch('/api/state', { cache: 'no-store' })
+      fetch('/api/state', { cache: 'no-store', signal: controller.signal })
         .then((response) => {
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -1656,7 +1663,9 @@ function AuraDashboard() {
             });
           }
         })
-        .catch(() => {});
+        .catch((error) => {
+          if (error?.name === 'AbortError') return;
+        });
     };
 
     loadState();
@@ -1664,15 +1673,17 @@ function AuraDashboard() {
     return () => {
       active = false;
       clearInterval(intervalId);
+      controller.abort();
     };
-  }, []);
+  }, [otaUploadInProgress]);
 
   useEffect(() => {
-    if (activeTab !== 'events') return;
+    if (activeTab !== 'events' || otaUploadInProgress) return;
 
     let active = true;
+    const controller = new AbortController();
     const loadEvents = () => {
-      fetch('/api/events', { cache: 'no-store' })
+      fetch('/api/events', { cache: 'no-store', signal: controller.signal })
         .then((response) => {
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -1685,7 +1696,8 @@ function AuraDashboard() {
           setEventsApiAlerts(parsed);
           setEventsApiLive(true);
         })
-        .catch(() => {
+        .catch((error) => {
+          if (error?.name === 'AbortError') return;
           if (!active) return;
           setEventsApiLive(false);
         });
@@ -1696,8 +1708,9 @@ function AuraDashboard() {
     return () => {
       active = false;
       clearInterval(intervalId);
+      controller.abort();
     };
-  }, [activeTab]);
+  }, [activeTab, otaUploadInProgress]);
 
   const chartData = Array.isArray(chartApiData) ? chartApiData : [];
   const sensorHistory = Array.isArray(sensorHistoryData) ? sensorHistoryData : [];

@@ -37,10 +37,13 @@ namespace {
 
 WebHandlerContext *g_ctx = nullptr;
 constexpr uint32_t kDeferredActionDelayMs = 200;
+constexpr uint32_t kDeferredRestartDelayMs = 500;
 bool g_deferred_wifi_start_sta = false;
 bool g_deferred_mqtt_sync = false;
+bool g_deferred_restart = false;
 uint32_t g_deferred_wifi_start_sta_due_ms = 0;
 uint32_t g_deferred_mqtt_sync_due_ms = 0;
+uint32_t g_deferred_restart_due_ms = 0;
 constexpr uint32_t kChartStepS = Config::CHART_HISTORY_STEP_MS / 1000UL;
 constexpr size_t kEventsApiMaxEntries = 48;
 constexpr size_t kWebDisplayNameMaxLen = 32;
@@ -379,8 +382,10 @@ void WebHandlersInit(WebHandlerContext *context) {
     g_ctx = context;
     g_deferred_wifi_start_sta = false;
     g_deferred_mqtt_sync = false;
+    g_deferred_restart = false;
     g_deferred_wifi_start_sta_due_ms = 0;
     g_deferred_mqtt_sync_due_ms = 0;
+    g_deferred_restart_due_ms = 0;
     ota_reset_state();
 }
 
@@ -405,6 +410,12 @@ void WebHandlersPollDeferred() {
         if (context->mqtt_sync_with_wifi) {
             context->mqtt_sync_with_wifi();
         }
+    }
+
+    if (g_deferred_restart && deadline_reached(now_ms, g_deferred_restart_due_ms)) {
+        g_deferred_restart = false;
+        g_deferred_restart_due_ms = 0;
+        ESP.restart();
     }
 }
 
@@ -1568,15 +1579,11 @@ void ota_handle_update() {
 
     String json;
     serializeJson(doc, json);
-    if (success) {
-        server.client().setNoDelay(true);
-    }
     server.send(status_code, "application/json", json);
 
     if (success) {
-        delay(300);
-        server.client().stop();
-        ESP.restart();
+        g_deferred_restart = true;
+        g_deferred_restart_due_ms = millis() + kDeferredRestartDelayMs;
     } else {
         ota_set_ui_screen(false);
     }
