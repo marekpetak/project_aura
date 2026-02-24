@@ -314,6 +314,51 @@ const char *event_severity_text(Logger::Level level) {
     }
 }
 
+bool event_tag_in_list(const char *tag, const char *const *list, size_t count) {
+    if (!tag || tag[0] == '\0' || !list || count == 0) {
+        return false;
+    }
+    for (size_t i = 0; i < count; ++i) {
+        if (list[i] && strcmp(tag, list[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool should_emit_web_event(const Logger::RecentEntry &entry) {
+    // Keep memory telemetry in serial monitor only.
+    if (strcmp(entry.tag, "Mem") == 0) {
+        return false;
+    }
+
+    // Dashboard Events should not include debug chatter.
+    if (entry.level == Logger::Debug) {
+        return false;
+    }
+
+    // Warnings/errors are always relevant for dashboard visibility.
+    if (entry.level == Logger::Error || entry.level == Logger::Warn) {
+        return true;
+    }
+
+    // Curated info-level tags for dashboard Events.
+    static const char *const kInfoTags[] = {
+        "OTA",
+        "WiFi",
+        "mDNS",
+        "Time",
+        "MQTT",
+        "Storage",
+        "Main",
+        "Sensors",
+        "PressureHistory",
+        "ChartsHistory",
+        "UI",
+    };
+    return event_tag_in_list(entry.tag, kInfoTags, sizeof(kInfoTags) / sizeof(kInfoTags[0]));
+}
+
 void json_set_float_or_null(ArduinoJson::JsonObject obj, const char *key, bool valid, float value) {
     if (valid && isfinite(value)) {
         obj[key] = value;
@@ -1679,8 +1724,7 @@ void events_handle_data() {
     ArduinoJson::JsonArray events = doc["events"].to<ArduinoJson::JsonArray>();
     for (size_t i = 0; i < count; ++i) {
         const Logger::RecentEntry &entry = g_events_snapshot[i];
-        // Keep memory telemetry in serial monitor, but hide it from web Events feed.
-        if (strcmp(entry.tag, "Mem") == 0) {
+        if (!should_emit_web_event(entry)) {
             continue;
         }
         ArduinoJson::JsonObject e = events.add<ArduinoJson::JsonObject>();
