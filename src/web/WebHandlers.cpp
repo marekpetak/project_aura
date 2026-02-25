@@ -167,6 +167,29 @@ bool deadline_reached(uint32_t now_ms, uint32_t due_ms) {
     return static_cast<int32_t>(now_ms - due_ms) >= 0;
 }
 
+uint32_t ota_upload_timeout_ms(size_t image_size_bytes) {
+    constexpr uint32_t kMinTimeoutMs = 180000;
+    constexpr uint32_t kMaxTimeoutMs = 900000;
+    constexpr uint32_t kMinUploadBytesPerSec = 20 * 1024;
+    constexpr uint32_t kOverheadMs = 120000;
+
+    if (image_size_bytes == 0) {
+        return kMaxTimeoutMs;
+    }
+
+    const uint64_t transfer_ms =
+        (static_cast<uint64_t>(image_size_bytes) * 1000ULL + kMinUploadBytesPerSec - 1) /
+        kMinUploadBytesPerSec;
+    const uint64_t timeout_ms = transfer_ms + kOverheadMs;
+    if (timeout_ms <= kMinTimeoutMs) {
+        return kMinTimeoutMs;
+    }
+    if (timeout_ms >= kMaxTimeoutMs) {
+        return kMaxTimeoutMs;
+    }
+    return static_cast<uint32_t>(timeout_ms);
+}
+
 void ota_reset_state() {
     g_ota_upload_seen = false;
     g_ota_upload_active = false;
@@ -1620,7 +1643,10 @@ void ota_handle_upload() {
         ota_reset_state();
         g_ota_upload_seen = true;
         g_ota_upload_active = true;
-        server.client().setTimeout(Config::OTA_HTTP_CLIENT_TIMEOUT_MS);
+        size_t expected_size = 0;
+        const bool size_known = parse_size_arg(server.arg("ota_size"), expected_size);
+        const uint32_t client_timeout_ms = ota_upload_timeout_ms(size_known ? expected_size : 0);
+        server.client().setTimeout(client_timeout_ms);
         if (context->wifi_stop_scan) {
             context->wifi_stop_scan();
         }
@@ -1633,9 +1659,7 @@ void ota_handle_upload() {
             return;
         }
         g_ota_slot_size = target_partition->size;
-
-        size_t expected_size = 0;
-        g_ota_size_known = parse_size_arg(server.arg("ota_size"), expected_size);
+        g_ota_size_known = size_known;
         if (g_ota_size_known) {
             g_ota_expected_size = expected_size;
             if (g_ota_expected_size > g_ota_slot_size) {
@@ -1660,10 +1684,11 @@ void ota_handle_upload() {
             }
         }
 
-        LOGI("OTA", "upload started (slot=%u, expected=%u, known=%s)",
+        LOGI("OTA", "upload started (slot=%u, expected=%u, known=%s, timeout=%u ms)",
              static_cast<unsigned>(g_ota_slot_size),
              static_cast<unsigned>(g_ota_expected_size),
-             g_ota_size_known ? "YES" : "NO");
+             g_ota_size_known ? "YES" : "NO",
+             static_cast<unsigned>(client_timeout_ms));
         return;
     }
 

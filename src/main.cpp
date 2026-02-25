@@ -144,7 +144,7 @@ void setup()
 
     Watchdog::setup(TASK_WDT_TIMEOUT_MS);
     if (!safe_restart_init()) {
-        LOGW("Restart", "Core0 restart task init failed; emergency fallback will be used");
+        LOGW("Restart", "Core0 restart task init failed; controlled restart requests will abort");
     }
 }
 
