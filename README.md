@@ -41,12 +41,13 @@ Click the image.
 [![Project Aura demo video](https://img.youtube.com/vi/TNsyDGNrN-w/maxresdefault.jpg)](https://www.youtube.com/watch?v=TNsyDGNrN-w)
 
 ## Highlights
-- Professional telemetry: PM2.5/PM10, CO2, VOC, NOx, temperature, humidity, absolute humidity (AH), pressure, HCHO.
+- Professional telemetry: PM0.5/PM1/PM2.5/PM4/PM10, CO, CO2, VOC, NOx, temperature, humidity, absolute humidity (AH), pressure, HCHO.
 - No soldering required: designed for easy assembly using Grove/QT connectors.
 - Smooth LVGL UI with night mode, custom themes, and status indicators.
 - Integrated web dashboard at `/dashboard` with live state, charts, events, settings sync, and OTA firmware update.
 - Easy setup: Wi-Fi AP onboarding + mDNS portal (http://aura.local) for configuration.
 - Home Assistant ready: automatic MQTT discovery and ready-to-use dashboard code.
+- Optional DAC control (GP8403, 0-10V): manual levels/timer plus automatic demand mode from air-quality thresholds.
 - Robust Safe Boot: automatic rollback to the last-known-good config after crashes.
 
 ![Project Aura device](docs/assets/device-hero.jpg)
@@ -78,11 +79,14 @@ look for these specific modules:
 | :--- | :--- |
 | Core Board | Waveshare ESP32-S3-Touch-LCD-4.3 (800x480) |
 | Main Sensor | Sensirion SEN66 (via Adafruit breakout) |
+| Carbon Monoxide (CO) | DFRobot Fermion SEN0466 (optional) |
 | Formaldehyde | Sensirion SFA30 (Grove interface, optional) |
 | Pressure | Adafruit BMP580 or DPS310 |
 | RTC | Adafruit PCF8523 |
+| DAC Output | GP8403 2-channel 0-10V DAC (optional, VOUT0 used) |
 
 Sensor note: the SFA30 is fully supported and widely available. Support for the successor model (SFA40) is on the roadmap.
+CO note: the SEN0466 is optional. If not detected at boot, CO is marked unavailable and PM1 telemetry remains active.
 Note: SEN66 gas indices (VOC/NOx) require about 5 minutes of warmup for reliable readings; the UI shows WARMUP during this period.
 
 Recommended retailers: Mouser, DigiKey, LCSC, Adafruit, Seeed Studio, Waveshare.
@@ -101,10 +105,11 @@ DIY: verify pinouts against the pin table below before powering on to avoid dama
 | :--- | :--- | :--- |
 | 3V3 | 3V3 | Power for external I2C sensors |
 | GND | GND | Common ground |
-| I2C SDA | GPIO 8 | SEN66, SFA30, BMP580 (external) |
+| I2C SDA | GPIO 8 | Shared bus: SEN66, SFA30, SEN0466, BMP580/DPS310, GP8403 |
 | I2C SCL | GPIO 9 | Shared bus |
 
 Display and touch are integrated on the board; no external wiring is needed for them.
+For DAC control, analog output is generated on the GP8403 module (`VOUT0`), not on a direct ESP32 pin.
 
 ## UI Languages
 Project Aura speaks your language. You can switch languages in the Settings menu:
@@ -123,14 +128,17 @@ Data flow and responsibilities are intentionally split into small managers:
 ```mermaid
 graph TD
     subgraph Hardware
-        Sensors[Sensors<br/>SEN66, SFA30, BMP580]
+        Sensors[Sensors<br/>SEN66, SFA30, SEN0466, BMP580/DPS310]
         Touch[Touch<br/>GT911]
         RTC[RTC<br/>PCF8523]
+        DAC[DAC<br/>GP8403]
+        Actuator[External Fan / Actuator]
         LCD[LCD + Backlight]
     end
 
     subgraph Core
         SM[SensorManager]
+        FC[FanControl]
         NM[NetworkManager]
         MM[MqttManager]
         TM[TimeManager]
@@ -152,7 +160,10 @@ graph TD
     Touch -->|I2C| LVGL
     LCD --> LVGL
     SM -->|Data| LVGL
+    SM -->|Data| FC
     SM -->|Data| History
+    FC -->|I2C| DAC
+    DAC -->|0-10V| Actuator
     History <-->|save/load| Storage
     Storage <-->|config| NM
     Storage <-->|config| MM
@@ -202,6 +213,7 @@ copy include/secrets.h.example include/secrets.h
 - Availability topic: `<base>/status`
 - Commands: `<base>/command/*` (night_mode, alert_blink, backlight, restart)
 - Home Assistant discovery: `homeassistant/*/config`
+- Discovery payload includes dedicated sensors for `CO` (`co`) and `PM0.5` (`pm05`).
 
 MQTT stays idle until configured and enabled.
 
