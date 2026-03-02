@@ -1799,7 +1799,7 @@ void create_screen_page_main_pro() {
                             // dot_dp_1
                             lv_obj_t *obj = lv_obj_create(parent_obj);
                             objects.dot_dp_1 = obj;
-                            lv_obj_set_pos(obj, 111, 77);
+                            lv_obj_set_pos(obj, 112, 77);
                             lv_obj_set_size(obj, 12, 12);
                             lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
                             lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -1829,7 +1829,7 @@ void create_screen_page_main_pro() {
                             // dot_mr
                             lv_obj_t *obj = lv_obj_create(parent_obj);
                             objects.dot_mr = obj;
-                            lv_obj_set_pos(obj, 111, 23);
+                            lv_obj_set_pos(obj, 112, 23);
                             lv_obj_set_size(obj, 12, 12);
                             lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
                             lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -1955,7 +1955,7 @@ void create_screen_page_main_pro() {
                             // dot_pm1
                             lv_obj_t *obj = lv_obj_create(parent_obj);
                             objects.dot_pm1 = obj;
-                            lv_obj_set_pos(obj, 111, 91);
+                            lv_obj_set_pos(obj, 112, 91);
                             lv_obj_set_size(obj, 12, 12);
                             lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
                             lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);

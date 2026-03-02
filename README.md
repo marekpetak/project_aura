@@ -23,6 +23,7 @@ This repository contains the firmware source code and configuration needed to fl
 - [Gallery](#gallery)
 - [UI Screens](#ui-screens)
 - [Web Dashboard](#web-dashboard)
+- [Network Requirements](#network-requirements)
 - [Hardware and BOM](#hardware-and-bom)
 - [Assembly and Wiring Notice](#assembly-and-wiring-notice)
 - [Pin Configuration](#pin-configuration)
@@ -79,14 +80,29 @@ Project Aura serves two web experiences from the device:
 - Full dashboard (`/dashboard`): tabs for Sensors, Charts, Events, Settings, and System.
 - Dedicated DAC page (`/dac`): live status, manual controls, auto mode, and auto-threshold config.
 - OTA from dashboard: upload firmware `.bin` directly via the web UI.
-- AP-safe dashboard variant: in AP mode, `/dashboard` serves a CDN-free offline page.
+- Dashboard assets are served locally in both AP and STA modes (no CDN dependency).
 
 Useful API routes used by the dashboard:
 - `GET /api/state`
 - `GET /api/charts?group=core|gases|pm&window=1h|3h|24h`
 - `GET /api/events`
+- `GET /api/diag`
 - `POST /api/settings`
 - `POST /api/ota`
+
+## Network Requirements
+- AP setup mode (`http://192.168.4.1`) is local-only and works without internet.
+- STA mode dashboard (`http://<hostname>.local/dashboard` or `http://<ip>/dashboard`) requires the client and Aura to be in the same L2/L3 network path.
+- If mDNS (`.local`) is blocked on your network, use direct IP from the device screen or router DHCP table.
+- Avoid guest networks, client isolation, or VLAN rules that block peer-to-peer LAN traffic.
+- Required local traffic:
+  - HTTP: TCP `80` to Aura
+  - mDNS: UDP `5353` multicast (only for `.local` hostname discovery)
+- During OTA, keep one active client tab/session to reduce transfer failures.
+
+Quick diagnostics for support:
+- `GET /api/state` should return live JSON with `network.mode`, `network.ip`, and sensor payload.
+- `GET /api/diag` shows Wi-Fi state, IP/hostname, heap, OTA busy state, and recent warnings/errors.
 
 ## Hardware and BOM
 Project Aura is designed around high-quality components to ensure accuracy. If you are sourcing parts yourself,
@@ -214,7 +230,9 @@ pio device monitor -b 115200
    On first boot, the device creates a hotspot: `Aura-XXXXXX-AP` (fallback: `ProjectAura-Setup`).
    Connect to it and open http://192.168.4.1 to configure Wi-Fi credentials.
 2. Web portal:
-   Once connected to your network, access the device at `http://<hostname>.local/` (default hostname format: `aura-XXXXXX`, for example `aura-1a2b3c.local`) or by IP.
+   After saving Wi-Fi, wait about 15 seconds for AP -> STA transition.
+   Then access the device at `http://<hostname>.local/` (default hostname format: `aura-XXXXXX`, for example `aura-1a2b3c.local`) or by IP.
+   Do not keep using `http://192.168.4.1` after STA connection; that address is AP-setup only.
    In STA mode, `/` opens the dashboard. In AP mode, `/` opens setup and `/dashboard` opens the offline dashboard.
 3. Home Assistant:
    MQTT discovery is enabled by default. The device appears in HA via MQTT integration automatically.

@@ -50,6 +50,8 @@ uint32_t g_deferred_mqtt_sync_due_ms = 0;
 constexpr uint32_t kChartStepS = Config::CHART_HISTORY_STEP_MS / 1000UL;
 constexpr size_t kEventsApiMaxEntries = 48;
 constexpr size_t kWebDisplayNameMaxLen = 32;
+constexpr size_t kWifiScanMaxItems = 15;
+constexpr size_t kDiagMaxErrorItems = 12;
 Logger::RecentEntry g_events_snapshot[kEventsApiMaxEntries];
 bool g_ota_upload_seen = false;
 bool g_ota_upload_active = false;
@@ -604,28 +606,93 @@ void wifi_build_scan_items(int count) {
     if (count <= 0) {
         return;
     }
-    context->wifi_scan_options->reserve(count * 220);
+    struct WifiScanRow {
+        String ssid;
+        int rssi;
+        int quality;
+        bool open;
+    };
+    WifiScanRow rows[kWifiScanMaxItems];
+    int row_count = 0;
+
     for (int i = 0; i < count; i++) {
         String ssid_raw = WiFi.SSID(i);
         if (ssid_raw.isEmpty()) {
             continue;
         }
-        String ssid_label = wifi_label_safe(ssid_raw);
+
+        const int rssi = WiFi.RSSI(i);
+        const int quality = wifi_rssi_to_quality(rssi);
+        const bool open = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN);
+
+        int duplicate_index = -1;
+        for (int j = 0; j < row_count; j++) {
+            if (rows[j].ssid == ssid_raw) {
+                duplicate_index = j;
+                break;
+            }
+        }
+        if (duplicate_index >= 0) {
+            if (rssi > rows[duplicate_index].rssi) {
+                rows[duplicate_index].rssi = rssi;
+                rows[duplicate_index].quality = quality;
+                rows[duplicate_index].open = open;
+            }
+            continue;
+        }
+
+        if (row_count < static_cast<int>(kWifiScanMaxItems)) {
+            rows[row_count].ssid = ssid_raw;
+            rows[row_count].rssi = rssi;
+            rows[row_count].quality = quality;
+            rows[row_count].open = open;
+            row_count++;
+            continue;
+        }
+
+        int weakest_index = 0;
+        for (int j = 1; j < row_count; j++) {
+            if (rows[j].rssi < rows[weakest_index].rssi) {
+                weakest_index = j;
+            }
+        }
+        if (rssi <= rows[weakest_index].rssi) {
+            continue;
+        }
+        rows[weakest_index].ssid = ssid_raw;
+        rows[weakest_index].rssi = rssi;
+        rows[weakest_index].quality = quality;
+        rows[weakest_index].open = open;
+    }
+
+    for (int i = 1; i < row_count; i++) {
+        int j = i;
+        while (j > 0 && rows[j].rssi > rows[j - 1].rssi) {
+            WifiScanRow tmp = rows[j - 1];
+            rows[j - 1] = rows[j];
+            rows[j] = tmp;
+            j--;
+        }
+    }
+
+    context->wifi_scan_options->reserve(row_count * 170);
+    for (int i = 0; i < row_count; i++) {
+        String ssid_label = wifi_label_safe(rows[i].ssid);
         String ssid_html = html_escape(ssid_label);
-        int quality = wifi_rssi_to_quality(WiFi.RSSI(i));
-        bool open = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN);
-        const char *security = open ? "Open" : "Secure";
+        const char *security = rows[i].open ? "Open" : "Secure";
+        const String rssi_text = String(rows[i].rssi) + " dBm";
 
         (*context->wifi_scan_options) += "<div class=\"network-item\" data-ssid=\"";
         (*context->wifi_scan_options) += ssid_html;
-        (*context->wifi_scan_options) += "\"><div class=\"network-icon\">";
-        (*context->wifi_scan_options) += FPSTR(WebTemplates::kWifiIconSvg);
-        (*context->wifi_scan_options) += "</div><div class=\"network-info\"><span class=\"network-name\">";
+        (*context->wifi_scan_options) += "\"><div class=\"network-icon\" aria-hidden=\"true\"></div>";
+        (*context->wifi_scan_options) += "<div class=\"network-info\"><span class=\"network-name\">";
         (*context->wifi_scan_options) += ssid_html;
         (*context->wifi_scan_options) += "</span><span class=\"network-meta\">";
         (*context->wifi_scan_options) += security;
+        (*context->wifi_scan_options) += " | ";
+        (*context->wifi_scan_options) += rssi_text;
         (*context->wifi_scan_options) += "</span></div><div class=\"network-signal\">";
-        (*context->wifi_scan_options) += String(quality);
+        (*context->wifi_scan_options) += String(rows[i].quality);
         (*context->wifi_scan_options) += "%</div></div>";
     }
 }
@@ -728,6 +795,15 @@ void wifi_handle_save() {
     if (context->wifi_ui_dirty) *context->wifi_ui_dirty = true;
 
     String html = FPSTR(WebTemplates::kWifiSavePage);
+    String hostname = "aura";
+    if (context->hostname && !context->hostname->isEmpty()) {
+        hostname = *context->hostname;
+    }
+    String hostname_url = "http://";
+    hostname_url += hostname;
+    hostname_url += ".local/dashboard";
+    html.replace("{{HOSTNAME_DASHBOARD_URL}}", html_escape(hostname_url));
+    html.replace("{{WAIT_SECONDS}}", "15");
     server.send(200, "text/html", html);
     g_deferred_wifi_start_sta = true;
     g_deferred_wifi_start_sta_due_ms = millis() + kDeferredActionDelayMs;
@@ -756,6 +832,86 @@ void wifi_handle_not_found() {
     }
 
     context->server->send(404, "text/plain", "Not found");
+}
+
+void diag_handle_root() {
+    WebHandlerContext *context = ctx();
+    if (!context || !context->server) {
+        return;
+    }
+    send_no_store_headers(*context->server);
+    context->server->send_P(200, "text/html", WebTemplates::kDiagPageTemplate);
+}
+
+void diag_handle_data() {
+    WebHandlerContext *context = ctx();
+    if (!context || !context->server) {
+        return;
+    }
+
+    const bool ap_mode = context->wifi_is_ap_mode && context->wifi_is_ap_mode();
+    const bool sta_connected = context->wifi_is_connected && context->wifi_is_connected();
+    const bool wifi_enabled = context->wifi_enabled ? *context->wifi_enabled : false;
+
+    ArduinoJson::JsonDocument doc;
+    doc["success"] = true;
+    doc["uptime_s"] = millis() / 1000UL;
+    doc["ota_busy"] = WebHandlersIsOtaBusy();
+
+    ArduinoJson::JsonObject heap = doc["heap"].to<ArduinoJson::JsonObject>();
+    heap["free"] = ESP.getFreeHeap();
+    heap["min_free"] = ESP.getMinFreeHeap();
+
+    ArduinoJson::JsonObject network = doc["network"].to<ArduinoJson::JsonObject>();
+    network["wifi_enabled"] = wifi_enabled;
+    network["mode"] = ap_mode ? "ap" : (sta_connected ? "sta" : "off");
+    network["sta_status"] = static_cast<int>(WiFi.status());
+    network["scan_in_progress"] = context->wifi_scan_in_progress && *context->wifi_scan_in_progress;
+
+    String wifi_ssid;
+    if (ap_mode) {
+        wifi_ssid = WiFi.softAPSSID();
+    } else if (sta_connected) {
+        wifi_ssid = WiFi.SSID();
+    } else if (context->wifi_ssid) {
+        wifi_ssid = *context->wifi_ssid;
+    }
+    network["wifi_ssid"] = wifi_ssid;
+
+    network["ip"] = ap_mode ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
+    if (context->hostname && !context->hostname->isEmpty()) {
+        network["hostname"] = *context->hostname;
+    } else {
+        network["hostname"] = "aura";
+    }
+    const int rssi = sta_connected ? WiFi.RSSI() : 0;
+    if (sta_connected && rssi < 0) {
+        network["rssi"] = rssi;
+    } else {
+        network["rssi"] = nullptr;
+    }
+
+    size_t event_count = Logger::copyRecent(g_events_snapshot, kEventsApiMaxEntries);
+    ArduinoJson::JsonArray last_errors = doc["last_errors"].to<ArduinoJson::JsonArray>();
+    size_t added = 0;
+    for (size_t i = 0; i < event_count && added < kDiagMaxErrorItems; ++i) {
+        const Logger::RecentEntry &entry = g_events_snapshot[i];
+        if (entry.level != Logger::Error && entry.level != Logger::Warn) {
+            continue;
+        }
+        ArduinoJson::JsonObject item = last_errors.add<ArduinoJson::JsonObject>();
+        item["ts_ms"] = entry.ms;
+        item["level"] = event_level_text(entry.level);
+        item["tag"] = entry.tag[0] ? entry.tag : "SYSTEM";
+        item["message"] = entry.message[0] ? entry.message : "";
+        added++;
+    }
+    doc["error_count"] = added;
+
+    String json;
+    serializeJson(doc, json);
+    send_no_store_headers(*context->server);
+    context->server->send(200, "application/json", json);
 }
 
 void mqtt_handle_root() {
@@ -1062,6 +1218,11 @@ void dac_handle_state() {
     if (!context || !context->server || !context->fan_control || !context->sensor_data) {
         return;
     }
+    if (WebHandlersIsOtaBusy()) {
+        context->server->send(503, "application/json",
+                              "{\"success\":false,\"error\":\"OTA in progress\"}");
+        return;
+    }
 
     const FanControl &fan = *context->fan_control;
     const SensorData &data = *context->sensor_data;
@@ -1119,6 +1280,11 @@ void dac_handle_state() {
 void dac_handle_action() {
     WebHandlerContext *context = ctx();
     if (!context || !context->server || !context->fan_control || !context->storage) {
+        return;
+    }
+    if (WebHandlersIsOtaBusy()) {
+        context->server->send(503, "application/json",
+                              "{\"success\":false,\"error\":\"OTA in progress\"}");
         return;
     }
     WebServer &server = *context->server;
@@ -1179,6 +1345,11 @@ void dac_handle_action() {
 void dac_handle_auto() {
     WebHandlerContext *context = ctx();
     if (!context || !context->server || !context->fan_control || !context->storage) {
+        return;
+    }
+    if (WebHandlersIsOtaBusy()) {
+        context->server->send(503, "application/json",
+                              "{\"success\":false,\"error\":\"OTA in progress\"}");
         return;
     }
     WebServer &server = *context->server;

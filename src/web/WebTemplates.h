@@ -12,8 +12,6 @@ namespace WebTemplates {
 extern const char kDashboardPageTemplate[] PROGMEM;
 extern const char kDashboardPageTemplateAp[] PROGMEM;
 
-static const char kWifiIconSvg[] PROGMEM = R"SVG(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>)SVG";
-
 static const char kWifiListScanning[] PROGMEM = R"HTML(
 <div class="network-item disabled">
     <div class="network-icon">
@@ -183,7 +181,28 @@ static const char kWifiPageTemplate[] PROGMEM = R"HTML(
             padding-left: 13px;
         }
 
-        .network-icon { margin-right: 12px; color: var(--text-dim); display: flex; }
+        .network-icon {
+            margin-right: 12px;
+            color: var(--text-dim);
+            display: flex;
+            width: 16px;
+            height: 16px;
+            flex: 0 0 16px;
+            position: relative;
+        }
+        .network-icon:empty::before {
+            content: '';
+            position: absolute;
+            left: 1px;
+            bottom: 1px;
+            width: 3px;
+            height: 5px;
+            border-radius: 1px;
+            background: currentColor;
+            box-shadow:
+                4px -2px 0 0 currentColor,
+                8px -4px 0 0 currentColor;
+        }
         .network-item.selected .network-icon { color: var(--primary); }
 
         .network-info { flex: 1; min-width: 0; }
@@ -356,13 +375,13 @@ static const char kWifiPageTemplate[] PROGMEM = R"HTML(
                             window.location.replace('/');
                             return;
                         }
-                        setTimeout(poll, 1500);
+                        setTimeout(poll, 3000);
                     })
                     .catch(function() {
-                        setTimeout(poll, 2500);
+                        setTimeout(poll, 5000);
                     });
             };
-            setTimeout(poll, 1200);
+            setTimeout(poll, 2000);
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -480,12 +499,249 @@ static const char kWifiSavePage[] PROGMEM = R"HTML(
             <h2>Project Aura</h2>
             <div class="main-text">Settings sent</div>
             <p class="sub-text">
-                Wi-Fi settings have been sent to the device. Please check the device screen to confirm the connection status.
+                Aura is switching from AP to your Wi-Fi network.
+                Wait about {{WAIT_SECONDS}} seconds, then open:
+                <br><code>http://&lt;ip&gt;/dashboard</code>
             </p>
-            <div class="hint">You can close this tab now.</div>
+            <div class="hint">
+                Use the IP shown on the device screen or router DHCP list.
+                You can also try: <code>{{HOSTNAME_DASHBOARD_URL}}</code>
+                <br>
+                AP address <code>http://192.168.4.1</code> is only valid in setup mode.
+            </div>
         </div>
         <div class="footer">Powered by 21CNCStudio</div>
     </div>
+</body>
+</html>
+)HTML";
+
+static const char kDiagPageTemplate[] PROGMEM = R"HTML(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project Aura | Diagnostics</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: rgba(30, 41, 59, 0.72);
+            --border: rgba(255, 255, 255, 0.12);
+            --text: #f1f5f9;
+            --text-dim: #94a3b8;
+            --ok: #4ade80;
+            --warn: #fbbf24;
+            --err: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 14px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text);
+            background: radial-gradient(900px 500px at -20% -20%, rgba(99, 102, 241, 0.22), transparent 60%), var(--bg);
+        }
+        .wrap {
+            max-width: 900px;
+            margin: 0 auto;
+            display: grid;
+            gap: 12px;
+        }
+        .head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+        }
+        .title {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 750;
+            letter-spacing: -0.02em;
+        }
+        .stamp {
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .card h3 {
+            margin: 0 0 10px;
+            font-size: 13px;
+            color: var(--text-dim);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .rows { display: grid; gap: 6px; }
+        .row {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 8px;
+            align-items: baseline;
+            font-size: 13px;
+        }
+        .k {
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: 11px;
+        }
+        .v { word-break: break-word; }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 2px 9px;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        .badge.ok { color: var(--ok); background: rgba(34,197,94,0.18); border: 1px solid rgba(34,197,94,0.3); }
+        .badge.warn { color: var(--warn); background: rgba(251,191,36,0.18); border: 1px solid rgba(251,191,36,0.3); }
+        .badge.err { color: var(--err); background: rgba(248,113,113,0.18); border: 1px solid rgba(248,113,113,0.3); }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #dbeafe;
+            background: rgba(2, 6, 23, 0.35);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+            max-height: 260px;
+            overflow: auto;
+        }
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        }
+        @media (max-width: 760px) {
+            .grid { grid-template-columns: 1fr; }
+            .row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="head">
+            <h1 class="title">AURA Diagnostics</h1>
+            <div id="stamp" class="stamp">waiting...</div>
+        </div>
+
+        <div class="grid">
+            <section class="card">
+                <h3>Network</h3>
+                <div id="networkRows" class="rows"></div>
+            </section>
+            <section class="card">
+                <h3>System</h3>
+                <div id="systemRows" class="rows"></div>
+            </section>
+            <section class="card">
+                <h3>OTA</h3>
+                <div id="otaRows" class="rows"></div>
+            </section>
+            <section class="card">
+                <h3>Last Errors</h3>
+                <pre id="errors" class="mono">No warnings or errors yet.</pre>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        function esc(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function row(key, value) {
+            return '<div class="row"><div class="k">' + esc(key) + '</div><div class="v">' + value + '</div></div>';
+        }
+
+        function badge(text, cls) {
+            return '<span class="badge ' + cls + '">' + esc(text) + '</span>';
+        }
+
+        function formatErrors(items) {
+            if (!Array.isArray(items) || items.length === 0) {
+                return 'No warnings or errors yet.';
+            }
+            return items.map(function(it) {
+                var ts = (it && typeof it.ts_ms === 'number') ? (it.ts_ms + ' ms') : '--';
+                var level = (it && it.level) ? it.level : '?';
+                var tag = (it && it.tag) ? it.tag : 'SYSTEM';
+                var msg = (it && it.message) ? it.message : '';
+                return '[' + ts + '] [' + level + '] [' + tag + '] ' + msg;
+            }).join('\n');
+        }
+
+        function setRows(id, html) {
+            var el = document.getElementById(id);
+            if (el) el.innerHTML = html;
+        }
+
+        async function refreshDiag() {
+            var stamp = document.getElementById('stamp');
+            try {
+                var res = await fetch('/api/diag', { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                var data = await res.json();
+                if (!data || data.success !== true) throw new Error('Invalid payload');
+
+                var net = data.network || {};
+                var heap = data.heap || {};
+                var otaBusy = !!data.ota_busy;
+
+                setRows('networkRows',
+                    row('Mode', esc(net.mode || '--').toUpperCase()) +
+                    row('WiFi enabled', net.wifi_enabled ? 'yes' : 'no') +
+                    row('SSID', '<span class="mono">' + esc(net.wifi_ssid || '--') + '</span>') +
+                    row('IP', '<span class="mono">' + esc(net.ip || '--') + '</span>') +
+                    row('Hostname', '<span class="mono">' + esc(net.hostname || '--') + '</span>') +
+                    row('RSSI', (typeof net.rssi === 'number') ? (net.rssi + ' dBm') : '--') +
+                    row('STA status', String(typeof net.sta_status === 'number' ? net.sta_status : '--')) +
+                    row('Scan in progress', net.scan_in_progress ? 'yes' : 'no')
+                );
+
+                setRows('systemRows',
+                    row('Uptime', (typeof data.uptime_s === 'number' ? data.uptime_s : 0) + ' s') +
+                    row('Free heap', (typeof heap.free === 'number' ? heap.free : 0) + ' B') +
+                    row('Min free heap', (typeof heap.min_free === 'number' ? heap.min_free : 0) + ' B')
+                );
+
+                setRows('otaRows',
+                    row('Status', otaBusy ? badge('OTA in progress', 'warn') : badge('Idle', 'ok'))
+                );
+
+                var errorsEl = document.getElementById('errors');
+                if (errorsEl) {
+                    errorsEl.textContent = formatErrors(data.last_errors);
+                }
+
+                if (stamp) stamp.textContent = 'updated ' + new Date().toLocaleTimeString();
+            } catch (err) {
+                if (stamp) stamp.textContent = 'diag fetch failed: ' + (err && err.message ? err.message : 'error');
+                setRows('otaRows', row('Status', badge('No data', 'err')));
+            }
+        }
+
+        refreshDiag();
+        setInterval(refreshDiag, 3000);
+    </script>
 </body>
 </html>
 )HTML";
@@ -1553,7 +1809,18 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
     .status-running { background: var(--success-bg); color: var(--success); }
     .status-stopped { background: var(--warning-bg); color: var(--warning); }
     .status-fault { background: var(--error-bg); color: var(--error); }
+    .status-ota { background: var(--warning-bg); color: var(--warning); }
     .status-offline { background: var(--offline-bg); color: var(--text-dim); }
+    .notice {
+      margin-top: 10px;
+      border: 1px solid rgba(251, 191, 36, 0.34);
+      background: rgba(120, 53, 15, 0.22);
+      color: #fcd34d;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
     .k { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
     .v { font-size: 20px; font-weight: 800; color: var(--primary); margin-top: 4px; }
@@ -1684,6 +1951,7 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
         <h1 class="title">DAC Settings</h1>
         <div id="status_chip" class="status status-offline">OFFLINE</div>
       </div>
+      <div id="ota_notice" class="notice hidden"></div>
 
       <div class="grid2">
         <div class="card" style="margin:0;padding:10px;background:var(--panel-strong);">
@@ -1763,6 +2031,7 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
     let autoDirty = false;
     let updatingFromState = false;
     let autoSaveFeedbackTimer = null;
+    let otaBusy = false;
 
     function fmtTimer(sec) {
       if (!sec || sec <= 0) return "--:--";
@@ -1776,6 +2045,43 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
       chip.textContent = status;
       chip.className = "status";
       chip.classList.add("status-" + status.toLowerCase());
+    }
+
+    function setControlsDisabled(disabled) {
+      const modeManual = document.getElementById("mode_manual");
+      const modeAuto = document.getElementById("mode_auto");
+      const manualBox = document.getElementById("manual_box");
+      const autoBox = document.getElementById("auto_box");
+      if (modeManual) modeManual.disabled = !!disabled;
+      if (modeAuto) modeAuto.disabled = !!disabled;
+      if (manualBox) manualBox.classList.toggle("disabled", !!disabled);
+      if (autoBox) autoBox.classList.toggle("disabled", !!disabled);
+    }
+
+    function setOtaNotice(message) {
+      const notice = document.getElementById("ota_notice");
+      if (!notice) return;
+      if (!message) {
+        notice.classList.add("hidden");
+        notice.textContent = "";
+        return;
+      }
+      notice.textContent = message;
+      notice.classList.remove("hidden");
+    }
+
+    function applyOtaBusyState(message) {
+      otaBusy = true;
+      setStatus("OTA");
+      setControlsDisabled(true);
+      setOtaNotice(message || "OTA in progress. Controls are temporarily locked.");
+    }
+
+    function clearOtaBusyState() {
+      if (!otaBusy) return;
+      otaBusy = false;
+      setControlsDisabled(false);
+      setOtaNotice("");
     }
 
     function clearSaveFeedbackTimer() {
@@ -1938,6 +2244,7 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
     }
 
     function render(data) {
+      clearOtaBusyState();
       latest = data;
       const dac = data.dac || {};
       const autoCfg = data.auto || {};
@@ -1993,18 +2300,37 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
     }
 
     async function fetchState() {
+      if (otaBusy) {
+        // Keep polling to auto-recover when OTA completes.
+      }
       const r = await fetch("/dac/state", {cache:"no-store"});
+      if (r.status === 503) {
+        let payload = null;
+        try { payload = await r.json(); } catch (_) {}
+        applyOtaBusyState((payload && payload.error) || "OTA in progress");
+        return;
+      }
       if (!r.ok) return;
       const json = await r.json();
-      if (json && json.success) render(json);
+      if (json && json.success) {
+        clearOtaBusyState();
+        render(json);
+      }
     }
 
     async function sendAction(payload) {
+      if (otaBusy) return;
       const r = await fetch("/dac/action", {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify(payload)
       });
+      if (r.status === 503) {
+        let body = null;
+        try { body = await r.json(); } catch (_) {}
+        applyOtaBusyState((body && body.error) || "OTA in progress");
+        return;
+      }
       if (r.ok) {
         setTimeout(fetchState, 80);
       }
@@ -2030,6 +2356,7 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
     }
 
     async function saveAuto() {
+      if (otaBusy) return;
       clearSaveFeedbackTimer();
       setSaveButtonState("saving");
       const payload = collectAutoPayload();
@@ -2044,6 +2371,13 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify(payload)
       });
+      if (r.status === 503) {
+        let body = null;
+        try { body = await r.json(); } catch (_) {}
+        applyOtaBusyState((body && body.error) || "OTA in progress");
+        setSaveButtonState("error");
+        return;
+      }
       if (r.ok) {
         clearAutoDirty();
         setSaveButtonState("saved");

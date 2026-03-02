@@ -1623,6 +1623,7 @@ function updateNetStatusBanner() {
   const modeText = formatMode(network.mode);
   const ip = typeof network.ip === 'string' && network.ip ? network.ip : '--';
   const ageS = secondsSince(lastStateOkAtMs);
+  const remoteOtaBusy = !!(lastStateError && /ota/i.test(lastStateError));
 
   let cls = 'warn';
   let text = 'Connecting to device...';
@@ -1636,6 +1637,10 @@ function updateNetStatusBanner() {
     cls = 'warn';
     text = 'Waiting for device reboot';
     meta = 'Auto-reconnect is running.';
+  } else if (remoteOtaBusy) {
+    cls = 'warn';
+    text = 'OTA in progress';
+    meta = 'Another client started OTA. Live updates are paused.';
   } else if (ageS === null) {
     cls = 'warn';
     text = 'Waiting for first state packet';
@@ -1684,7 +1689,16 @@ async function getJson(url, init) {
     requestInit.cache = 'no-store';
   }
   const r = await fetch(url, requestInit);
-  if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
+  if (!r.ok) {
+    let errorText = 'HTTP ' + r.status + ' for ' + url;
+    try {
+      const payload = await r.json();
+      if (payload && typeof payload.error === 'string' && payload.error) {
+        errorText = payload.error;
+      }
+    } catch (_) {}
+    throw new Error(errorText);
+  }
   return r.json();
 }
 
@@ -2275,7 +2289,10 @@ let historyRefreshTimer = null;
 async function refreshActive() {
   if (refreshBusy || otaUploadInFlight || otaRestartPending) return;
   refreshBusy = true;
-  try { await refreshState(); } catch (_) { lastStateError = 'State refresh failed.'; updateNetStatusBanner(); }
+  try { await refreshState(); } catch (error) {
+    lastStateError = (error && error.message) ? error.message : 'State refresh failed.';
+    updateNetStatusBanner();
+  }
   if (activeTab === 'charts')  { try { await refreshCharts(); } catch (_) {} }
   if (activeTab === 'events')  { try { await refreshEvents(); } catch (_) {} }
   if (activeTab === 'sensors') { try { await refreshSensorHistory(); } catch (_) {} }
@@ -2338,7 +2355,10 @@ setInterval(updateHeaderClock, 1000);
 setInterval(refreshActive, 10000);
 
 // Initial data load
-refreshState().catch(() => { lastStateError = 'Initial state fetch failed.'; updateNetStatusBanner(); });
+refreshState().catch(error => {
+  lastStateError = (error && error.message) ? error.message : 'Initial state fetch failed.';
+  updateNetStatusBanner();
+});
 refreshSensorHistory().catch(() => {});
 </script>
 </body>

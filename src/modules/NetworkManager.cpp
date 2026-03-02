@@ -198,6 +198,7 @@ void AuraNetworkManager::registerServerRoutes() {
     server_.on("/", HTTP_GET, dashboard_handle_root);
     server_.on("/dashboard", HTTP_GET, dashboard_handle_root);
     server_.on("/wifi", HTTP_GET, wifi_handle_root);
+    server_.on("/diag", HTTP_GET, diag_handle_root);
     server_.on("/save", HTTP_POST, wifi_handle_save);
     server_.on("/mqtt", HTTP_GET, mqtt_handle_root);
     server_.on("/mqtt", HTTP_POST, mqtt_handle_save);
@@ -210,6 +211,7 @@ void AuraNetworkManager::registerServerRoutes() {
     server_.on("/api/charts", HTTP_GET, charts_handle_data);
     server_.on("/api/state", HTTP_GET, state_handle_data);
     server_.on("/api/events", HTTP_GET, events_handle_data);
+    server_.on("/api/diag", HTTP_GET, diag_handle_data);
     server_.on("/api/settings", HTTP_POST, settings_handle_update);
     server_.on("/api/ota", HTTP_POST, ota_handle_update, ota_handle_upload);
     server_.onNotFound(wifi_handle_not_found);
