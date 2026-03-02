@@ -1560,10 +1560,22 @@ function updateNetworkActionButton(network) {
   if (!btn) return;
   const mode = network && typeof network.mode === 'string' ? network.mode : '';
   if (mode === 'ap') {
+    btn.style.display = 'inline-flex';
+    btn.removeAttribute('aria-hidden');
+    btn.removeAttribute('tabindex');
     btn.href = '/';
     btn.textContent = 'WiFi Setup';
     return;
   }
+  if (mode === 'sta') {
+    btn.style.display = 'none';
+    btn.setAttribute('aria-hidden', 'true');
+    btn.setAttribute('tabindex', '-1');
+    return;
+  }
+  btn.style.display = 'inline-flex';
+  btn.removeAttribute('aria-hidden');
+  btn.removeAttribute('tabindex');
   btn.href = '/dashboard';
   btn.textContent = 'Open Dashboard';
 }
