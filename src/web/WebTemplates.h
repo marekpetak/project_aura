@@ -9,7 +9,6 @@
 
 namespace WebTemplates {
 
-extern const char kDashboardPageTemplate[] PROGMEM;
 extern const char kDashboardPageTemplateAp[] PROGMEM;
 
 static const char kWifiListScanning[] PROGMEM = R"HTML(
@@ -375,10 +374,10 @@ static const char kWifiPageTemplate[] PROGMEM = R"HTML(
                             window.location.replace('/');
                             return;
                         }
-                        setTimeout(poll, 3000);
+                        setTimeout(poll, 4000);
                     })
                     .catch(function() {
-                        setTimeout(poll, 5000);
+                        setTimeout(poll, 6000);
                     });
             };
             setTimeout(poll, 2000);

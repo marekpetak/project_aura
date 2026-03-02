@@ -134,6 +134,42 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
     .net-status.warn .net-status-text { color: #fcd34d; }
     .net-status.err { border-color: rgba(239,68,68,.45); background: rgba(127,29,29,.32); }
     .net-status.err .net-status-text { color: #fca5a5; }
+    .ota-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(2, 6, 23, 0.74);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+    }
+    .ota-overlay.show { display: flex; }
+    .ota-overlay-card {
+      width: 100%;
+      max-width: 460px;
+      border-radius: 14px;
+      border: 1px solid rgba(245,158,11,.45);
+      background: linear-gradient(160deg, rgba(31,41,55,.96), rgba(17,24,39,.96));
+      box-shadow: 0 18px 42px rgba(2,6,23,.45);
+      padding: 18px 20px;
+      color: #e5e7eb;
+      text-align: center;
+    }
+    .ota-overlay-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fcd34d;
+      letter-spacing: .01em;
+    }
+    .ota-overlay-text {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.45;
+    }
 
     /* ── Tab nav ── */
     .tab-nav { display: flex; flex-wrap: wrap; background: #1f2937; padding: 4px; border-radius: 12px; margin-bottom: 16px; border: 1px solid rgba(55,65,81,.5); gap: 4px; }
@@ -659,6 +695,14 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
   </div>
 
 </div><!-- .wrap -->
+<div id="otaGlobalOverlay" class="ota-overlay" aria-live="assertive" role="status">
+  <div class="ota-overlay-card">
+    <div class="ota-overlay-title">OTA in progress</div>
+    <div id="otaGlobalOverlayText" class="ota-overlay-text">
+      Another client is updating firmware. Live dashboard updates are paused.
+    </div>
+  </div>
+</div>
 <script>
 // ─────────────────────────────────────────────
 // Thresholds & status
@@ -1613,6 +1657,16 @@ function updateOtaPrecheck(network) {
   el.textContent = text;
 }
 
+function setOtaGlobalOverlay(visible, message) {
+  const overlay = document.getElementById('otaGlobalOverlay');
+  if (!overlay) return;
+  const textEl = document.getElementById('otaGlobalOverlayText');
+  if (textEl && typeof message === 'string' && message) {
+    textEl.textContent = message;
+  }
+  overlay.classList.toggle('show', !!visible);
+}
+
 function updateNetStatusBanner() {
   const bar = document.getElementById('netStatusBar');
   const textEl = document.getElementById('netStatusText');
@@ -1662,6 +1716,12 @@ function updateNetStatusBanner() {
   if (lastStateError && ageS !== null && ageS > 20) {
     meta += ' ' + lastStateError;
   }
+
+  const showOtaOverlay = remoteOtaBusy && !otaUploadInFlight && !otaRestartPending;
+  setOtaGlobalOverlay(
+    showOtaOverlay,
+    'Another client is updating firmware. Wait until OTA completes, then this page will recover automatically.'
+  );
 
   bar.className = 'net-status ' + cls;
   textEl.textContent = text;
