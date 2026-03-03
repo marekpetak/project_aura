@@ -1514,6 +1514,8 @@ let otaRecoveryTimer = null;
 let otaRecoveryActive = false;
 let otaRecoveryProbeController = null;
 const OTA_RECOVERY_PROBE_TIMEOUT_MS = 1500;
+const OTA_STALE_STATE_THRESHOLD_S = 45;
+const OTA_RECONNECT_GRACE_MS = 120000;
 const OTA_UPLOAD_MIN_TIMEOUT_MS = 180000;
 const OTA_UPLOAD_MAX_TIMEOUT_MS = 900000;
 const OTA_UPLOAD_MIN_BYTES_PER_SEC = 20 * 1024;
@@ -1521,6 +1523,7 @@ let deviceClockRef = null;
 let lastStateOkAtMs = 0;
 let lastStateError = '';
 let lastStateOtaBusy = false;
+let otaReconnectGraceUntilMs = 0;
 
 // Settings state
 const settings = {
@@ -1597,7 +1600,9 @@ function formatSyncAge(ageS) {
 
 function updateLastSyncUi() {
   const ageS = secondsSince(lastStateOkAtMs);
-  setInfoValue('cfg-last-sync', formatSyncAge(ageS), ageS === null ? '' : (ageS <= 20 ? 'ok' : (ageS <= 45 ? '' : 'err')));
+  setInfoValue('cfg-last-sync',
+               formatSyncAge(ageS),
+               ageS === null ? '' : (ageS <= 20 ? 'ok' : (ageS <= OTA_STALE_STATE_THRESHOLD_S ? '' : 'err')));
 }
 
 function updateNetworkActionButton(network) {
@@ -1632,10 +1637,24 @@ function updateOtaPrecheck(network) {
   const mode = network && typeof network.mode === 'string' ? network.mode : '';
   const rssi = network && isNum(network.rssi) ? network.rssi : null;
   const ageS = secondsSince(lastStateOkAtMs);
+  const remoteOtaBusy = !!lastStateOtaBusy;
+  const reconnectGraceS = Math.max(0, Math.ceil((otaReconnectGraceUntilMs - Date.now()) / 1000));
+  const reconnectGraceActive = reconnectGraceS > 0;
 
   let cls = 'warn';
   let text = 'Waiting for live device state before OTA.';
-  if (ageS !== null && ageS > 45) {
+  if (otaUploadInFlight) {
+    cls = 'warn';
+    text = 'OTA upload in progress. Live state checks are paused.';
+  } else if (otaRestartPending || reconnectGraceActive) {
+    cls = 'warn';
+    text = reconnectGraceActive
+      ? 'Waiting for device reboot/reconnect (' + reconnectGraceS + 's grace window).'
+      : 'Waiting for device reboot/reconnect.';
+  } else if (remoteOtaBusy) {
+    cls = 'warn';
+    text = 'OTA in progress from another client. Live state checks are paused.';
+  } else if (ageS !== null && ageS > OTA_STALE_STATE_THRESHOLD_S) {
     cls = 'err';
     text = 'State data is stale (' + ageS + 's). Wait for reconnect before OTA.';
   } else if (mode === 'off') {
@@ -1704,7 +1723,7 @@ function updateNetStatusBanner() {
     cls = 'ok';
     text = modeText + ' connected at ' + ip;
     meta = 'Last update ' + formatSyncAge(ageS) + '.';
-  } else if (ageS <= 45) {
+  } else if (ageS <= OTA_STALE_STATE_THRESHOLD_S) {
     cls = 'warn';
     text = modeText + ' data delayed';
     meta = 'Last update ' + formatSyncAge(ageS) + '.';
@@ -2190,7 +2209,12 @@ function initOtaUI() {
     const network = safeStateNetwork();
     const mode = network && typeof network.mode === 'string' ? network.mode : '';
     const ageS = secondsSince(lastStateOkAtMs);
-    if (ageS === null || ageS > 45) {
+    if (lastStateOtaBusy) {
+      statusEl.textContent = 'OTA is already in progress from another client. Wait until it finishes.';
+      statusEl.className = 'ota-status warn';
+      return;
+    }
+    if (ageS === null || ageS > OTA_STALE_STATE_THRESHOLD_S) {
       statusEl.textContent = 'Live state is stale. Wait for reconnect before OTA.';
       statusEl.className = 'ota-status err';
       return;
@@ -2209,6 +2233,7 @@ function initOtaUI() {
     }
 
     stopOtaRecoveryWatcher();
+    otaReconnectGraceUntilMs = 0;
 
     otaUploadInFlight = true;
     uploadBtn.disabled = true;
@@ -2235,6 +2260,7 @@ function initOtaUI() {
       try { pl = JSON.parse(xhr.responseText || '{}'); } catch (_) {}
       if (xhr.status >= 200 && xhr.status < 300 && pl && pl.success === true) {
         otaRestartPending = true;
+        otaReconnectGraceUntilMs = Date.now() + OTA_RECONNECT_GRACE_MS;
         uploadBtn.disabled = true;
         progressEl.style.width = '100%';
         statusEl.textContent = pl.message || 'Firmware uploaded. Device will reboot.';
@@ -2244,6 +2270,7 @@ function initOtaUI() {
         return;
       }
       otaRestartPending = false;
+      otaReconnectGraceUntilMs = 0;
       stopOtaRecoveryWatcher();
       uploadBtn.disabled = false;
       statusEl.textContent = (pl && pl.error) || 'Upload failed (HTTP ' + (xhr.status || 0) + ')';
@@ -2252,6 +2279,7 @@ function initOtaUI() {
     xhr.onerror = () => {
       otaUploadInFlight = false;
       otaRestartPending = false;
+      otaReconnectGraceUntilMs = 0;
       stopOtaRecoveryWatcher();
       uploadBtn.disabled = false;
       statusEl.textContent = 'Upload failed. Check device connection and retry.';
@@ -2260,6 +2288,7 @@ function initOtaUI() {
     xhr.ontimeout = () => {
       otaUploadInFlight = false;
       otaRestartPending = false;
+      otaReconnectGraceUntilMs = 0;
       stopOtaRecoveryWatcher();
       uploadBtn.disabled = false;
       statusEl.textContent = 'Upload timed out. Retry closer to device or with stronger WiFi.';
@@ -2279,6 +2308,7 @@ async function refreshState() {
   lastStateOkAtMs = Date.now();
   lastStateError = '';
   lastStateOtaBusy = !!(payload && payload.ota_busy === true);
+  otaReconnectGraceUntilMs = 0;
 
   // Header clock
   if (isNum(payload && payload.time_epoch_s)) {
