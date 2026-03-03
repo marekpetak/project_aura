@@ -304,12 +304,12 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_dak_manual_toggle_8, UiController::on_dac_manual_level_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_dak_manual_toggle_9, UiController::on_dac_manual_level_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_dak_manual_toggle_10, UiController::on_dac_manual_level_event_cb, LV_EVENT_VALUE_CHANGED},
-        {objects.btn_dak_manual_timer_toggle_30sec, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
-        {objects.btn_dak_manual_timer_toggle_1min, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
-        {objects.btn_dak_manual_timer_toggle_5min, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
-        {objects.btn_dak_manual_timer_toggle_15min, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_dak_manual_timer_toggle_10min, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_dak_manual_timer_toggle_30min, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
-        {objects.btn_dak_manual_timer_toggle_1h, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_dak_manual_timer_toggle_1hour, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_dak_manual_timer_toggle_2hours, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_dak_manual_timer_toggle_4hours, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_dak_manual_timer_toggle_8hours, UiController::on_dac_manual_timer_event_cb, LV_EVENT_VALUE_CHANGED},
     };
 
     constexpr lv_coord_t kExtendedHitAreaPx = 16;
@@ -436,12 +436,12 @@ void UiEventBinder::applyToggleStylesForAvailableObjects(UiController &owner, in
         objects.btn_dak_manual_toggle_8,
         objects.btn_dak_manual_toggle_9,
         objects.btn_dak_manual_toggle_10,
-        objects.btn_dak_manual_timer_toggle_30sec,
-        objects.btn_dak_manual_timer_toggle_1min,
-        objects.btn_dak_manual_timer_toggle_5min,
-        objects.btn_dak_manual_timer_toggle_15min,
+        objects.btn_dak_manual_timer_toggle_10min,
         objects.btn_dak_manual_timer_toggle_30min,
-        objects.btn_dak_manual_timer_toggle_1h,
+        objects.btn_dak_manual_timer_toggle_1hour,
+        objects.btn_dak_manual_timer_toggle_2hours,
+        objects.btn_dak_manual_timer_toggle_4hours,
+        objects.btn_dak_manual_timer_toggle_8hours,
     };
 
     for (lv_obj_t *btn : toggle_buttons) {

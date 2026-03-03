@@ -2049,12 +2049,12 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
   <script>
     const SPEEDS = [10,20,30,40,50,60,70,80,90,100];
     const TIMERS = [
-      {label:"30s", sec:30},
-      {label:"1m", sec:60},
-      {label:"5m", sec:300},
-      {label:"15m", sec:900},
+      {label:"10m", sec:600},
       {label:"30m", sec:1800},
       {label:"1h", sec:3600},
+      {label:"2h", sec:7200},
+      {label:"4h", sec:14400},
+      {label:"8h", sec:28800},
     ];
     const AUTO_META = {
       co2:  {name:"CO2",unit:"ppm",field:"co2",valid:"co2_valid",decimals:0,labels:["<800","800-1k","1k-1.5k",">=1.5k"],defaults:[30,50,70,100]},

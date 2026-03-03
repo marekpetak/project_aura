@@ -52,16 +52,24 @@ uint8_t manual_level_from_target(lv_obj_t *target) {
 }
 
 uint32_t timer_seconds_from_target(lv_obj_t *target) {
-    if (target == objects.btn_dak_manual_timer_toggle_30sec) return 30;
-    if (target == objects.btn_dak_manual_timer_toggle_1min) return 60;
-    if (target == objects.btn_dak_manual_timer_toggle_5min) return 5 * 60;
-    if (target == objects.btn_dak_manual_timer_toggle_15min) return 15 * 60;
+    if (target == objects.btn_dak_manual_timer_toggle_10min) return 10 * 60;
     if (target == objects.btn_dak_manual_timer_toggle_30min) return 30 * 60;
-    if (target == objects.btn_dak_manual_timer_toggle_1h) return 60 * 60;
+    if (target == objects.btn_dak_manual_timer_toggle_1hour) return 60 * 60;
+    if (target == objects.btn_dak_manual_timer_toggle_2hours) return 2 * 60 * 60;
+    if (target == objects.btn_dak_manual_timer_toggle_4hours) return 4 * 60 * 60;
+    if (target == objects.btn_dak_manual_timer_toggle_8hours) return 8 * 60 * 60;
     return 0;
 }
 
 void format_mmss(uint32_t total_seconds, char *out, size_t out_len) {
+    if (total_seconds >= 3600UL) {
+        const uint32_t hours = total_seconds / 3600UL;
+        const uint32_t minutes = (total_seconds % 3600UL) / 60UL;
+        snprintf(out, out_len, "%02lu:%02lu",
+                 static_cast<unsigned long>(hours),
+                 static_cast<unsigned long>(minutes));
+        return;
+    }
     const uint32_t minutes = total_seconds / 60;
     const uint32_t seconds = total_seconds % 60;
     snprintf(out, out_len, "%02lu:%02lu",
@@ -177,12 +185,12 @@ void UiController::update_dac_ui(uint32_t now_ms) {
     set_checked_state(objects.btn_dak_manual_toggle_10, manual_step == 10);
 
     const uint32_t timer_s = fanControl.selectedTimerSeconds();
-    set_checked_state(objects.btn_dak_manual_timer_toggle_30sec, timer_s == 30);
-    set_checked_state(objects.btn_dak_manual_timer_toggle_1min, timer_s == 60);
-    set_checked_state(objects.btn_dak_manual_timer_toggle_5min, timer_s == 5 * 60);
-    set_checked_state(objects.btn_dak_manual_timer_toggle_15min, timer_s == 15 * 60);
+    set_checked_state(objects.btn_dak_manual_timer_toggle_10min, timer_s == 10 * 60);
     set_checked_state(objects.btn_dak_manual_timer_toggle_30min, timer_s == 30 * 60);
-    set_checked_state(objects.btn_dak_manual_timer_toggle_1h, timer_s == 60 * 60);
+    set_checked_state(objects.btn_dak_manual_timer_toggle_1hour, timer_s == 60 * 60);
+    set_checked_state(objects.btn_dak_manual_timer_toggle_2hours, timer_s == 2 * 60 * 60);
+    set_checked_state(objects.btn_dak_manual_timer_toggle_4hours, timer_s == 4 * 60 * 60);
+    set_checked_state(objects.btn_dak_manual_timer_toggle_8hours, timer_s == 8 * 60 * 60);
 
     const bool running = fanControl.isRunning();
     const bool auto_mode_active = !manual_mode &&

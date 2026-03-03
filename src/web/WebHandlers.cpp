@@ -52,7 +52,7 @@ constexpr size_t kEventsApiMaxEntries = 48;
 constexpr size_t kWebDisplayNameMaxLen = 32;
 constexpr size_t kWifiScanMaxItems = 15;
 constexpr size_t kDiagMaxErrorItems = 12;
-constexpr uint32_t kDacTimerAllowedValues[] = {0U, 30U, 60U, 300U, 900U, 1800U, 3600U};
+constexpr uint32_t kDacTimerAllowedValues[] = {0U, 600U, 1800U, 3600U, 7200U, 14400U, 28800U};
 constexpr const char kApiErrorOtaBusyJson[] =
     "{\"success\":false,\"error\":\"OTA upload in progress\","
     "\"error_code\":\"OTA_BUSY\",\"ota_busy\":true}";
