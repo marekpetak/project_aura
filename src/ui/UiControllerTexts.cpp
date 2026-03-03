@@ -55,15 +55,7 @@ void UiController::update_settings_texts() {
                  APP_VERSION);
         safe_label_set_text(objects.container_about_text, about_text);
     }
-    if (objects.container_web_page_text) {
-        safe_label_set_text(
-            objects.container_web_page_text,
-            "To open the web page, either enable the device's Wi-Fi AP mode or connect it to your home Wi-Fi.\n"
-            "Then scan the QR code or open this link:");
-    }
-    if (objects.container_web_page_link) {
-        safe_label_set_text(objects.container_web_page_link, networkManager.localUrl("/dashboard").c_str());
-    }
+    update_web_page_panel();
     if (objects.label_btn_units_led_indicators) safe_label_set_text(objects.label_btn_units_led_indicators, UiText::LabelLedIndicators());
     if (objects.label_btn_alert_blink) safe_label_set_text(objects.label_btn_alert_blink, UiText::LabelAlertBlink());
     if (objects.label_voc_reset) safe_label_set_text(objects.label_voc_reset, UiText::LabelVocRelearn());

@@ -56,6 +56,9 @@ inline const char *NtpInterval() { return UiStrings::text(UiStrings::TextId::Ntp
 inline const char *WifiPortalUrl() { return UiStrings::text(UiStrings::TextId::WifiPortalUrl); }
 inline const char *MqttPortalUrl() { return UiStrings::text(UiStrings::TextId::MqttPortalUrl); }
 inline const char *ThemePortalUrl() { return UiStrings::text(UiStrings::TextId::ThemePortalUrl); }
+inline const char *LabelWebPageHelpAp() { return UiStrings::text(UiStrings::TextId::LabelWebPageHelpAp); }
+inline const char *LabelWebPageHelpSta() { return UiStrings::text(UiStrings::TextId::LabelWebPageHelpSta); }
+inline const char *LabelWebPageHelpOff() { return UiStrings::text(UiStrings::TextId::LabelWebPageHelpOff); }
 
 inline const char *LabelSettingsTitle() { return UiStrings::text(UiStrings::TextId::LabelSettingsTitle); }
 inline const char *LabelSettingsButton() { return UiStrings::text(UiStrings::TextId::LabelSettingsButton); }

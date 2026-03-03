@@ -298,6 +298,58 @@ void UiController::on_about_back_event(lv_event_t *e) {
     }
 }
 
+void UiController::update_web_page_panel() {
+    const bool wifi_enabled = networkManager.isEnabled();
+    const AuraNetworkManager::WifiState wifi_state = networkManager.state();
+    const bool ap_mode = wifi_enabled && wifi_state == AuraNetworkManager::WIFI_STATE_AP_CONFIG;
+    const bool sta_mode = wifi_enabled && wifi_state == AuraNetworkManager::WIFI_STATE_STA_CONNECTED;
+    const bool off_mode = !ap_mode && !sta_mode;
+
+    if (objects.container_web_page_text_ap) {
+        safe_label_set_text(objects.container_web_page_text_ap, UiText::LabelWebPageHelpAp());
+        set_visible(objects.container_web_page_text_ap, ap_mode);
+    }
+
+    if (objects.container_web_page_text_sta) {
+        String sta_text = UiText::LabelWebPageHelpSta();
+        const String local_url = networkManager.localUrl("/dashboard");
+        String ip_url = "http://<device-ip>/dashboard";
+        if (sta_mode) {
+            const IPAddress ip = WiFi.localIP();
+            if (ip[0] != 0 || ip[1] != 0 || ip[2] != 0 || ip[3] != 0) {
+                ip_url = "http://";
+                ip_url += ip.toString();
+                ip_url += "/dashboard";
+            }
+        }
+        sta_text.replace("{{LOCAL_URL}}", local_url);
+        sta_text.replace("{{IP_URL}}", ip_url);
+        safe_label_set_text(objects.container_web_page_text_sta, sta_text.c_str());
+        set_visible(objects.container_web_page_text_sta, sta_mode);
+    }
+
+    if (objects.container_web_page_text_off) {
+        safe_label_set_text(objects.container_web_page_text_off, UiText::LabelWebPageHelpOff());
+        set_visible(objects.container_web_page_text_off, off_mode);
+    }
+
+    if (objects.web_page_qr) {
+        String web_url;
+        if (ap_mode) {
+            web_url = "http://192.168.4.1/dashboard";
+        } else if (sta_mode) {
+            web_url = networkManager.localUrl("/dashboard");
+        }
+
+        if (!web_url.isEmpty()) {
+            lv_obj_clear_flag(objects.web_page_qr, LV_OBJ_FLAG_HIDDEN);
+            lv_qrcode_update(objects.web_page_qr, web_url.c_str(), web_url.length());
+        } else {
+            lv_obj_add_flag(objects.web_page_qr, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
 void UiController::on_web_page_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
@@ -307,32 +359,7 @@ void UiController::on_web_page_event(lv_event_t *e) {
         lv_obj_clear_flag(objects.container_web_page, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(objects.container_web_page, LV_OBJ_FLAG_CLICKABLE);
     }
-
-    const bool wifi_enabled = networkManager.isEnabled();
-    const AuraNetworkManager::WifiState wifi_state = networkManager.state();
-    String web_url;
-    if (wifi_enabled && wifi_state == AuraNetworkManager::WIFI_STATE_AP_CONFIG) {
-        web_url = "http://192.168.4.1/dashboard";
-    } else if (wifi_enabled && wifi_state == AuraNetworkManager::WIFI_STATE_STA_CONNECTED) {
-        web_url = networkManager.localUrl("/dashboard");
-    }
-
-    if (objects.container_web_page_link) {
-        if (!web_url.isEmpty()) {
-            safe_label_set_text(objects.container_web_page_link, web_url.c_str());
-        } else {
-            safe_label_set_text(objects.container_web_page_link, "Enable AP or connect to Wi-Fi");
-        }
-    }
-
-    if (objects.web_page_qr) {
-        if (!web_url.isEmpty()) {
-            lv_obj_clear_flag(objects.web_page_qr, LV_OBJ_FLAG_HIDDEN);
-            lv_qrcode_update(objects.web_page_qr, web_url.c_str(), web_url.length());
-        } else {
-            lv_obj_add_flag(objects.web_page_qr, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
+    update_web_page_panel();
 }
 
 void UiController::on_web_page_back_event(lv_event_t *e) {

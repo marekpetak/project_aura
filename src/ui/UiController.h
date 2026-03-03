@@ -324,6 +324,7 @@ private:
     void update_sensor_cards(const AirQuality &aq, bool gas_warmup, bool show_co2_bar);
     void update_settings_header();
     void update_theme_custom_info(bool presets);
+    void update_web_page_panel();
     void update_status_message(uint32_t now_ms, bool gas_warmup);
     void update_clock_labels();
     float pressure_to_display(float pressure_hpa) const;
