@@ -215,7 +215,8 @@ void FanControl::begin(bool auto_mode_preference) {
     last_health_check_ms_ = 0;
     health_probe_fail_count_ = 0;
     boot_missing_lockout_ = false;
-    auto_resume_blocked_ = false;
+    // On cold boot always start in STOP state; auto-demand must be explicitly armed by user.
+    auto_resume_blocked_ = (mode_ == Mode::Auto);
     pending_commands_ = PendingCommands{};
     snapshot_ = Snapshot{};
 
@@ -586,7 +587,6 @@ bool FanControl::tryInitialize(uint32_t now_ms) {
     timer_update_pending_ = false;
     last_health_check_ms_ = now_ms;
     health_probe_fail_count_ = 0;
-    auto_resume_blocked_ = false;
     return true;
 }
 
