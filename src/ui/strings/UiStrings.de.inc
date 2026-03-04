@@ -151,6 +151,8 @@
     "BEISPIEL:",
     "Custom-Theme einrichten:\n- Project Aura zuerst mit WLAN verbinden\n- Im Browser http://aura.local/theme öffnen oder QR-Code scannen\n- Falls .local im Netzwerk nicht funktioniert, nutze http://<device-ip>/theme\n- Mit Zurück speichern",
     "Wenn .local in deinem Netzwerk nicht funktioniert, öffne stattdessen {{IP_URL}}.",
+    "LUEFTER\nSTEUER.",
+    "Lueftersteuerung",
     "AUTO NACHTMODUS",
     "Diese Funktion aktiviert \"Nachtmodus\" nach Zeitplan.\n- Start- und Endzeit einstellen.\n- Schalter auf AN.\n- Manueller Nachtmodus ist deaktiviert,\n  wenn Auto Nacht aktiv ist.",
     "STARTZEIT",

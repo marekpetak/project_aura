@@ -2820,7 +2820,7 @@ void create_screen_page_settings() {
                             add_style_style_text_primary(obj);
                             lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
                             lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-                            lv_label_set_text(obj, "DAC\nSETTINGS");
+                            lv_label_set_text(obj, "FAN\nCONTROL");
                         }
                     }
                 }
@@ -12250,7 +12250,7 @@ void create_screen_page_dac_settings() {
                     lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                     add_style_style_text_primary(obj);
                     lv_obj_set_style_text_font(obj, &ui_font_jet_reg_18, LV_PART_MAIN | LV_STATE_DEFAULT);
-                    lv_label_set_text(obj, "DAC Settings");
+                    lv_label_set_text(obj, "Fan Control");
                 }
                 {
                     // btn_dac_settings_back

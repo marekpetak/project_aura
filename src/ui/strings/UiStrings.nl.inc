@@ -151,6 +151,8 @@
     "VOORBEELD:",
     "Aangepast thema instellen:\n- Verbind Project Aura eerst met WI-FI\n- Open http://aura.local/theme in de browser of scan de QR-code.\n- Werkt .local niet op jouw netwerk, gebruik dan http://<device-ip>/theme\n- Sla op met Terug",
     "Werkt .local niet op je netwerk, open dan {{IP_URL}}.",
+    "VENT.\nREGELING",
+    "Ventilatorregeling",
     "AUTO NACHTMODUS",
     "Activeert \"Nachtmodus\" via schema.\n- Stel start en eind in.\n- Zet schakelaar op AAN.\n- Handmatige nachtmodus uit\n  wanneer Auto Nacht AAN is.",
     "STARTTIJD",

@@ -151,6 +151,8 @@
     "ESEMPIO:",
     "Per configurare il tema personalizzato:\n- Connetti prima Project Aura al WI-FI\n- Apri http://aura.local/theme nel browser o scansiona il QR.\n- Se .local non funziona nella tua rete, usa http://<device-ip>/theme\n- Salva con Indietro",
     "Se .local non funziona nella tua rete, apri {{IP_URL}}.",
+    "CTRL\nVENTOLA",
+    "Controllo ventola",
     "MODO NOTTE AUTO",
     "Attiva colori \"Modo Notte\" a orario.\n- Imposta inizio e fine.\n- Interruttore su ON.\n- Modo Notte manuale disattivato\n  quando Auto Notte è ON.",
     "ORA INIZIO",

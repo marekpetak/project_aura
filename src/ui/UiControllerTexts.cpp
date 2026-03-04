@@ -34,6 +34,8 @@ void UiController::update_settings_texts() {
     if (objects.label_btn_co2_calib) safe_label_set_text(objects.label_btn_co2_calib, UiText::LabelCo2Calibration());
     if (objects.label_btn_about) safe_label_set_text(objects.label_btn_about, UiText::LabelAbout());
     if (objects.label_btn_web_page) safe_label_set_text(objects.label_btn_web_page, "WEB\nPAGE");
+    if (objects.label_dac_settings) safe_label_set_text(objects.label_dac_settings, UiText::LabelDacSettings());
+    if (objects.label_dac_settings_title) safe_label_set_text(objects.label_dac_settings_title, UiText::LabelDacSettingsTitle());
     if (objects.label_btn_about_back) {
         const char *back_label = UiText::LabelSettingsBack();
         if (ui_language == Config::Language::EN) {
