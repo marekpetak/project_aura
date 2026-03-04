@@ -52,6 +52,9 @@ constexpr size_t kEventsApiMaxEntries = 48;
 constexpr size_t kWebDisplayNameMaxLen = 32;
 constexpr size_t kWifiScanMaxItems = 15;
 constexpr size_t kDiagMaxErrorItems = 12;
+constexpr size_t kHttpStreamChunkSize = 4096;
+constexpr uint16_t kHttpStreamMaxZeroWrites = 300;
+constexpr uint8_t kHttpStreamYieldMs = 1;
 constexpr const char kApiErrorOtaBusyJson[] =
     "{\"success\":false,\"error\":\"OTA upload in progress\","
     "\"error_code\":\"OTA_BUSY\",\"ota_busy\":true}";
@@ -399,6 +402,88 @@ void send_no_store_headers(WebServer &server) {
     server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
     server.sendHeader("Pragma", "no-cache");
     server.sendHeader("Expires", "0");
+}
+
+bool stream_client_bytes(NetworkClient &client, const uint8_t *data, size_t size, size_t &sent) {
+    sent = 0;
+    if (!data || size == 0) {
+        return true;
+    }
+
+    uint16_t zero_writes = 0;
+    while (sent < size) {
+        size_t to_send = size - sent;
+        if (to_send > kHttpStreamChunkSize) {
+            to_send = kHttpStreamChunkSize;
+        }
+
+        const size_t written = client.write(data + sent, to_send);
+        if (written == 0) {
+            if (!client.connected()) {
+                return false;
+            }
+            if (++zero_writes > kHttpStreamMaxZeroWrites) {
+                return false;
+            }
+            delay(kHttpStreamYieldMs);
+            continue;
+        }
+
+        sent += written;
+        zero_writes = 0;
+        if (sent < size) {
+            delay(kHttpStreamYieldMs);
+        }
+    }
+    return true;
+}
+
+bool send_html_stream(WebServer &server, const String &html) {
+    const size_t body_size = html.length();
+    server.setContentLength(body_size);
+    server.send(200, "text/html", "");
+    if (body_size == 0) {
+        return true;
+    }
+
+    size_t sent = 0;
+    const bool ok = stream_client_bytes(
+        server.client(),
+        reinterpret_cast<const uint8_t *>(html.c_str()),
+        body_size,
+        sent
+    );
+    if (!ok) {
+        Logger::log(Logger::Warn, "Web",
+                    "HTML stream interrupted: uri=%s sent=%u/%u",
+                    server.uri().c_str(),
+                    static_cast<unsigned>(sent),
+                    static_cast<unsigned>(body_size));
+    }
+    return ok;
+}
+
+bool send_html_stream_progmem(WebServer &server, const uint8_t *content, size_t content_size, bool gzip_encoded) {
+    server.setContentLength(content_size);
+    if (gzip_encoded) {
+        server.sendHeader("Content-Encoding", "gzip");
+    }
+    server.send(200, "text/html", "");
+    if (content_size == 0) {
+        return true;
+    }
+
+    // ESP32 NetworkClient::write_P forwards to write(), so one streaming path is enough.
+    size_t sent = 0;
+    const bool ok = stream_client_bytes(server.client(), content, content_size, sent);
+    if (!ok) {
+        Logger::log(Logger::Warn, "Web",
+                    "PROGMEM HTML stream interrupted: uri=%s sent=%u/%u",
+                    server.uri().c_str(),
+                    static_cast<unsigned>(sent),
+                    static_cast<unsigned>(content_size));
+    }
+    return ok;
 }
 
 const char *dac_status_text(const FanControl &fan) {
@@ -764,7 +849,7 @@ void wifi_handle_root() {
     html.replace("{{SCAN_IN_PROGRESS}}",
                  (context->wifi_scan_in_progress && *context->wifi_scan_in_progress) ? "1" : "0");
     send_no_store_headers(server);
-    server.send(200, "text/html", html);
+    send_html_stream(server, html);
 }
 
 void dashboard_handle_root() {
@@ -788,12 +873,11 @@ void dashboard_handle_root() {
     }
 
     send_no_store_headers(*context->server);
-    context->server->setContentLength(WebTemplates::kDashboardPageTemplateApGzipSize);
-    context->server->sendHeader("Content-Encoding", "gzip");
-    context->server->send(200, "text/html", "");
-    context->server->sendContent_P(
-        reinterpret_cast<PGM_P>(WebTemplates::kDashboardPageTemplateApGzip),
-        WebTemplates::kDashboardPageTemplateApGzipSize
+    send_html_stream_progmem(
+        *context->server,
+        WebTemplates::kDashboardPageTemplateApGzip,
+        WebTemplates::kDashboardPageTemplateApGzipSize,
+        true
     );
 }
 
@@ -841,7 +925,7 @@ void wifi_handle_save() {
     hostname_url += ".local/dashboard";
     html.replace("{{HOSTNAME_DASHBOARD_URL}}", html_escape(hostname_url));
     html.replace("{{WAIT_SECONDS}}", "15");
-    server.send(200, "text/html", html);
+    send_html_stream(server, html);
     g_deferred_wifi_start_sta = true;
     g_deferred_wifi_start_sta_due_ms = millis() + kDeferredActionDelayMs;
 }
@@ -970,7 +1054,7 @@ void mqtt_handle_root() {
     }
     if (!context->mqtt_ui_open || !*context->mqtt_ui_open) {
         String html = FPSTR(WebTemplates::kMqttLockedPage);
-        context->server->send(200, "text/html", html);
+        send_html_stream(*context->server, html);
         return;
     }
     WebServer &server = *context->server;
@@ -1034,7 +1118,7 @@ void mqtt_handle_root() {
     html.replace("{{ANONYMOUS_CHECKED}}", anonymous_checked);
     html.replace("{{DISCOVERY_CHECKED}}", discovery_checked);
 
-    server.send(200, "text/html", html);
+    send_html_stream(server, html);
 }
 
 void mqtt_handle_save() {
@@ -1135,7 +1219,7 @@ void mqtt_handle_save() {
     if (context->mqtt_anonymous) *context->mqtt_anonymous = anonymous;
 
     String html = FPSTR(WebTemplates::kMqttSavePage);
-    server.send(200, "text/html", html);
+    send_html_stream(server, html);
     g_deferred_mqtt_sync = true;
     g_deferred_mqtt_sync_due_ms = millis() + kDeferredActionDelayMs;
 }
@@ -1152,12 +1236,12 @@ void theme_handle_root() {
     }
     if (!context->theme_ui_open || !*context->theme_ui_open) {
         String html = FPSTR(WebTemplates::kThemeLockedPage);
-        context->server->send(200, "text/html", html);
+        send_html_stream(*context->server, html);
         return;
     }
     if (!context->theme_manager->isCustomScreenOpen()) {
         String html = FPSTR(WebTemplates::kThemeLockedPage);
-        context->server->send(200, "text/html", html);
+        send_html_stream(*context->server, html);
         return;
     }
     ThemeColors colors = context->theme_manager->previewOrCurrent();
@@ -1169,7 +1253,7 @@ void theme_handle_root() {
     html.replace("{{SHADOW_COLOR}}", theme_color_to_hex(colors.shadow_color));
     html.replace("{{TEXT_COLOR}}", theme_color_to_hex(colors.text_primary));
     html.replace("{{CARD_GRADIENT_BOOL}}", colors.gradient_enabled ? "true" : "false");
-    context->server->send(200, "text/html", html);
+    send_html_stream(*context->server, html);
 }
 
 void theme_handle_apply() {
@@ -1263,7 +1347,7 @@ void dac_handle_root() {
         return;
     }
     String html = FPSTR(WebTemplates::kDacPageTemplate);
-    context->server->send(200, "text/html", html);
+    send_html_stream(*context->server, html);
 }
 
 void dac_handle_state() {
