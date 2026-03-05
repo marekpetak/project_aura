@@ -58,9 +58,11 @@ constexpr size_t kDiagMaxErrorItems = 12;
 constexpr size_t kHttpStreamChunkSize = 512;
 constexpr uint16_t kHttpStreamMaxZeroWrites = 2048;
 constexpr uint8_t kHttpStreamYieldMs = 1;
-constexpr uint8_t kHttpStreamRetryDelayFastMs = 1;
-constexpr uint8_t kHttpStreamRetryDelayMediumMs = 2;
-constexpr uint8_t kHttpStreamRetryDelaySlowMs = 5;
+constexpr uint16_t kHttpStreamRetryDelayFastMs = 2;
+constexpr uint16_t kHttpStreamRetryDelayMediumMs = 12;
+constexpr uint16_t kHttpStreamRetryDelaySlowMs = 50;
+constexpr uint16_t kHttpStreamRetryDelayVerySlowMs = 100;
+constexpr uint16_t kHttpStreamRetryDelayMaxMs = 150;
 constexpr uint32_t kHttpStreamMaxDurationMs = 60000;
 constexpr uint32_t kHttpStreamNoProgressTimeoutMs = 20000;
 constexpr uint32_t kHttpStreamSlowWriteWarnMs = 200;
@@ -501,14 +503,20 @@ void ota_restore_wifi_power_save() {
     g_ota_wifi_ps_prev = WIFI_PS_NONE;
 }
 
-uint8_t stream_retry_delay_ms(uint16_t zero_writes) {
+uint16_t stream_retry_delay_ms(uint16_t zero_writes) {
     if (zero_writes <= 3) {
         return kHttpStreamRetryDelayFastMs;
     }
-    if (zero_writes <= 8) {
+    if (zero_writes <= 10) {
         return kHttpStreamRetryDelayMediumMs;
     }
-    return kHttpStreamRetryDelaySlowMs;
+    if (zero_writes <= 40) {
+        return kHttpStreamRetryDelaySlowMs;
+    }
+    if (zero_writes <= 120) {
+        return kHttpStreamRetryDelayVerySlowMs;
+    }
+    return kHttpStreamRetryDelayMaxMs;
 }
 
 bool wait_for_socket_writable(int socket_fd, uint16_t wait_ms, int &last_socket_errno) {
