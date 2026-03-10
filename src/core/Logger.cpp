@@ -5,6 +5,7 @@
 // Purchase a Commercial License: see COMMERCIAL_LICENSE_SUMMARY.md
 
 #include "core/Logger.h"
+#include "core/SystemLogFilter.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -185,7 +186,7 @@ void Logger::storeRecent(Level level, const char *tag, const char *message) {
     storeRecentInBuffer(recent_, kRecentCapacity, recent_head_, recent_count_,
                         level, tag_buf, message_buf, now_ms);
 
-    if (level == Error || level == Warn) {
+    if (SystemLogFilter::shouldStoreAlert(level, tag_buf, message_buf)) {
         storeRecentInBuffer(recent_alerts_, kRecentAlertCapacity, recent_alert_head_, recent_alert_count_,
                             level, tag_buf, message_buf, now_ms);
     }

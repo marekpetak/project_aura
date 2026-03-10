@@ -2179,7 +2179,10 @@ void dac_handle_action() {
             send_dac_action_error(400, "Invalid mode");
             return;
         }
-        const bool auto_armed = auto_mode ? context->storage->config().dac_auto_armed : false;
+        bool auto_armed = false;
+        if (auto_mode && fan.mode() == FanControl::Mode::Auto) {
+            auto_armed = context->storage->config().dac_auto_armed;
+        }
         if (!persist_dac_auto_state(*context->storage, auto_mode, auto_armed)) {
             send_dac_action_error(500, "Failed to persist DAC mode");
             return;

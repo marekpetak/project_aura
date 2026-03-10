@@ -56,9 +56,43 @@ void test_alert_buffer_survives_info_churn() {
     TEST_ASSERT_EQUAL_STRING("link unstable", alerts[0].message);
 }
 
+void test_alert_buffer_excludes_soft_sensor_warnings() {
+    Logger::log(Logger::Warn, "Sensors", "CO2 high: 1155 ppm");
+    advanceMillis(1);
+    Logger::log(Logger::Warn, "Sensors", "PM2.5 elevated: 19.7");
+    advanceMillis(1);
+    Logger::log(Logger::Error, "WiFi", "sta reconnect failed");
+
+    Logger::RecentEntry alerts[4];
+    const size_t alert_count = Logger::copyRecentAlerts(alerts, 4);
+
+    TEST_ASSERT_EQUAL_UINT32(1, alert_count);
+    TEST_ASSERT_EQUAL(Logger::Error, alerts[0].level);
+    TEST_ASSERT_EQUAL_STRING("WiFi", alerts[0].tag);
+    TEST_ASSERT_EQUAL_STRING("sta reconnect failed", alerts[0].message);
+}
+
+void test_alert_buffer_preserves_hard_errors_during_soft_sensor_warn_churn() {
+    Logger::log(Logger::Error, "MQTT", "connect timeout");
+    for (unsigned i = 0; i < 80; ++i) {
+        advanceMillis(1);
+        Logger::log(Logger::Warn, "Sensors", "CO2 high: 1203 ppm");
+    }
+
+    Logger::RecentEntry alerts[4];
+    const size_t alert_count = Logger::copyRecentAlerts(alerts, 4);
+
+    TEST_ASSERT_EQUAL_UINT32(1, alert_count);
+    TEST_ASSERT_EQUAL(Logger::Error, alerts[0].level);
+    TEST_ASSERT_EQUAL_STRING("MQTT", alerts[0].tag);
+    TEST_ASSERT_EQUAL_STRING("connect timeout", alerts[0].message);
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_alert_buffer_keeps_only_warn_and_error);
     RUN_TEST(test_alert_buffer_survives_info_churn);
+    RUN_TEST(test_alert_buffer_excludes_soft_sensor_warnings);
+    RUN_TEST(test_alert_buffer_preserves_hard_errors_during_soft_sensor_warn_churn);
     return UNITY_END();
 }
