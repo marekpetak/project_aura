@@ -253,6 +253,9 @@ typedef struct _objects_t {
     lv_obj_t *label_btn_back;
     lv_obj_t *wifi_status_icon_1;
     lv_obj_t *mqtt_status_icon_1;
+    lv_obj_t *log_status;
+    lv_obj_t *label_log_title;
+    lv_obj_t *label_log_status;
     lv_obj_t *background_3;
     lv_obj_t *container_wifi_status;
     lv_obj_t *label_wifi_status_value;

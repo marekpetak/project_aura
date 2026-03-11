@@ -30,6 +30,8 @@ bool TimeManager::initRtc() {
     rtc_present_ = false;
     rtc_valid_ = false;
     rtc_lost_power_ = false;
+    rtc_battery_low_ = false;
+    last_rtc_status_poll_ms_ = 0;
 
     rtc_.begin();
     delay(500);
@@ -55,6 +57,11 @@ bool TimeManager::initRtc() {
     }
     rtc_present_ = true;
     rtc_lost_power_ = osc_stop;
+    bool battery_low = false;
+    if (rtc_.isBatteryLow(battery_low)) {
+        applyRtcBatteryLowState(battery_low, true);
+    }
+    last_rtc_status_poll_ms_ = millis();
     if (!time_valid) {
         rtc_valid_ = false;
         return false;
@@ -105,7 +112,11 @@ bool TimeManager::setNtpEnabledPref(bool enabled) {
 }
 
 TimeManager::PollResult TimeManager::poll(uint32_t now_ms) {
-    return ntpPoll(now_ms);
+    PollResult result = ntpPoll(now_ms);
+    PollResult rtc_result = pollRtcStatus(now_ms);
+    result.state_changed = result.state_changed || rtc_result.state_changed;
+    result.time_updated = result.time_updated || rtc_result.time_updated;
+    return result;
 }
 
 TimeManager::NtpUiState TimeManager::getNtpUiState(uint32_t now_ms) const {
@@ -452,6 +463,61 @@ TimeManager::PollResult TimeManager::ntpPoll(uint32_t now_ms) {
         }
     }
     return result;
+}
+
+TimeManager::PollResult TimeManager::pollRtcStatus(uint32_t now_ms) {
+    PollResult result;
+    if (!rtc_present_) {
+        return result;
+    }
+    if (last_rtc_status_poll_ms_ != 0 &&
+        (now_ms - last_rtc_status_poll_ms_) < Config::RTC_STATUS_POLL_MS) {
+        return result;
+    }
+    last_rtc_status_poll_ms_ = now_ms;
+
+    tm utc_tm = {};
+    bool osc_stop = false;
+    bool time_valid = false;
+    if (rtc_.readTime(utc_tm, osc_stop, time_valid)) {
+        bool rtc_valid = false;
+        if (time_valid) {
+            const time_t epoch = makeUtcEpoch(utc_tm);
+            rtc_valid = !osc_stop && epoch > Config::TIME_VALID_EPOCH;
+        }
+        if (rtc_lost_power_ != osc_stop || rtc_valid_ != rtc_valid) {
+            result.state_changed = true;
+        }
+        rtc_lost_power_ = osc_stop;
+        rtc_valid_ = rtc_valid;
+        rtc_present_ = true;
+    }
+
+    bool battery_low = false;
+    if (rtc_.isBatteryLow(battery_low)) {
+        if (applyRtcBatteryLowState(battery_low, true)) {
+            result.state_changed = true;
+        }
+        rtc_present_ = true;
+    }
+
+    return result;
+}
+
+bool TimeManager::applyRtcBatteryLowState(bool battery_low, bool log_transition) {
+    if (rtc_battery_low_ == battery_low) {
+        return false;
+    }
+    const bool had_low = rtc_battery_low_;
+    rtc_battery_low_ = battery_low;
+    if (log_transition) {
+        if (battery_low) {
+            LOGW("RTC", "battery low");
+        } else if (had_low) {
+            LOGI("RTC", "battery status OK");
+        }
+    }
+    return true;
 }
 
 void TimeManager::stopNtpService() {

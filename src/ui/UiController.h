@@ -794,6 +794,7 @@ private:
     uint32_t last_ui_update_ms = 0;
     uint32_t last_dac_ui_update_ms = 0;
     uint32_t last_diag_log_update_ms = 0;
+    uint32_t last_settings_header_update_ms = 0;
     uint32_t last_ui_tick_ms = 0;
     uint32_t status_msg_last_ms = 0;
     uint32_t status_msg_signature = 0;

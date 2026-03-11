@@ -14,10 +14,12 @@ public:
     bool readTime(tm &out, bool &osc_stop, bool &valid);
     bool writeTime(const tm &utc_tm);
     bool clearOscillatorStop();
+    bool isBatteryLow(bool &low);
 
 private:
     static uint8_t bcd2bin(uint8_t val);
     static uint8_t bin2bcd(uint8_t val);
     bool read(uint8_t reg, uint8_t *buf, size_t len);
     bool write(uint8_t reg, const uint8_t *buf, size_t len);
+    bool readControl3(uint8_t &value);
 };

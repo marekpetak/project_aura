@@ -73,6 +73,12 @@ constexpr size_t UI_DIAG_LOG_MESSAGE_MAX_CHARS = 54;
 
 Logger::RecentEntry g_diag_log_snapshot[UI_DIAG_LOG_RECENT_MAX];
 
+enum class SettingsLogSeverity : uint8_t {
+    Ok = 0,
+    Warn,
+    Error,
+};
+
 float map_float_clamped(float value, float in_min, float in_max, float out_min, float out_max) {
     if (in_max <= in_min) return out_min;
     float v = value;
@@ -278,6 +284,21 @@ bool append_diag_log_line(char *text,
     return true;
 }
 
+SettingsLogSeverity summarize_settings_log_severity() {
+    Logger::RecentEntry recent[8];
+    const size_t count = Logger::copyRecentAlerts(recent, sizeof(recent) / sizeof(recent[0]));
+    bool has_warn = false;
+    for (size_t i = 0; i < count; ++i) {
+        if (recent[i].level == Logger::Error) {
+            return SettingsLogSeverity::Error;
+        }
+        if (recent[i].level == Logger::Warn) {
+            has_warn = true;
+        }
+    }
+    return has_warn ? SettingsLogSeverity::Warn : SettingsLogSeverity::Ok;
+}
+
 } // namespace
 
 UiController *UiController::instance_ = nullptr;
@@ -420,6 +441,7 @@ void UiController::onSensorPoll(const SensorManager::PollResult &poll) {
 void UiController::onTimePoll(const TimeManager::PollResult &poll) {
     if (poll.state_changed) {
         datetime_ui_dirty = true;
+        data_dirty = true;
     }
     if (poll.time_updated) {
         apply_auto_night_now();
@@ -1687,6 +1709,24 @@ void UiController::update_settings_header() {
     lv_obj_set_style_border_color(objects.container_settings_header, header_col, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_color(objects.container_settings_header, header_col, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_shadow_opa(objects.container_settings_header, header_shadow, LV_PART_MAIN | LV_STATE_DEFAULT);
+    if (objects.label_log_status || objects.log_status) {
+        const SettingsLogSeverity log_severity = summarize_settings_log_severity();
+        const char *log_label = UiText::StatusOk();
+        lv_color_t log_color = color_green();
+        if (log_severity == SettingsLogSeverity::Error) {
+            log_label = UiText::StatusErr();
+            log_color = color_red();
+        } else if (log_severity == SettingsLogSeverity::Warn) {
+            log_label = UiText::StatusWarn();
+            log_color = color_yellow();
+        }
+        if (objects.label_log_status) {
+            safe_label_set_text(objects.label_log_status, log_label);
+        }
+        if (objects.log_status) {
+            set_chip_color(objects.log_status, log_color);
+        }
+    }
     sync_night_mode_toggle_ui();
     sync_auto_dim_button_state();
     sync_backlight_settings_button_state();

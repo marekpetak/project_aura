@@ -36,6 +36,10 @@ inline const char *StatusOn() { return UiStrings::text(UiStrings::TextId::Status
 inline const char *StatusOk() { return UiStrings::text(UiStrings::TextId::StatusOk); }
 inline const char *StatusErr() { return UiStrings::text(UiStrings::TextId::StatusErr); }
 inline const char *StatusSync() { return UiStrings::text(UiStrings::TextId::StatusSync); }
+inline const char *StatusConn() { return UiStrings::text(UiStrings::TextId::StatusConn); }
+inline const char *StatusUpd() { return UiStrings::text(UiStrings::TextId::StatusUpd); }
+inline const char *StatusLow() { return UiStrings::text(UiStrings::TextId::StatusLow); }
+inline const char *StatusWarn() { return UiStrings::text(UiStrings::TextId::StatusWarn); }
 
 inline const char *WifiStatusConnected() { return UiStrings::text(UiStrings::TextId::WifiStatusConnected); }
 inline const char *WifiStatusApMode() { return UiStrings::text(UiStrings::TextId::WifiStatusApMode); }

@@ -54,6 +54,7 @@ public:
     bool isRtcPresent() const { return rtc_present_; }
     bool isRtcValid() const { return rtc_valid_; }
     bool isRtcLostPower() const { return rtc_lost_power_; }
+    bool isRtcBatteryLow() const { return rtc_battery_low_; }
 
     static int findTimezoneIndex(const char *name);
     static void formatTzOffset(int offset_min, char *out, size_t len);
@@ -69,6 +70,8 @@ private:
     bool requestNtpSync();
     bool syncNtpWithWifi();
     PollResult ntpPoll(uint32_t now_ms);
+    PollResult pollRtcStatus(uint32_t now_ms);
+    bool applyRtcBatteryLowState(bool battery_low, bool log_transition);
     void stopNtpService();
     static void buildTimezonePosix(const TimeZoneEntry &tz, char *out, size_t len);
 
@@ -78,6 +81,7 @@ private:
     bool rtc_present_ = false;
     bool rtc_valid_ = false;
     bool rtc_lost_power_ = false;
+    bool rtc_battery_low_ = false;
 
     bool ntp_enabled_pref_ = true;
     bool ntp_enabled_ = true;
@@ -87,6 +91,7 @@ private:
     uint32_t ntp_last_attempt_ms_ = 0;
     uint32_t ntp_sync_start_ms_ = 0;
     uint32_t last_rtc_restore_ms_ = 0;
+    uint32_t last_rtc_status_poll_ms_ = 0;
 
     bool wifi_enabled_ = false;
     bool wifi_connected_ = false;

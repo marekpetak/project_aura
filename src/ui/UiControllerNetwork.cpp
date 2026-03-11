@@ -104,7 +104,7 @@ void UiController::update_datetime_ui() {
     const char *ntp_label = UiText::StatusOff();
     if (ntp_state == TimeManager::NTP_UI_SYNCING) {
         ntp_color = color_blue();
-        ntp_label = UiText::StatusSync();
+        ntp_label = UiText::StatusUpd();
     } else if (ntp_state == TimeManager::NTP_UI_OK) {
         ntp_color = color_green();
         ntp_label = UiText::StatusOk();
@@ -129,6 +129,9 @@ void UiController::update_datetime_ui() {
         } else if (!timeManager.isRtcValid()) {
             safe_label_set_text(objects.label_rtc_status, UiText::StatusErr());
             if (objects.chip_rtc_status) set_chip_color(objects.chip_rtc_status, color_red());
+        } else if (timeManager.isRtcBatteryLow()) {
+            safe_label_set_text(objects.label_rtc_status, UiText::StatusLow());
+            if (objects.chip_rtc_status) set_chip_color(objects.chip_rtc_status, color_yellow());
         } else {
             safe_label_set_text(objects.label_rtc_status, UiText::StatusOk());
             if (objects.chip_rtc_status) set_chip_color(objects.chip_rtc_status, color_green());
@@ -145,7 +148,7 @@ void UiController::update_datetime_ui() {
             safe_label_set_text(objects.label_wifi_status_1, UiText::StatusOk());
             if (objects.chip_wifi_status) set_chip_color(objects.chip_wifi_status, color_green());
         } else {
-            safe_label_set_text(objects.label_wifi_status_1, UiText::StatusSync());
+            safe_label_set_text(objects.label_wifi_status_1, UiText::StatusConn());
             if (objects.chip_wifi_status) set_chip_color(objects.chip_wifi_status, color_blue());
         }
     }

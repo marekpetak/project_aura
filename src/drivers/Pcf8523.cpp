@@ -9,6 +9,12 @@
 #include <string.h>
 #include "config/AppConfig.h"
 
+namespace {
+
+constexpr uint8_t kPcf8523BatteryLowFlag = 0x04;
+
+} // namespace
+
 bool Pcf8523::begin() {
     // Enable battery switch-over (standard mode, battery low detection on).
     // Default after POR is 0xE0 (switch-over disabled) which causes
@@ -106,4 +112,17 @@ bool Pcf8523::clearOscillatorStop() {
     }
     sec &= 0x7F;  // Clear OS bit (bit 7), keep seconds
     return write(Config::PCF8523_REG_SECONDS, &sec, 1);
+}
+
+bool Pcf8523::isBatteryLow(bool &low) {
+    uint8_t ctrl3 = 0;
+    if (!readControl3(ctrl3)) {
+        return false;
+    }
+    low = (ctrl3 & kPcf8523BatteryLowFlag) != 0;
+    return true;
+}
+
+bool Pcf8523::readControl3(uint8_t &value) {
+    return read(Config::PCF8523_REG_CONTROL_3, &value, 1);
 }
