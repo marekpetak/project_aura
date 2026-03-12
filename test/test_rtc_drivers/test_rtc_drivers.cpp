@@ -82,6 +82,28 @@ void test_pcf8523_probe_falls_back_to_calendar_layout() {
     TEST_ASSERT_TRUE(pcf8523.probeFallback());
 }
 
+void test_pcf8523_probe_fallback_rejects_invalid_bcd_calendar_fields() {
+    I2cMock::setDevicePresent(Config::PCF8523_ADDR, true);
+    const uint8_t control[] = {0x00, 0x00, 0x00};
+    const uint8_t time_regs[] = {
+        toBcd(12), toBcd(34), toBcd(9), 0x1A, toBcd(3), toBcd(4), toBcd(26)
+    };
+    I2cMock::setRegisters(Config::PCF8523_ADDR, Config::PCF8523_REG_CONTROL_1,
+                          control, sizeof(control));
+    I2cMock::setRegisters(Config::PCF8523_ADDR, Config::PCF8523_REG_SECONDS,
+                          time_regs, sizeof(time_regs));
+
+    Pcf8523 pcf8523;
+    TEST_ASSERT_FALSE(pcf8523.probeFallback());
+
+    const uint8_t valid_day_time_regs[] = {
+        toBcd(12), toBcd(34), toBcd(9), toBcd(15), toBcd(3), 0x1A, toBcd(26)
+    };
+    I2cMock::setRegisters(Config::PCF8523_ADDR, Config::PCF8523_REG_SECONDS,
+                          valid_day_time_regs, sizeof(valid_day_time_regs));
+    TEST_ASSERT_FALSE(pcf8523.probeFallback());
+}
+
 void test_ds3231_probe_matches_signature() {
     seedDs3231Signature();
 
@@ -166,6 +188,7 @@ int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_pcf8523_probe_matches_project_signature);
     RUN_TEST(test_pcf8523_probe_falls_back_to_calendar_layout);
+    RUN_TEST(test_pcf8523_probe_fallback_rejects_invalid_bcd_calendar_fields);
     RUN_TEST(test_ds3231_probe_matches_signature);
     RUN_TEST(test_ds3231_probe_accepts_nondefault_control_bits);
     RUN_TEST(test_ds3231_probe_rejects_zero_day_or_month);

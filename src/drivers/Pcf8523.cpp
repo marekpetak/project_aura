@@ -13,6 +13,26 @@ namespace {
 
 constexpr uint8_t kPcf8523BatteryLowFlag = 0x04;
 
+uint8_t bcd2binLocal(uint8_t val) {
+    return val - 6 * (val >> 4);
+}
+
+bool isBcdByte(uint8_t raw) {
+    return ((raw >> 4) & 0x0F) <= 9 && (raw & 0x0F) <= 9;
+}
+
+bool isBcdWithin(uint8_t raw, uint8_t mask, uint8_t max_value, bool allow_zero) {
+    raw &= mask;
+    if (!isBcdByte(raw)) {
+        return false;
+    }
+    const uint8_t value = bcd2binLocal(raw);
+    if (!allow_zero && value == 0) {
+        return false;
+    }
+    return value <= max_value;
+}
+
 } // namespace
 
 bool Pcf8523::probe() {
@@ -39,16 +59,17 @@ bool Pcf8523::probeFallback() {
     const bool ctrl3_reserved_clear = (ctrl[2] & 0x10) == 0;
     const uint8_t weekday_raw = time_regs[4];
     const bool weekday_valid = (weekday_raw & 0xF8) == 0 &&
+                               isBcdByte(weekday_raw & 0x07) &&
                                bcd2bin(weekday_raw & 0x07) <= 6;
-    const int day = bcd2bin(time_regs[3] & 0x3F);
-    const int month = bcd2bin(time_regs[5] & 0x1F);
     return ctrl1_reserved_clear &&
            ctrl3_reserved_clear &&
+           isBcdWithin(time_regs[0], 0x7F, 59, true) &&
+           isBcdWithin(time_regs[1], 0x7F, 59, true) &&
+           isBcdWithin(time_regs[2], 0x3F, 23, true) &&
            weekday_valid &&
-           day >= 1 &&
-           day <= 31 &&
-           month >= 1 &&
-           month <= 12;
+           isBcdWithin(time_regs[3], 0x3F, 31, false) &&
+           isBcdWithin(time_regs[5], 0x1F, 12, false) &&
+           isBcdByte(time_regs[6]);
 }
 
 bool Pcf8523::begin() {
