@@ -13,26 +13,6 @@ namespace {
 
 constexpr uint8_t kPcf8523BatteryLowFlag = 0x04;
 
-uint8_t bcd2binLocal(uint8_t val) {
-    return val - 6 * (val >> 4);
-}
-
-bool isBcdByte(uint8_t raw) {
-    return ((raw >> 4) & 0x0F) <= 9 && (raw & 0x0F) <= 9;
-}
-
-bool isBcdWithin(uint8_t raw, uint8_t mask, uint8_t max_value, bool allow_zero) {
-    raw &= mask;
-    if (!isBcdByte(raw)) {
-        return false;
-    }
-    const uint8_t value = bcd2binLocal(raw);
-    if (!allow_zero && value == 0) {
-        return false;
-    }
-    return value <= max_value;
-}
-
 } // namespace
 
 bool Pcf8523::probe() {
