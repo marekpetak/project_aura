@@ -21,15 +21,13 @@ bool Pcf8523::probe() {
         return false;
     }
 
-    const bool primary_match =
-        signature[0] == 0x00 &&
-        signature[1] == 0x00 &&
-        signature[2] == Config::PCF8523_TMR_FREQ_RESET &&
-        signature[4] == Config::PCF8523_TMR_FREQ_RESET;
-    if (primary_match) {
-        return true;
-    }
+    return signature[0] == 0x00 &&
+           signature[1] == 0x00 &&
+           signature[2] == Config::PCF8523_TMR_FREQ_RESET &&
+           signature[4] == Config::PCF8523_TMR_FREQ_RESET;
+}
 
+bool Pcf8523::probeFallback() {
     uint8_t ctrl[3] = { 0 };
     uint8_t time_regs[7] = { 0 };
     if (!read(Config::PCF8523_REG_CONTROL_1, ctrl, sizeof(ctrl)) ||

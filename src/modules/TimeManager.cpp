@@ -591,6 +591,12 @@ bool TimeManager::detectRtc() {
         LOGI("RTC", "%s found at 0x%02X", rtcLabel(), Config::DS3231_ADDR);
         return true;
     }
+    // Keep the broader calendar-layout fallback only after DS3231 was rejected.
+    if (pcf8523_.probeFallback()) {
+        rtc_type_ = RtcType::Pcf8523;
+        LOGI("RTC", "%s found at 0x%02X", rtcLabel(), Config::PCF8523_ADDR);
+        return true;
+    }
     rtc_type_ = RtcType::None;
     return false;
 }

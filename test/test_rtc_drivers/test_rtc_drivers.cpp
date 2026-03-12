@@ -31,6 +31,20 @@ void seedDs3231Signature(uint8_t control = 0x1C) {
                           time_regs, sizeof(time_regs));
 }
 
+void seedDs3231ThatMatchesPcf8523Fallback() {
+    I2cMock::setDevicePresent(Config::DS3231_ADDR, true);
+    const uint8_t meta_regs[] = {0x00, 0x00, 0x19, 0x40};
+    I2cMock::setRegisters(Config::DS3231_ADDR, Config::DS3231_REG_STATUS,
+                          meta_regs, sizeof(meta_regs));
+    const uint8_t time_regs[] = {
+        toBcd(8), toBcd(34), toBcd(9), 4, toBcd(12), toBcd(3), toBcd(19)
+    };
+    I2cMock::setRegisters(Config::DS3231_ADDR, Config::DS3231_REG_SECONDS,
+                          time_regs, sizeof(time_regs));
+    const uint8_t alarm1_regs[] = {3, 4, 5};
+    I2cMock::setRegisters(Config::DS3231_ADDR, 0x07, alarm1_regs, sizeof(alarm1_regs));
+}
+
 } // namespace
 
 void setUp() {
@@ -65,7 +79,7 @@ void test_pcf8523_probe_falls_back_to_calendar_layout() {
     I2cMock::setRegister(Config::PCF8523_ADDR, Config::PCF8523_REG_TMR_B_FREQ_CTRL, 0x05);
 
     Pcf8523 pcf8523;
-    TEST_ASSERT_TRUE(pcf8523.probe());
+    TEST_ASSERT_TRUE(pcf8523.probeFallback());
 }
 
 void test_ds3231_probe_matches_signature() {
@@ -86,6 +100,17 @@ void test_ds3231_probe_accepts_nondefault_control_bits() {
 
     TEST_ASSERT_TRUE(ds3231.probe());
     TEST_ASSERT_FALSE(pcf8523.probe());
+}
+
+void test_ds3231_can_match_pcf8523_fallback_shape() {
+    seedDs3231ThatMatchesPcf8523Fallback();
+
+    Ds3231 ds3231;
+    Pcf8523 pcf8523;
+
+    TEST_ASSERT_FALSE(pcf8523.probe());
+    TEST_ASSERT_TRUE(pcf8523.probeFallback());
+    TEST_ASSERT_TRUE(ds3231.probe());
 }
 
 void test_ds3231_read_time_reports_osf_and_valid_time() {
@@ -130,6 +155,7 @@ int main(int, char **) {
     RUN_TEST(test_pcf8523_probe_falls_back_to_calendar_layout);
     RUN_TEST(test_ds3231_probe_matches_signature);
     RUN_TEST(test_ds3231_probe_accepts_nondefault_control_bits);
+    RUN_TEST(test_ds3231_can_match_pcf8523_fallback_shape);
     RUN_TEST(test_ds3231_read_time_reports_osf_and_valid_time);
     RUN_TEST(test_pcf8523_begin_enables_battery_switching);
     return UNITY_END();

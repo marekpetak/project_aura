@@ -11,6 +11,7 @@
 class Pcf8523 {
 public:
     bool probe();
+    bool probeFallback();
     bool begin();
     bool readTime(tm &out, bool &osc_stop, bool &valid);
     bool writeTime(const tm &utc_tm);
