@@ -11,15 +11,16 @@ Support this project: back the crowdfunding to get detailed build instructions, 
 https://makerworld.com/en/crowdfunding/159-project-aura-make-the-invisible-visible
 
 Project Aura is an open-source ESP32-S3 air-quality station built for makers who want a polished,
-reliable device rather than a bare sensor board. It combines a touch-friendly LVGL UI, a local web
-setup portal, and MQTT with Home Assistant discovery.
+reliable device rather than a bare sensor board. It combines a touch-friendly LVGL UI, a full local
+web dashboard with browser OTA updates, a Wi-Fi setup portal, optional 0-10V fan control, and MQTT
+with Home Assistant discovery.
 
 This repository contains the firmware source code and configuration needed to flash and customize the device.
 
 **Join the community:** [GitHub Discussions](https://github.com/21cncstudio/project_aura/discussions)
 
 ## Table of Contents
-- [Video Demo](#video-demo)
+- [Videos](#videos)
 - [Highlights](#highlights)
 - [Gallery](#gallery)
 - [UI Screens](#ui-screens)
@@ -39,12 +40,12 @@ This repository contains the firmware source code and configuration needed to fl
 - [Tests](#tests)
 - [Repo Layout](#repo-layout)
 
-## Video Review
-Click the image.
-[![Project Aura demo video](https://img.youtube.com/vi/TNsyDGNrN-w/maxresdefault.jpg)](https://www.youtube.com/watch?v=1pzBqcmbWl8)
+## Videos
+Watch the demo:
+[![Project Aura demo video](https://img.youtube.com/vi/TNsyDGNrN-w/maxresdefault.jpg)](https://www.youtube.com/watch?v=TNsyDGNrN-w)
 
-Also watch the new Project Aura review:
-[Project Aura demo on YouTube](https://www.youtube.com/watch?v=TNsyDGNrN-w)
+Also watch the hands-on review:
+[Project Aura review on YouTube](https://www.youtube.com/watch?v=1pzBqcmbWl8)
 
 ## Highlights
 - Professional telemetry: PM0.5/PM1/PM2.5/PM4/PM10, CO, CO2, VOC, NOx, temperature, humidity, absolute humidity (AH), pressure, HCHO.
@@ -54,6 +55,7 @@ Also watch the new Project Aura review:
 - Easy setup: Wi-Fi AP onboarding + mDNS access (`http://<hostname>.local`).
 - Home Assistant ready: automatic MQTT discovery and ready-to-use dashboard code.
 - Optional DAC control (GP8403, 0-10V): manual levels/timer plus automatic demand mode from air-quality thresholds.
+- Hardware autodetect: PCF8523/DS3231 RTC plus BMP58x/BMP3xx/DPS310 pressure support.
 - Robust Safe Boot: automatic rollback to the last-known-good config after crashes.
 
 ![Project Aura device](docs/assets/device-hero.jpg)
@@ -110,7 +112,7 @@ Quick diagnostics for support:
 
 ## Hardware and BOM
 Project Aura is designed around high-quality components to ensure accuracy. If you are sourcing parts yourself,
-look for these specific modules:
+look for these specific modules for the reference build:
 
 | Component | Part / Model |
 | :--- | :--- |
@@ -118,17 +120,19 @@ look for these specific modules:
 | Main Sensor | Sensirion SEN66 (via Adafruit breakout) |
 | Carbon Monoxide (CO) | DFRobot Fermion SEN0466 (optional) |
 | Formaldehyde | Sensirion SFA30 (Grove interface, optional) |
-| Pressure | Adafruit BMP580 or DPS310 |
-| RTC | Adafruit PCF8523 |
+| Pressure | Adafruit BMP580 or DPS310 (recommended) |
+| RTC | Adafruit PCF8523 (recommended) |
 | DAC Output | GP8403 2-channel 0-10V DAC (optional, VOUT0 used) |
 
 Affiliate note: the Waveshare board link above is an affiliate link and helps support Project Aura at no extra cost.
 
+Pressure note: the reference BOM uses BMP580 or DPS310. Firmware auto-detects BMP580/581, BMP585, BMP388, BMP390, and DPS310.
+RTC note: the reference BOM uses PCF8523. Firmware auto-detects PCF8523 and DS3231, and also provides a manual RTC override mode.
 Sensor note: the SFA30 is fully supported and widely available. Support for the successor model (SFA40) is on the roadmap.
 CO note: the SEN0466 is optional. If not detected at boot, CO is marked unavailable and PM1 telemetry remains active.
 Note: SEN66 gas indices (VOC/NOx) require about 5 minutes of warmup for reliable readings; the UI shows WARMUP during this period.
 
-Recommended retailers: Mouser, DigiKey, LCSC, Adafruit, Seeed Studio, Waveshare.
+Recommended retailers: Mouser, DigiKey, LCSC, Adafruit, Seeed Studio, [Waveshare (core board)](https://www.waveshare.com/esp32-s3-touch-lcd-4.3.htm?&aff_id=144793).
 
 ## Assembly and Wiring Notice
 Please pay close attention to the cabling. The pin order on the board is custom and requires modification
@@ -144,7 +148,7 @@ DIY: verify pinouts against the pin table below before powering on to avoid dama
 | :--- | :--- | :--- |
 | 3V3 | 3V3 | Power for external I2C sensors |
 | GND | GND | Common ground |
-| I2C SDA | GPIO 8 | Shared bus: SEN66, SFA30, SEN0466, BMP580/DPS310, GP8403 |
+| I2C SDA | GPIO 8 | Shared bus: SEN66, SFA30, SEN0466, BMP58x/BMP3xx/DPS310, PCF8523/DS3231, GP8403 |
 | I2C SCL | GPIO 9 | Shared bus |
 
 Display and touch are integrated on the board; no external wiring is needed for them.
@@ -167,9 +171,9 @@ Data flow and responsibilities are intentionally split into small managers:
 ```mermaid
 graph TD
     subgraph Hardware
-        Sensors[Sensors<br/>SEN66, SFA30, SEN0466, BMP580/DPS310]
+        Sensors[Sensors<br/>SEN66, SFA30, SEN0466, BMP58x/BMP3xx/DPS310]
         Touch[Touch<br/>GT911]
-        RTC[RTC<br/>PCF8523]
+        RTC[RTC<br/>PCF8523 or DS3231]
         DAC[DAC<br/>GP8403]
         Actuator[External Fan / Actuator]
         LCD[LCD + Backlight]
