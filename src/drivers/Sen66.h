@@ -55,6 +55,7 @@ private:
     bool performFrc(uint16_t ref_ppm, uint16_t &correction);
     bool readNumberConcentration(SensorData &out);
     int smoothCo2(int new_val);
+    float desiredTempCorrectionC() const;
 
     float temp_offset_ = 0.0f;
     float hum_offset_ = 0.0f;

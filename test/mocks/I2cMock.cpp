@@ -1,6 +1,7 @@
 #include "I2cMock.h"
 
 #include <array>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -20,7 +21,10 @@ struct DeviceState {
     std::array<bool, 256> read_fail{};
     std::array<bool, 256> write_fail{};
     std::unordered_set<uint16_t> failing_cmds;
+    std::unordered_map<uint16_t, std::vector<uint8_t>> cmd_reads;
     uint16_t read_wrap_last_reg = 0xFF;
+    uint16_t last_sensor_cmd = 0;
+    bool has_last_sensor_cmd = false;
 };
 
 std::array<DeviceState, 256> g_devices{};
@@ -47,6 +51,14 @@ void setCommandFailure(uint8_t addr, uint16_t cmd, bool fail) {
     } else {
         device(addr).failing_cmds.erase(cmd);
     }
+}
+
+void setCommandRead(uint8_t addr, uint16_t cmd, const uint8_t *data, size_t len) {
+    if (!data || len == 0) {
+        device(addr).cmd_reads.erase(cmd);
+        return;
+    }
+    device(addr).cmd_reads[cmd] = std::vector<uint8_t>(data, data + len);
 }
 
 void setRegister(uint8_t addr, uint8_t reg, uint8_t value) {
@@ -129,6 +141,8 @@ esp_err_t i2c_master_cmd_begin(i2c_port_t, i2c_cmd_handle_t cmd, TickType_t) {
     if (cmd->payload.size() >= 2) {
         const uint16_t sensor_cmd =
             (static_cast<uint16_t>(cmd->payload[0]) << 8) | cmd->payload[1];
+        device(cmd->addr).last_sensor_cmd = sensor_cmd;
+        device(cmd->addr).has_last_sensor_cmd = true;
         if (device(cmd->addr).failing_cmds.count(sensor_cmd) != 0) {
             return ESP_FAIL;
         }
@@ -189,6 +203,18 @@ esp_err_t i2c_master_read_from_device(i2c_port_t,
                                       TickType_t) {
     if (!device(addr).present || !read_buffer || read_size == 0) {
         return ESP_FAIL;
+    }
+    if (device(addr).has_last_sensor_cmd) {
+        auto it = device(addr).cmd_reads.find(device(addr).last_sensor_cmd);
+        if (it != device(addr).cmd_reads.end()) {
+            if (it->second.size() < read_size) {
+                return ESP_FAIL;
+            }
+            for (size_t i = 0; i < read_size; ++i) {
+                read_buffer[i] = it->second[i];
+            }
+            return ESP_OK;
+        }
     }
     for (size_t i = 0; i < read_size; ++i) {
         read_buffer[i] = 0;

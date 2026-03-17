@@ -150,15 +150,16 @@ bool Sen66::setTemperatureOffsetParams(float offset_c, float slope, uint16_t tim
 }
 
 bool Sen66::applyTempOffsetParams() {
+    const float desired_correction = desiredTempCorrectionC();
     if (!setTemperatureOffsetParams(
-            temp_offset_,
+            desired_correction,
             Config::SEN66_TEMP_OFFSET_SLOPE,
             Config::SEN66_TEMP_OFFSET_TIME_S,
             Config::SEN66_TEMP_OFFSET_SLOT)) {
         return false;
     }
     temp_offset_hw_active_ = true;
-    temp_offset_hw_value_ = temp_offset_;
+    temp_offset_hw_value_ = desired_correction;
     return true;
 }
 
@@ -260,6 +261,10 @@ void Sen66::resetCo2Smoother() {
     for (int &reading : co2_readings_) {
         reading = 400;
     }
+}
+
+float Sen66::desiredTempCorrectionC() const {
+    return temp_offset_ - Config::BASE_TEMP_OFFSET;
 }
 
 bool Sen66::isWarmupActive() const {
@@ -366,11 +371,11 @@ bool Sen66::readValues(SensorData &out) {
 
     out.temp_valid = (t_raw != 0x7FFF);
     if (out.temp_valid) {
-        float temp_offset = temp_offset_;
+        float temp_correction = desiredTempCorrectionC();
         if (temp_offset_hw_active_) {
-            temp_offset -= temp_offset_hw_value_;
+            temp_correction -= temp_offset_hw_value_;
         }
-        out.temperature = (t_raw / 200.0f) - Config::BASE_TEMP_OFFSET + temp_offset;
+        out.temperature = (t_raw / 200.0f) + temp_correction;
     } else {
         out.temperature = 0.0f;
     }
@@ -600,7 +605,10 @@ bool Sen66::start(bool asc_enabled) {
     if (!applyTempOffsetParams()) {
         LOGW("SEN66", "temp offset set failed");
     } else {
-        LOGI("SEN66", "temp offset: %.1f C", temp_offset_);
+        LOGI("SEN66",
+             "temp compensation via HW: base %.1f C, user %.1f C",
+             Config::BASE_TEMP_OFFSET,
+             temp_offset_);
     }
     if (voc_state_valid_) {
         if (!setVocState(voc_state_, sizeof(voc_state_))) {
