@@ -2271,6 +2271,15 @@ function initOtaUI() {
       const pct = Math.min(100, Math.round((ev.loaded / ev.total) * 100));
       progressEl.style.width = pct + '%';
     };
+    const finishUploadFailure = message => {
+      otaUploadInFlight = false;
+      otaRestartPending = false;
+      otaReconnectGraceUntilMs = 0;
+      stopOtaRecoveryWatcher();
+      uploadBtn.disabled = false;
+      statusEl.textContent = message;
+      statusEl.className = 'ota-status err';
+    };
     xhr.onreadystatechange = () => {
       if (xhr.readyState !== XMLHttpRequest.DONE) return;
       otaUploadInFlight = false;
@@ -2287,30 +2296,20 @@ function initOtaUI() {
         startOtaRecoveryWatcher();
         return;
       }
-      otaRestartPending = false;
-      otaReconnectGraceUntilMs = 0;
-      stopOtaRecoveryWatcher();
-      uploadBtn.disabled = false;
-      statusEl.textContent = (pl && pl.error) || 'Upload failed (HTTP ' + (xhr.status || 0) + ')';
-      statusEl.className = 'ota-status err';
+      finishUploadFailure((pl && pl.error) || 'Upload failed (HTTP ' + (xhr.status || 0) + ')');
     };
     xhr.onerror = () => {
-      otaUploadInFlight = false;
-      otaRestartPending = false;
-      otaReconnectGraceUntilMs = 0;
-      stopOtaRecoveryWatcher();
-      uploadBtn.disabled = false;
-      statusEl.textContent = 'Upload failed. Check device connection and retry.';
-      statusEl.className = 'ota-status err';
+      finishUploadFailure('Upload failed. Check device connection and retry.');
+    };
+    xhr.onabort = () => {
+      finishUploadFailure('Upload was interrupted. Check device connection and retry.');
     };
     xhr.ontimeout = () => {
-      otaUploadInFlight = false;
-      otaRestartPending = false;
-      otaReconnectGraceUntilMs = 0;
-      stopOtaRecoveryWatcher();
-      uploadBtn.disabled = false;
-      statusEl.textContent = 'Upload timed out. Retry closer to device or with stronger WiFi.';
-      statusEl.className = 'ota-status err';
+      finishUploadFailure('Upload timed out. Retry closer to device or with stronger WiFi.');
+    };
+    xhr.onloadend = () => {
+      if (!otaUploadInFlight) return;
+      finishUploadFailure('Upload ended unexpectedly. Check device connection and retry.');
     };
     xhr.send(form);
   });

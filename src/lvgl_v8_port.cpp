@@ -7,6 +7,7 @@
 #include "esp_timer.h"
 #include "esp_debug_helpers.h"
 #include "esp_log.h"
+#include <atomic>
 #include <string.h>
 #undef ESP_UTILS_LOG_TAG
 #define ESP_UTILS_LOG_TAG "LvPort"
@@ -22,7 +23,8 @@ using namespace esp_panel::drivers;
 static SemaphoreHandle_t lvgl_mux = nullptr;                  // LVGL mutex
 static TaskHandle_t lvgl_task_handle = nullptr;
 static esp_timer_handle_t lvgl_tick_timer = NULL;
-static bool lvgl_port_paused = false;
+static std::atomic<bool> lvgl_port_paused{false};
+static std::atomic<bool> lvgl_pause_requested{false};
 static volatile bool lvgl_vsync_notify_enabled = true;
 static LCD *lvgl_port_lcd = nullptr;
 static void *lvgl_buf[LVGL_PORT_BUFFER_NUM_MAX] = {};
@@ -103,6 +105,14 @@ static inline uint32_t lvgl_diag_age_ms(uint32_t now_ms, uint32_t stamp_ms)
 static inline uint32_t get_monotonic_ms()
 {
     return static_cast<uint32_t>(esp_timer_get_time() / 1000ULL);
+}
+
+static inline void lvgl_port_wake_task()
+{
+    TaskHandle_t task = lvgl_task_handle;
+    if (task != nullptr) {
+        xTaskAbortDelay(task);
+    }
 }
 
 static inline bool is_before_deadline(uint32_t now_ms, uint32_t deadline_ms)
@@ -1048,6 +1058,40 @@ static void lvgl_port_task(void *arg)
 
     uint32_t task_delay_ms = LVGL_PORT_TASK_MAX_DELAY_MS;
     while (1) {
+        if (lvgl_pause_requested.load(std::memory_order_acquire)) {
+            if (!lvgl_port_paused.load(std::memory_order_acquire)) {
+                lvgl_vsync_notify_enabled = false;
+#if LVGL_PORT_AVOID_TEAR
+                if (lvgl_port_lcd != nullptr) {
+                    lvgl_port_lcd->attachRefreshFinishCallback(nullptr, (void *)lvgl_task_handle);
+                }
+#endif
+#if !LV_TICK_CUSTOM
+                if (lvgl_tick_timer != nullptr) {
+                    esp_timer_stop(lvgl_tick_timer);
+                }
+#endif
+                lvgl_port_paused.store(true, std::memory_order_release);
+            }
+            vTaskDelay(pdMS_TO_TICKS(5));
+            continue;
+        }
+
+        if (lvgl_port_paused.load(std::memory_order_acquire)) {
+#if LVGL_PORT_AVOID_TEAR
+            if (lvgl_port_lcd != nullptr) {
+                lvgl_vsync_notify_enabled = true;
+                lvgl_port_lcd->attachRefreshFinishCallback(onLcdVsyncCallback, (void *)lvgl_task_handle);
+            }
+#endif
+#if !LV_TICK_CUSTOM
+            if (lvgl_tick_timer != nullptr) {
+                esp_timer_start_periodic(lvgl_tick_timer, LVGL_PORT_TICK_PERIOD_MS * 1000);
+            }
+#endif
+            lvgl_port_paused.store(false, std::memory_order_release);
+        }
+
         if (lvgl_port_lock(-1)) {
             lvgl_diag_mark_timer_handler();
             task_delay_ms = lv_timer_handler();
@@ -1161,6 +1205,8 @@ bool lvgl_port_init(LCD *lcd, Touch *tp)
     lvgl_vsync_notify_enabled = true;
     lcd->attachRefreshFinishCallback(onLcdVsyncCallback, (void *)lvgl_task_handle);
 #endif
+    lvgl_port_paused.store(false, std::memory_order_release);
+    lvgl_pause_requested.store(false, std::memory_order_release);
 
     return true;
 }
@@ -1233,59 +1279,37 @@ bool lvgl_port_get_diagnostics(lvgl_port_diagnostics_t *out)
     out->vsync_age_ms = lvgl_diag_age_ms(now_ms, vsync_last_ms);
     out->lock_fail_count = lvgl_diag_lock_fail_count;
     out->touch_read_error_count = lvgl_diag_touch_read_error_count;
-    out->paused = lvgl_port_paused;
+    out->paused = lvgl_port_paused.load(std::memory_order_acquire);
 
     return true;
 }
 
 bool lvgl_port_pause(void)
 {
-    if (lvgl_port_paused) {
-        return true;
-    }
-    lvgl_vsync_notify_enabled = false;
-#if LVGL_PORT_AVOID_TEAR
-    if (lvgl_port_lcd != nullptr) {
-        lvgl_port_lcd->attachRefreshFinishCallback(nullptr, (void *)lvgl_task_handle);
-    }
-#endif
-#if !LV_TICK_CUSTOM
-    if (lvgl_tick_timer != nullptr) {
-        esp_timer_stop(lvgl_tick_timer);
-    }
-#endif
-    if (lvgl_task_handle != nullptr) {
-        if (lvgl_port_lock(-1)) {
-            vTaskSuspend(lvgl_task_handle);
-            lvgl_port_unlock();
-        } else {
-            vTaskSuspend(lvgl_task_handle);
-        }
-    }
-    lvgl_port_paused = true;
+    return lvgl_port_request_pause() && lvgl_port_is_paused();
+}
+
+bool lvgl_port_request_pause(void)
+{
+    lvgl_pause_requested.store(true, std::memory_order_release);
+    lvgl_port_wake_task();
     return true;
+}
+
+bool lvgl_port_is_paused(void)
+{
+    return lvgl_port_paused.load(std::memory_order_acquire);
 }
 
 bool lvgl_port_resume(void)
 {
-    if (!lvgl_port_paused) {
-        return true;
-    }
-    if (lvgl_task_handle != nullptr) {
-        vTaskResume(lvgl_task_handle);
-    }
-#if LVGL_PORT_AVOID_TEAR
-    if (lvgl_port_lcd != nullptr) {
-        lvgl_vsync_notify_enabled = true;
-        lvgl_port_lcd->attachRefreshFinishCallback(onLcdVsyncCallback, (void *)lvgl_task_handle);
-    }
-#endif
-#if !LV_TICK_CUSTOM
-    if (lvgl_tick_timer != nullptr) {
-        esp_timer_start_periodic(lvgl_tick_timer, LVGL_PORT_TICK_PERIOD_MS * 1000);
-    }
-#endif
-    lvgl_port_paused = false;
+    return lvgl_port_request_resume() && !lvgl_port_is_paused();
+}
+
+bool lvgl_port_request_resume(void)
+{
+    lvgl_pause_requested.store(false, std::memory_order_release);
+    lvgl_port_wake_task();
     return true;
 }
 
@@ -1344,6 +1368,7 @@ bool lvgl_port_prepare_restart(void)
         vTaskSuspend(task);
     }
     lvgl_task_handle = nullptr;
-    lvgl_port_paused = true;
+    lvgl_pause_requested.store(false, std::memory_order_release);
+    lvgl_port_paused.store(true, std::memory_order_release);
     return true;
 }

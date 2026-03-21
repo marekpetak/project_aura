@@ -8,6 +8,7 @@ void tearDown() {}
 void test_web_ota_state_begin_upload_resets_previous_state() {
     WebOtaState state;
     state.beginUpload(10);
+    TEST_ASSERT_TRUE(state.isBusy());
     state.setSlotSize(1024);
     state.setExpectedSize(true, 512);
     state.addWritten(100);
@@ -18,6 +19,7 @@ void test_web_ota_state_begin_upload_resets_previous_state() {
 
     TEST_ASSERT_TRUE(snapshot.upload_seen);
     TEST_ASSERT_TRUE(snapshot.active);
+    TEST_ASSERT_TRUE(state.isBusy());
     TEST_ASSERT_FALSE(snapshot.success);
     TEST_ASSERT_FALSE(snapshot.size_known);
     TEST_ASSERT_EQUAL_UINT32(0, static_cast<uint32_t>(snapshot.written_size));
@@ -55,6 +57,7 @@ void test_web_ota_state_error_is_sticky_and_clears_active() {
 
     const WebOtaSnapshot snapshot = state.snapshot();
     TEST_ASSERT_FALSE(snapshot.active);
+    TEST_ASSERT_FALSE(state.isBusy());
     TEST_ASSERT_FALSE(snapshot.success);
     TEST_ASSERT_EQUAL_STRING("first", snapshot.error.c_str());
 }
@@ -70,8 +73,12 @@ void test_web_ota_state_success_and_expected_size_match() {
     state.markSuccess();
     const WebOtaSnapshot snapshot = state.snapshot();
     TEST_ASSERT_FALSE(snapshot.active);
+    TEST_ASSERT_TRUE(state.isBusy());
     TEST_ASSERT_TRUE(snapshot.success);
     TEST_ASSERT_EQUAL_UINT32(12, snapshot.finalize_ms);
+
+    state.reset();
+    TEST_ASSERT_FALSE(state.isBusy());
 }
 
 int main(int, char **) {

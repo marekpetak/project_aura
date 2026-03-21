@@ -23,8 +23,6 @@ struct Runtime {
     uint32_t (*upload_timeout_ms)(size_t image_size_bytes) = nullptr;
     void (*disable_wifi_power_save_for_upload)() = nullptr;
     void (*restore_wifi_power_save)() = nullptr;
-    void (*extend_task_wdt)() = nullptr;
-    void (*restore_task_wdt)() = nullptr;
     void (*set_ui_screen)(bool active) = nullptr;
     void (*set_error)(const String &error) = nullptr;
 };

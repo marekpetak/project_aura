@@ -24,6 +24,7 @@ void test_web_ota_api_utils_build_update_result_reports_success_payload() {
     TEST_ASSERT_EQUAL_UINT32(1234, doc["written"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(4096, doc["slot_size"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32(1234, doc["expected"].as<uint32_t>());
+    TEST_ASSERT_TRUE(doc["error_code"].isNull());
 }
 
 void test_web_ota_api_utils_build_update_result_reports_missing_file_as_bad_request() {
@@ -33,6 +34,7 @@ void test_web_ota_api_utils_build_update_result_reports_missing_file_as_bad_requ
     TEST_ASSERT_FALSE(result.success);
     TEST_ASSERT_FALSE(result.rebooting);
     TEST_ASSERT_EQUAL_INT(400, result.status_code);
+    TEST_ASSERT_EQUAL_STRING("MISSING_FILE", result.error_code.c_str());
     TEST_ASSERT_EQUAL_STRING("Firmware file is missing", result.error.c_str());
 
     ArduinoJson::JsonDocument doc;
@@ -40,6 +42,7 @@ void test_web_ota_api_utils_build_update_result_reports_missing_file_as_bad_requ
     TEST_ASSERT_FALSE(doc["success"].as<bool>());
     TEST_ASSERT_FALSE(doc["rebooting"].as<bool>());
     TEST_ASSERT_TRUE(doc["expected"].isNull());
+    TEST_ASSERT_EQUAL_STRING("MISSING_FILE", doc["error_code"].as<const char *>());
     TEST_ASSERT_EQUAL_STRING("Firmware file is missing", doc["error"].as<const char *>());
 }
 
@@ -48,8 +51,35 @@ void test_web_ota_api_utils_build_update_result_reports_oversized_image_as_paylo
         true, false, 2048, 4096, true, 8192, "Firmware too large for OTA slot: 8192 > 4096");
 
     TEST_ASSERT_EQUAL_INT(413, result.status_code);
+    TEST_ASSERT_EQUAL_STRING("IMAGE_TOO_LARGE", result.error_code.c_str());
     TEST_ASSERT_EQUAL_STRING("Firmware too large for OTA slot: 8192 > 4096",
                              result.error.c_str());
+}
+
+void test_web_ota_api_utils_build_update_result_reports_timeout_with_specific_code() {
+    const WebOtaApiUtils::Result result = WebOtaApiUtils::buildUpdateResult(
+        true, false, 154048, 6553600, true, 3717792, "Upload timed out after 5000 ms without data");
+
+    TEST_ASSERT_FALSE(result.success);
+    TEST_ASSERT_FALSE(result.rebooting);
+    TEST_ASSERT_EQUAL_INT(408, result.status_code);
+    TEST_ASSERT_EQUAL_STRING("UPLOAD_TIMEOUT", result.error_code.c_str());
+
+    ArduinoJson::JsonDocument doc;
+    WebOtaApiUtils::fillUpdateJson(doc.to<ArduinoJson::JsonObject>(), result);
+    TEST_ASSERT_EQUAL_STRING("UPLOAD_TIMEOUT", doc["error_code"].as<const char *>());
+    TEST_ASSERT_EQUAL_STRING("Upload timed out after 5000 ms without data",
+                             doc["error"].as<const char *>());
+}
+
+void test_web_ota_api_utils_build_update_result_reports_interrupt_with_specific_code() {
+    const WebOtaApiUtils::Result result = WebOtaApiUtils::buildUpdateResult(
+        true, false, 154048, 6553600, true, 3717792, "Upload interrupted after 5000 ms without data");
+
+    TEST_ASSERT_FALSE(result.success);
+    TEST_ASSERT_FALSE(result.rebooting);
+    TEST_ASSERT_EQUAL_INT(400, result.status_code);
+    TEST_ASSERT_EQUAL_STRING("UPLOAD_ABORTED", result.error_code.c_str());
 }
 
 int main(int, char **) {
@@ -57,5 +87,7 @@ int main(int, char **) {
     RUN_TEST(test_web_ota_api_utils_build_update_result_reports_success_payload);
     RUN_TEST(test_web_ota_api_utils_build_update_result_reports_missing_file_as_bad_request);
     RUN_TEST(test_web_ota_api_utils_build_update_result_reports_oversized_image_as_payload_too_large);
+    RUN_TEST(test_web_ota_api_utils_build_update_result_reports_timeout_with_specific_code);
+    RUN_TEST(test_web_ota_api_utils_build_update_result_reports_interrupt_with_specific_code);
     return UNITY_END();
 }

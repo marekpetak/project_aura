@@ -46,6 +46,7 @@ public:
     void reset();
     void beginUpload(uint32_t now_ms);
     bool isActive() const;
+    bool isBusy() const;
     void setStartRssi(int rssi);
     void setSlotSize(size_t slot_size);
     void setExpectedSize(bool known, size_t expected_size);
@@ -60,6 +61,7 @@ public:
 
 private:
     std::atomic<bool> active_{false};
+    std::atomic<bool> busy_{false};
     bool upload_seen_ = false;
     bool success_ = false;
     bool size_known_ = false;

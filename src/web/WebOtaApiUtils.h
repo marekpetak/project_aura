@@ -19,6 +19,7 @@ struct Result {
     size_t slot_size = 0;
     bool size_known = false;
     size_t expected_size = 0;
+    String error_code;
     String error;
     String message;
 };

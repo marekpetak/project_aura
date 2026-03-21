@@ -16,6 +16,13 @@
 
 #include <esp_http_server.h>
 
+namespace {
+
+constexpr uint16_t kHttpServerRecvWaitTimeoutS = 30;
+constexpr uint16_t kHttpServerSendWaitTimeoutS = 30;
+
+} // namespace
+
 static esp_err_t esp_route_dispatch(httpd_req_t *req);
 static esp_err_t esp_not_found_dispatch(httpd_req_t *req, httpd_err_code_t error);
 
@@ -717,6 +724,10 @@ void EspHttpServerBackend::begin() {
     config.global_user_ctx = this;
     config.global_user_ctx_free_fn = nullptr;
     config.uri_match_fn = nullptr;
+    // The default 5 s receive timeout is too aggressive for large OTA uploads
+    // over weaker Wi-Fi links and can abort the multipart body mid-transfer.
+    config.recv_wait_timeout = kHttpServerRecvWaitTimeoutS;
+    config.send_wait_timeout = kHttpServerSendWaitTimeoutS;
 
     httpd_handle_t handle = nullptr;
     if (httpd_start(&handle, &config) != ESP_OK) {

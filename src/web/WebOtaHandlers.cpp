@@ -34,6 +34,48 @@ String ota_error_prefixed(const char *prefix) {
     return error;
 }
 
+String ota_abort_error_message(const WebOtaSnapshot &ota,
+                               uint32_t now_ms,
+                               bool client_connected) {
+    if (!ota.first_chunk_seen) {
+        return client_connected ? "Upload timed out before first chunk"
+                                : "Upload interrupted before first chunk";
+    }
+
+    const uint32_t idle_ms = ota.lastChunkAgeMs(now_ms);
+    if (idle_ms > 0) {
+        String error = client_connected ? "Upload timed out after " : "Upload interrupted after ";
+        error += String(idle_ms);
+        error += " ms without data";
+        return error;
+    }
+
+    return client_connected ? "Upload aborted" : "Upload interrupted";
+}
+
+void abort_update_if_running() {
+    if (Update.isRunning()) {
+        Update.abort();
+    }
+}
+
+void fail_upload(WebOtaHandlers::Runtime &runtime, const String &error) {
+    abort_update_if_running();
+    if (runtime.set_error) {
+        runtime.set_error(error);
+    }
+}
+
+void cleanup_after_update_response(WebOtaHandlers::Runtime &runtime, bool success) {
+    if (!success && runtime.set_ui_screen) {
+        runtime.set_ui_screen(false);
+    }
+    if (runtime.restore_wifi_power_save) {
+        runtime.restore_wifi_power_save();
+    }
+    runtime.ota_state.reset();
+}
+
 void ota_log_abort_summary(WebRequest &server, const WebOtaSnapshot &ota) {
     const uint32_t now_ms = millis();
     const wl_status_t wifi_status = WiFi.status();
@@ -89,9 +131,6 @@ void handleUpload(Runtime &runtime, bool ota_busy) {
         if (WiFi.status() == WL_CONNECTED) {
             runtime.ota_state.setStartRssi(WiFi.RSSI());
         }
-        if (runtime.extend_task_wdt) {
-            runtime.extend_task_wdt();
-        }
         size_t expected_size = 0;
         const bool size_known = WebTextUtils::parsePositiveSize(server.arg("ota_size"), expected_size);
         const uint32_t client_timeout_ms = runtime.upload_timeout_ms
@@ -106,9 +145,7 @@ void handleUpload(Runtime &runtime, bool ota_busy) {
 
         const esp_partition_t *target_partition = esp_ota_get_next_update_partition(nullptr);
         if (!target_partition) {
-            if (runtime.set_error) {
-                runtime.set_error("OTA partition unavailable");
-            }
+            fail_upload(runtime, "OTA partition unavailable");
             LOGE("OTA", "no target partition");
             return;
         }
@@ -117,27 +154,22 @@ void handleUpload(Runtime &runtime, bool ota_busy) {
         const WebOtaSnapshot ota = runtime.ota_state.snapshot();
         if (ota.size_known) {
             if (ota.expected_size > ota.slot_size) {
-                if (runtime.set_error) {
-                    runtime.set_error(String("Firmware too large for OTA slot: ") +
-                                      String(ota.expected_size) + " > " + String(ota.slot_size));
-                }
+                fail_upload(runtime,
+                            String("Firmware too large for OTA slot: ") +
+                                String(ota.expected_size) + " > " + String(ota.slot_size));
                 LOGW("OTA", "reject oversized image: %u > %u",
                      static_cast<unsigned>(ota.expected_size),
                      static_cast<unsigned>(ota.slot_size));
                 return;
             }
             if (!Update.begin(ota.expected_size, U_FLASH)) {
-                if (runtime.set_error) {
-                    runtime.set_error(ota_error_prefixed("Update begin failed"));
-                }
+                fail_upload(runtime, ota_error_prefixed("Update begin failed"));
                 LOGE("OTA", "%s", runtime.ota_state.snapshot().error.c_str());
                 return;
             }
         } else {
             if (!Update.begin(ota.slot_size, U_FLASH)) {
-                if (runtime.set_error) {
-                    runtime.set_error(ota_error_prefixed("Update begin failed"));
-                }
+                fail_upload(runtime, ota_error_prefixed("Update begin failed"));
                 LOGE("OTA", "%s", runtime.ota_state.snapshot().error.c_str());
                 return;
             }
@@ -173,25 +205,16 @@ void handleUpload(Runtime &runtime, bool ota_busy) {
                  static_cast<unsigned>(upload.currentSize));
         }
         if (runtime.ota_state.wouldExceedSlot(upload.currentSize)) {
-            if (Update.isRunning()) {
-                Update.abort();
-            }
             const WebOtaSnapshot overflow_ota = runtime.ota_state.snapshot();
-            if (runtime.set_error) {
-                runtime.set_error(String("Firmware too large for OTA slot: ") +
-                                  String(overflow_ota.written_size + upload.currentSize) +
-                                  " > " + String(overflow_ota.slot_size));
-            }
+            fail_upload(runtime,
+                        String("Firmware too large for OTA slot: ") +
+                            String(overflow_ota.written_size + upload.currentSize) +
+                            " > " + String(overflow_ota.slot_size));
             LOGW("OTA", "upload exceeded slot size");
             return;
         }
         if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-            if (Update.isRunning()) {
-                Update.abort();
-            }
-            if (runtime.set_error) {
-                runtime.set_error(ota_error_prefixed("Update write failed"));
-            }
+            fail_upload(runtime, ota_error_prefixed("Update write failed"));
             LOGE("OTA", "%s", runtime.ota_state.snapshot().error.c_str());
             return;
         }
@@ -202,28 +225,20 @@ void handleUpload(Runtime &runtime, bool ota_busy) {
     if (upload.status == WebUploadStatus::End) {
         const WebOtaSnapshot ota = runtime.ota_state.snapshot();
         if (!ota.active || ota.hasError()) {
-            if (Update.isRunning()) {
-                Update.abort();
-            }
+            abort_update_if_running();
             return;
         }
         if (!runtime.ota_state.writtenMatchesExpected()) {
-            if (Update.isRunning()) {
-                Update.abort();
-            }
-            if (runtime.set_error) {
-                runtime.set_error(String("Firmware size mismatch: expected ") +
-                                  String(ota.expected_size) + ", got " + String(ota.written_size));
-            }
+            fail_upload(runtime,
+                        String("Firmware size mismatch: expected ") +
+                            String(ota.expected_size) + ", got " + String(ota.written_size));
             LOGW("OTA", "size mismatch");
             return;
         }
         const uint32_t finalize_start_ms = millis();
         if (!Update.end(true)) {
             runtime.ota_state.markFinalizeDuration(millis() - finalize_start_ms);
-            if (runtime.set_error) {
-                runtime.set_error(ota_error_prefixed("Update finalize failed"));
-            }
+            fail_upload(runtime, ota_error_prefixed("Update finalize failed"));
             LOGE("OTA", "%s", runtime.ota_state.snapshot().error.c_str());
             return;
         }
@@ -245,13 +260,11 @@ void handleUpload(Runtime &runtime, bool ota_busy) {
     }
 
     if (upload.status == WebUploadStatus::Aborted) {
-        if (Update.isRunning()) {
-            Update.abort();
-        }
-        ota_log_abort_summary(server, runtime.ota_state.snapshot());
-        if (runtime.set_error) {
-            runtime.set_error("Upload aborted");
-        }
+        const WebOtaSnapshot ota = runtime.ota_state.snapshot();
+        const uint32_t now_ms = millis();
+        const bool client_connected = server.clientConnected();
+        ota_log_abort_summary(server, ota);
+        fail_upload(runtime, ota_abort_error_message(ota, now_ms, client_connected));
     }
 }
 
@@ -307,16 +320,8 @@ void handleUpdate(Runtime &runtime, bool ota_busy) {
         LOGI("OTA", "response sent, deferred reboot in %u ms",
              static_cast<unsigned>(runtime.deferred_restart_delay_ms));
         runtime.restart_controller.schedule(millis(), runtime.deferred_restart_delay_ms);
-    } else if (runtime.set_ui_screen) {
-        runtime.set_ui_screen(false);
     }
-    if (runtime.restore_wifi_power_save) {
-        runtime.restore_wifi_power_save();
-    }
-    if (runtime.restore_task_wdt) {
-        runtime.restore_task_wdt();
-    }
-    runtime.ota_state.reset();
+    cleanup_after_update_response(runtime, result.success);
 }
 
 }  // namespace WebOtaHandlers

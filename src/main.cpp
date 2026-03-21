@@ -69,6 +69,8 @@ uint32_t boot_start_ms = 0;
 bool boot_stable = false;
 constexpr uint32_t TASK_WDT_TIMEOUT_MS = 180000;
 constexpr uint32_t OTA_UI_QUIESCE_DELAY_MS = 120;
+constexpr uint32_t OTA_UI_QUIESCE_WARN_MS = 2000;
+constexpr uint32_t OTA_TOUCH_BLOCK_MS = 15UL * 60UL * 1000UL;
 
 bool night_mode = false;
 bool temp_units_c = true;
@@ -115,6 +117,10 @@ NetworkPlane::Context network_plane_context{
 bool ota_window_active = false;
 bool ota_lvgl_quiesced = false;
 uint32_t ota_quiesce_due_ms = 0;
+bool ota_pause_requested = false;
+uint32_t ota_pause_requested_ms = 0;
+bool ota_pause_wait_warned = false;
+bool ota_resume_pending = false;
 bool network_plane_running = false;
 
 void quiesce_network_for_restart() {
@@ -217,25 +223,55 @@ void loop()
         ota_window_active = true;
         ota_lvgl_quiesced = false;
         ota_quiesce_due_ms = loop_now + OTA_UI_QUIESCE_DELAY_MS;
+        ota_pause_requested = false;
+        ota_pause_requested_ms = 0;
+        ota_pause_wait_warned = false;
+        ota_resume_pending = false;
+        lvgl_port_block_touch_read(OTA_TOUCH_BLOCK_MS);
     } else if (!ota_busy && ota_window_active) {
         ota_window_active = false;
-        if (ota_lvgl_quiesced) {
-            if (lvgl_port_resume()) {
-                LOGI("OTA", "LVGL resumed after OTA window");
-            } else {
-                LOGW("OTA", "failed to resume LVGL after OTA window");
-            }
-            ota_lvgl_quiesced = false;
+        if (ota_pause_requested || ota_lvgl_quiesced || lvgl_port_is_paused()) {
+            lvgl_port_request_resume();
+            ota_resume_pending = true;
+        }
+        ota_lvgl_quiesced = false;
+        ota_pause_requested = false;
+        ota_pause_requested_ms = 0;
+        ota_pause_wait_warned = false;
+    }
+
+    if (!ota_busy && ota_resume_pending) {
+        lvgl_port_request_resume();
+        if (!lvgl_port_is_paused()) {
+            ota_resume_pending = false;
+            lvgl_port_block_touch_read(Config::BACKLIGHT_WAKE_BLOCK_MS);
+            LOGI("OTA", "LVGL resumed after OTA window");
+        } else {
+            AppInit::pollDeferredRuntime();
+            memoryMonitor.poll(loop_now);
+            Watchdog::kick();
+            delay(1);
+            return;
         }
     }
 
     if (ota_busy) {
         if (!ota_lvgl_quiesced && static_cast<int32_t>(loop_now - ota_quiesce_due_ms) >= 0) {
-            if (lvgl_port_pause()) {
+            if (!ota_pause_requested) {
+                lvgl_port_request_pause();
+                ota_pause_requested = true;
+                ota_pause_requested_ms = loop_now;
+            }
+
+            if (lvgl_port_is_paused()) {
                 ota_lvgl_quiesced = true;
                 LOGI("OTA", "LVGL paused during OTA transfer");
-            } else {
-                LOGW("OTA", "failed to pause LVGL during OTA transfer");
+            } else if (!ota_pause_wait_warned &&
+                       static_cast<int32_t>(loop_now - ota_pause_requested_ms) >=
+                           static_cast<int32_t>(OTA_UI_QUIESCE_WARN_MS)) {
+                ota_pause_wait_warned = true;
+                LOGW("OTA", "waiting for LVGL pause acknowledgement (%u ms)",
+                     static_cast<unsigned>(loop_now - ota_pause_requested_ms));
             }
         }
         if (!network_plane_running) {
@@ -247,7 +283,7 @@ void loop()
         }
         AppInit::pollDeferredRuntime();
         memoryMonitor.poll(loop_now);
-        if (!ota_lvgl_quiesced) {
+        if (!ota_pause_requested) {
             uiController.poll(loop_now);
         }
         Watchdog::kick();

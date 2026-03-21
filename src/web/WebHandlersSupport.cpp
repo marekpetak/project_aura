@@ -21,8 +21,6 @@
 namespace {
 
 constexpr uint32_t kDeferredRestartDelayMs = 1500;
-constexpr uint32_t kTaskWdtDefaultMs = 180000;
-constexpr uint32_t kTaskWdtOtaMs = 10UL * 60UL * 1000UL;
 constexpr uint32_t kHttpStreamSlowWriteWarnMs = 200;
 constexpr const char kApiErrorOtaBusyJson[] =
     "{\"success\":false,\"error\":\"OTA upload in progress\","
@@ -34,7 +32,6 @@ WebDeferredActionsState g_deferred_actions;
 WebOtaState g_ota_state;
 WebStreamState g_web_stream_state;
 std::atomic<bool> g_restart_in_progress{false};
-bool g_ota_wdt_extended = false;
 bool g_ota_wifi_ps_saved = false;
 wifi_ps_type_t g_ota_wifi_ps_prev = WIFI_PS_NONE;
 
@@ -99,32 +96,6 @@ void ota_reset_state() {
     g_ota_state.reset();
 }
 
-void ota_extend_task_wdt() {
-    if (g_ota_wdt_extended) {
-        return;
-    }
-    if (Watchdog::setup(kTaskWdtOtaMs)) {
-        g_ota_wdt_extended = true;
-        LOGI("OTA", "Task WDT extended to %u ms for upload",
-             static_cast<unsigned>(kTaskWdtOtaMs));
-    } else {
-        LOGW("OTA", "failed to extend Task WDT for upload");
-    }
-}
-
-void ota_restore_task_wdt() {
-    if (!g_ota_wdt_extended) {
-        return;
-    }
-    if (Watchdog::setup(kTaskWdtDefaultMs)) {
-        g_ota_wdt_extended = false;
-        LOGI("OTA", "Task WDT restored to %u ms",
-             static_cast<unsigned>(kTaskWdtDefaultMs));
-    } else {
-        LOGW("OTA", "failed to restore Task WDT");
-    }
-}
-
 void ota_set_ui_screen(bool active) {
     if (!g_ctx || !g_ctx->web_ui_bridge) {
         return;
@@ -137,7 +108,6 @@ void ota_restore_wifi_power_save();
 void ota_set_error(const String &error) {
     g_ota_state.setErrorOnce(error);
     ota_restore_wifi_power_save();
-    ota_restore_task_wdt();
     ota_set_ui_screen(false);
 }
 
@@ -216,7 +186,7 @@ WebHandlerContext *context() {
 
 bool isOtaBusy() {
     return g_restart_in_progress.load(std::memory_order_acquire) ||
-           g_restart_controller.is_busy(g_ota_state.isActive());
+           g_restart_controller.is_busy(g_ota_state.isBusy());
 }
 
 bool consumeRestartRequest() {
@@ -293,8 +263,6 @@ WebOtaHandlers::Runtime otaRuntime(WebHandlerContext &context) {
         ota_upload_timeout_ms,
         ota_disable_wifi_power_save_for_upload,
         ota_restore_wifi_power_save,
-        ota_extend_task_wdt,
-        ota_restore_task_wdt,
         ota_set_ui_screen,
         ota_set_error,
     };

@@ -159,11 +159,35 @@ bool lvgl_port_deinit(void);
 bool lvgl_port_pause(void);
 
 /**
+ * @brief Request cooperative pause of the LVGL task.
+ *
+ * The request is handled by the LVGL task itself after it finishes the current
+ * timer-handler iteration and releases the LVGL mutex.
+ *
+ * @return true if the request was accepted
+ */
+bool lvgl_port_request_pause(void);
+
+/**
+ * @brief Return whether the LVGL port is currently paused.
+ *
+ * @return true when paused
+ */
+bool lvgl_port_is_paused(void);
+
+/**
  * @brief Resume LVGL task and tick timer.
  *
  * @return true if success, otherwise false
  */
 bool lvgl_port_resume(void);
+
+/**
+ * @brief Request cooperative resume of the LVGL task.
+ *
+ * @return true if the request was accepted
+ */
+bool lvgl_port_request_resume(void);
 
 /**
  * @brief Prepare LVGL port for immediate system restart.

@@ -33,6 +33,7 @@ bool WebOtaSnapshot::hasError() const {
 void WebOtaState::reset() {
     upload_seen_ = false;
     active_.store(false, std::memory_order_release);
+    busy_.store(false, std::memory_order_release);
     success_ = false;
     size_known_ = false;
     expected_size_ = 0;
@@ -56,11 +57,16 @@ void WebOtaState::beginUpload(uint32_t now_ms) {
     reset();
     upload_seen_ = true;
     active_.store(true, std::memory_order_release);
+    busy_.store(true, std::memory_order_release);
     upload_start_ms_ = now_ms;
 }
 
 bool WebOtaState::isActive() const {
     return active_.load(std::memory_order_acquire);
+}
+
+bool WebOtaState::isBusy() const {
+    return busy_.load(std::memory_order_acquire);
 }
 
 void WebOtaState::setStartRssi(int rssi) {
@@ -114,6 +120,7 @@ void WebOtaState::markFinalizeDuration(uint32_t finalize_ms) {
 void WebOtaState::markSuccess() {
     success_ = true;
     active_.store(false, std::memory_order_release);
+    busy_.store(true, std::memory_order_release);
 }
 
 void WebOtaState::setErrorOnce(const String &error) {
@@ -122,6 +129,7 @@ void WebOtaState::setErrorOnce(const String &error) {
     }
     success_ = false;
     active_.store(false, std::memory_order_release);
+    busy_.store(false, std::memory_order_release);
 }
 
 WebOtaSnapshot WebOtaState::snapshot() const {
