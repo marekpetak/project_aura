@@ -114,9 +114,11 @@ private:
                                 const char *mode, const char *icon);
     void publishDiscoveryButton(const char *object_id, const char *name,
                                 const char *payload_press, const char *icon);
+    void publishDiscoveryEventSensor();
     void publishNightModeAvailability();
     void publishDiscovery(const MqttRuntimeSnapshot &runtime);
     void publishState(const MqttRuntimeSnapshot &runtime);
+    void publishQueuedEvents(size_t max_events);
     void updateOtaQuiesceState();
     void lockCommandContext() const;
     void unlockCommandContext() const;

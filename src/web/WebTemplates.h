@@ -1061,7 +1061,7 @@ static const char kMqttPageTemplate[] PROGMEM = R"HTML(
 
                 <div class="form-group">
                     <label for="topic">Base Topic</label>
-                    <input type="text" name="topic" id="topic" value="{{MQTT_TOPIC}}" placeholder="project_aura/room1" required>
+                    <input type="text" name="topic" id="topic" value="{{MQTT_TOPIC}}" placeholder="project_aura" required>
                 </div>
 
                 <div class="section-title">Integration</div>

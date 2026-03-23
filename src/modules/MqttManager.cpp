@@ -14,6 +14,8 @@
 #include <WiFi.h>
 #include <esp_event.h>
 #include "core/Logger.h"
+#include "core/MqttEventQueue.h"
+#include "core/SystemEventPolicy.h"
 #include "core/WifiPowerSaveGuard.h"
 #include "modules/MqttPayloadBuilder.h"
 #include "modules/StorageManager.h"
@@ -30,6 +32,7 @@ constexpr uint32_t kMqttMdnsFailureCacheMs = 60UL * 1000UL;
 constexpr int kMqttConnectTimeoutShortMs = 3000;
 constexpr int kMqttConnectTimeoutSlowMs = 3000;
 constexpr uint8_t kMqttLongRetryLogEveryAttempts = 6;
+constexpr size_t kMaxQueuedEventPublishesPerPoll = 4;
 constexpr const char *kFanTimerOptions[] = {
     "Off",
     "10 min",
@@ -117,6 +120,10 @@ void append_buffer_to_string(String &out, const char *data, size_t length) {
 
 void build_state_topic(char *out, size_t out_size, const String &base) {
     snprintf(out, out_size, "%s/state", base.c_str());
+}
+
+void build_events_topic(char *out, size_t out_size, const String &base) {
+    snprintf(out, out_size, "%s/events", base.c_str());
 }
 
 void build_availability_topic(char *out, size_t out_size, const String &base) {
@@ -839,6 +846,47 @@ void MqttManager::publishDiscoveryButton(const char *object_id, const char *name
     publishMessage(topic, payload.c_str(), true);
 }
 
+void MqttManager::publishDiscoveryEventSensor() {
+    if (!mqtt_connected_) {
+        return;
+    }
+
+    String payload;
+    payload.reserve(640);
+    payload = "{";
+    payload += "\"name\":\"Event\"";
+    payload += ",\"unique_id\":\"";
+    append_json_escaped(payload, mqtt_device_id_);
+    payload += "_events\"";
+
+    char topic[kTopicBufferSize];
+    build_events_topic(topic, sizeof(topic), mqtt_base_topic_);
+    payload += ",\"state_topic\":\"";
+    append_json_escaped(payload, topic);
+    payload += "\",\"json_attributes_topic\":\"";
+    append_json_escaped(payload, topic);
+    payload += "\",\"value_template\":\"{{ value_json.message }}\"";
+    payload += ",\"force_update\":true";
+    payload += ",\"availability_topic\":\"";
+    build_availability_topic(topic, sizeof(topic), mqtt_base_topic_);
+    append_json_escaped(payload, topic);
+    payload += "\",\"payload_available\":\"";
+    payload += Config::MQTT_AVAIL_ONLINE;
+    payload += "\",\"payload_not_available\":\"";
+    payload += Config::MQTT_AVAIL_OFFLINE;
+    payload += "\",\"icon\":\"mdi:bell-alert\"";
+    append_discovery_object_id(payload, mqtt_base_topic_, "events");
+    payload += ",\"device\":{\"identifiers\":[\"";
+    append_json_escaped(payload, mqtt_device_id_);
+    payload += "\"],\"name\":\"";
+    append_json_escaped(payload, mqtt_device_name_);
+    payload += "\",\"manufacturer\":\"21CNCStudio\",\"model\":\"Project Aura\"}";
+    payload += "}";
+
+    build_discovery_topic(topic, sizeof(topic), "sensor", mqtt_device_id_, "events");
+    publishMessage(topic, payload.c_str(), true);
+}
+
 void MqttManager::publishDiscovery(const MqttRuntimeSnapshot &runtime) {
     if (!mqtt_discovery_ || mqtt_discovery_sent_ || !mqtt_connected_) {
         return;
@@ -851,6 +899,13 @@ void MqttManager::publishDiscovery(const MqttRuntimeSnapshot &runtime) {
     // Remove legacy PM4 discovery entity variant (retained) from older firmware versions.
     char legacy_topic[kTopicBufferSize];
     build_discovery_topic(legacy_topic, sizeof(legacy_topic), "sensor", mqtt_device_id_, "pm4_0");
+    publishMessage(legacy_topic, "", true);
+    // Remove retained config from earlier event entity experiments.
+    build_discovery_topic(legacy_topic, sizeof(legacy_topic), "event", mqtt_device_id_, "events");
+    publishMessage(legacy_topic, "", true);
+    build_discovery_topic(legacy_topic, sizeof(legacy_topic), "event", mqtt_device_id_, "air_events");
+    publishMessage(legacy_topic, "", true);
+    build_discovery_topic(legacy_topic, sizeof(legacy_topic), "sensor", mqtt_device_id_, "air_events");
     publishMessage(legacy_topic, "", true);
 
     publishDiscoverySensor("temperature", "Temperature", "\\u00b0C",
@@ -865,6 +920,10 @@ void MqttManager::publishDiscovery(const MqttRuntimeSnapshot &runtime) {
                            "carbon_dioxide", "measurement", "{{ value_json.co2 }}", "");
     publishDiscoverySensor("aqi", "AQI", "",
                            "", "measurement", "{{ value_json.aqi }}", "mdi:gauge");
+    publishDiscoverySensor("air_status", "Air Status", "",
+                           "", "", "{{ value_json.air_status }}", "mdi:air-filter");
+    publishDiscoverySensor("main_issue", "Main Issue", "",
+                           "", "", "{{ value_json.main_issue }}", "mdi:alert-circle-outline");
     publishDiscoverySensor("co", "CO", "ppm",
                            "carbon_monoxide", "measurement", "{{ value_json.co }}", "mdi:molecule-co");
     publishDiscoverySensor("voc_index", "VOC Index", "index",
@@ -949,6 +1008,7 @@ void MqttManager::publishDiscovery(const MqttRuntimeSnapshot &runtime) {
         clear_discovery("binary_sensor", "fan_fault");
     }
     publishDiscoveryButton("restart", "Restart", "PRESS", "mdi:restart");
+    publishDiscoveryEventSensor();
     mqtt_discovery_sent_ = true;
     publishNightModeAvailability();
 }
@@ -999,6 +1059,48 @@ void MqttManager::publishState(const MqttRuntimeSnapshot &runtime) {
             LOGW("MQTT", "too many failures, disconnecting");
             stopClient();
             mqtt_fail_count_ = 0;
+        }
+    }
+}
+
+void MqttManager::publishQueuedEvents(size_t max_events) {
+    if (!mqtt_connected_ || max_events == 0) {
+        return;
+    }
+
+    char topic[kTopicBufferSize];
+    build_events_topic(topic, sizeof(topic), mqtt_base_topic_);
+
+    MqttEventQueue::CapturePause capture_pause;
+    for (size_t i = 0; i < max_events; ++i) {
+        Logger::RecentEntry entry{};
+        if (!MqttEventQueue::instance().peek(entry)) {
+            break;
+        }
+
+        String payload;
+        payload.reserve(320);
+        payload = "{";
+        payload += "\"ts_ms\":";
+        payload += String(entry.ms);
+        payload += ",\"level\":\"";
+        payload += SystemEventPolicy::levelText(entry.level);
+        payload += "\",\"severity\":\"";
+        payload += SystemEventPolicy::severityText(entry.level);
+        payload += "\",\"type\":\"";
+        append_json_escaped(payload, SystemEventPolicy::typeText(entry));
+        payload += "\",\"message\":\"";
+        append_json_escaped(payload, SystemEventPolicy::messageText(entry));
+        payload += "\"}";
+
+        if (!publishMessage(topic, payload.c_str(), false)) {
+            LOGW("MQTT", "event publish failed, reconnecting");
+            stopClient();
+            break;
+        }
+
+        if (!MqttEventQueue::instance().discardFront()) {
+            break;
         }
     }
 }
@@ -1523,7 +1625,8 @@ void MqttManager::poll(MqttRuntimeState &runtime_state) {
     const bool publish_due =
         mqtt_publish_requested_ || (now - mqtt_last_publish_ms_ >= Config::MQTT_PUBLISH_MS);
     const bool discovery_due = mqtt_discovery_ && !mqtt_discovery_sent_;
-    if (discovery_due || publish_due) {
+    const bool events_due = MqttEventQueue::instance().hasPending();
+    if (discovery_due || publish_due || events_due) {
         if (WebHandlersShouldPauseMqttPublish()) {
             if (!mqtt_publish_deferred_by_web_) {
                 WebHandlersNoteMqttPublishDeferred();
@@ -1542,7 +1645,9 @@ void MqttManager::poll(MqttRuntimeState &runtime_state) {
     if (publish_due) {
         mqtt_publish_requested_ = false;
         publishState(runtime);
-        return;
+    }
+    if (mqtt_connected_ && events_due) {
+        publishQueuedEvents(kMaxQueuedEventPublishesPerPoll);
     }
 }
 

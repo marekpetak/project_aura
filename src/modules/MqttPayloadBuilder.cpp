@@ -284,6 +284,58 @@ const char *fan_status_text(const FanStateSnapshot &fan) {
     return fan.running ? "RUNNING" : "STOPPED";
 }
 
+const char *air_status_text(const AirQualityEngine::Result &aqi) {
+    if (!aqi.valid) {
+        return "Unknown";
+    }
+
+    switch (aqi.band) {
+        case AirQualityEngine::Band::Excellent:
+            return "Excellent";
+        case AirQualityEngine::Band::Good:
+            return "Good";
+        case AirQualityEngine::Band::Moderate:
+            return "Fair";
+        case AirQualityEngine::Band::Poor:
+            return "Poor";
+        case AirQualityEngine::Band::Invalid:
+        default:
+            return "Unknown";
+    }
+}
+
+const char *main_issue_text(const AirQualityEngine::Result &aqi) {
+    if (!aqi.valid || aqi.band == AirQualityEngine::Band::Invalid) {
+        return "Unknown";
+    }
+    if (aqi.band == AirQualityEngine::Band::Excellent ||
+        aqi.band == AirQualityEngine::Band::Good) {
+        return "Clear";
+    }
+
+    switch (aqi.dominant_metric) {
+        case AirQualityEngine::Metric::PM05:
+        case AirQualityEngine::Metric::PM1:
+        case AirQualityEngine::Metric::PM25:
+        case AirQualityEngine::Metric::PM4:
+        case AirQualityEngine::Metric::PM10:
+            return "Particles";
+        case AirQualityEngine::Metric::CO2:
+            return "CO2";
+        case AirQualityEngine::Metric::VOC:
+            return "VOC";
+        case AirQualityEngine::Metric::NOX:
+            return "NOx";
+        case AirQualityEngine::Metric::HCHO:
+            return "HCHO";
+        case AirQualityEngine::Metric::CO:
+            return "CO";
+        case AirQualityEngine::Metric::None:
+        default:
+            return "Unknown";
+    }
+}
+
 } // namespace
 
 String buildDiscoveryEntityObjectId(const String &base_topic,
@@ -530,6 +582,8 @@ size_t buildStatePayload(char *out,
         !add_int("fan_output_mv", fan_output_valid, fan.output_mv) ||
         !add_bool("night_mode", night_mode) ||
         !add_bool("alert_blink", alert_blink) ||
+        !add_cstr("air_status", air_status_text(aqi)) ||
+        !add_cstr("main_issue", main_issue_text(aqi)) ||
         !add_bool("backlight", backlight_on) ||
         !payload.appendf("}")) {
         return 0;

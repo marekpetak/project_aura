@@ -3,13 +3,17 @@ views:
   - title: Project Aura
     path: kitchen
     icon: mdi:air-filter
-    cards:
+    type: sections
+    max_columns: 3
+    dense_section_placement: false
+    sections:
       - type: grid
-        columns: 2
-        square: false
         cards:
+          - type: heading
+            heading: Overview
+            icon: mdi:air-filter
           - type: gauge
-            entity: sensor.aura_aqi
+            entity: sensor.project_aura_aqi
             name: AQI
             min: 0
             max: 100
@@ -18,6 +22,9 @@ views:
               green: 25
               yellow: 50
               red: 75
+            grid_options:
+              columns: 6
+              rows: 4
           - type: gauge
             entity: sensor.project_aura_co2
             name: CO2
@@ -28,10 +35,87 @@ views:
               green: 900
               yellow: 1200
               red: 1500
+            grid_options:
+              columns: 6
+              rows: 4
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.project_aura_air_status
+                state: Excellent
+            card:
+              type: tile
+              entity: sensor.project_aura_air_status
+              name: Air Status
+              icon: mdi:weather-windy
+              color: blue
+              vertical: false
+              features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.project_aura_air_status
+                state: Good
+            card:
+              type: tile
+              entity: sensor.project_aura_air_status
+              name: Air Status
+              icon: mdi:check-circle
+              color: green
+              vertical: false
+              features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.project_aura_air_status
+                state: Fair
+            card:
+              type: tile
+              entity: sensor.project_aura_air_status
+              name: Air Status
+              icon: mdi:alert-circle-outline
+              color: amber
+              vertical: false
+              features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.project_aura_air_status
+                state: Poor
+            card:
+              type: tile
+              entity: sensor.project_aura_air_status
+              name: Air Status
+              icon: mdi:alert-octagon
+              color: red
+              vertical: false
+              features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 1
+          - type: tile
+            entity: sensor.project_aura_main_issue
+            name: Main Issue
+            icon: mdi:alert-circle-outline
+            vertical: false
+            features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 1
       - type: grid
-        columns: 2
-        square: false
         cards:
+          - type: heading
+            heading: Comfort
+            icon: mdi:home-thermometer-outline
           - type: tile
             entity: sensor.project_aura_temperature
             name: Temperature
@@ -53,16 +137,6 @@ views:
             vertical: false
             features_position: bottom
           - type: tile
-            entity: sensor.project_aura_pressure
-            name: Pressure
-            vertical: false
-            features_position: bottom
-          - type: tile
-            entity: sensor.project_aura_hcho
-            name: HCHO
-            vertical: false
-            features_position: bottom
-          - type: tile
             entity: sensor.project_aura_pressure_delta_3h
             name: Pressure Delta 3h
             vertical: false
@@ -73,9 +147,10 @@ views:
             vertical: false
             features_position: bottom
       - type: grid
-        columns: 2
-        square: false
         cards:
+          - type: heading
+            heading: Air Metrics
+            icon: mdi:molecule
           - type: tile
             entity: sensor.project_aura_voc_index
             name: VOC Index
@@ -87,8 +162,34 @@ views:
             vertical: false
             features_position: bottom
           - type: tile
-            entity: sensor.project_aura_pm2_5
+            entity: sensor.project_aura_hcho
+            name: HCHO
+            vertical: false
+            features_position: bottom
+          - type: tile
+            entity: sensor.project_aura_co
+            name: CO
+            vertical: false
+            features_position: bottom
+          - type: tile
+            entity: sensor.project_aura_pm05
+            name: PM0.5
+            vertical: false
+            features_position: bottom
+          - type: tile
+            entity: sensor.project_aura_pm1
+            name: PM1.0
+            vertical: false
+            features_position: bottom
+          - type: tile
+            entity: sensor.project_aura_pm25
             name: PM2.5
+            vertical: false
+            features_position: bottom
+          - type: tile
+            entity: sensor.project_aura_pm4
+            name: PM4.0
+            icon: mdi:molecule
             vertical: false
             features_position: bottom
           - type: tile
@@ -97,132 +198,99 @@ views:
             vertical: false
             features_position: bottom
           - type: tile
-            entity: sensor.project_aura_pm1_0
-            name: PM1.0
+            entity: sensor.project_aura_pressure
+            name: Pressure
             vertical: false
             features_position: bottom
-          - type: tile
-            entity: sensor.project_aura_pm4_0
-            name: PM4.0
-            icon: mdi:molecule
-            vertical: false
-            features_position: bottom
-          - type: tile
-            entity: sensor.project_aura_pm0_5
-            name: PM0.5
-            vertical: false
-            features_position: bottom
-          - type: tile
-            entity: sensor.project_aura_co
-            name: CO
-            vertical: false
-            features_position: bottom
-      - chart_type: line
-        period: hour
-        type: statistics-graph
-        entities:
-          - sensor.project_aura_co2
-        min_y_axis: 400
-        max_y_axis: 3000
-        stat_types:
-          - min
-          - max
-        days_to_show: 1
-        hide_legend: true
-        title: CO2 Concentration
-      - chart_type: line
-        period: hour
-        type: statistics-graph
-        entities:
-          - sensor.project_aura_temperature
-        stat_types:
-          - min
-          - max
-        min_y_axis: 10
-        max_y_axis: 30
-        hide_legend: true
-        title: Temperature
-        days_to_show: 1
-      - chart_type: line
-        period: hour
-        type: statistics-graph
-        entities:
-          - sensor.project_aura_humidity
-        stat_types:
-          - min
-          - max
-        min_y_axis: 20
-        max_y_axis: 100
-        hide_legend: true
-        logarithmic_scale: false
-        title: Humidity
-        days_to_show: 1
       - type: grid
-        columns: 2
-        square: false
         cards:
+          - type: heading
+            heading: Ventilation
+            icon: mdi:fan
           - type: tile
-            entity: switch.project_aura_room1_fan_auto
+            entity: switch.project_aura_fan_auto
             name: Auto
             icon: mdi:fan-auto
             vertical: false
             features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 1
           - type: tile
-            entity: switch.project_aura_room1_fan_manual
+            entity: switch.project_aura_fan_manual
             name: Manual
             icon: mdi:fan
             vertical: false
             features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 1
           - type: conditional
             conditions:
               - condition: state
-                entity: switch.project_aura_room1_fan_manual
+                entity: switch.project_aura_fan_manual
                 state: 'on'
             card:
               type: tile
-              entity: number.aura_ventilation_speed
+              entity: number.project_aura_fan_manual_percent
               name: Ventilation Speed
               icon: mdi:fan
               vertical: false
               features:
                 - type: numeric-input
               features_position: bottom
+            grid_options:
+              columns: 12
+              rows: 2
           - type: conditional
             conditions:
               - condition: state
-                entity: switch.project_aura_room1_fan_manual
+                entity: switch.project_aura_fan_manual
                 state: 'off'
             card:
               type: tile
-              entity: sensor.aura_ventilation_output
+              entity: sensor.project_aura_fan_output_percent
               name: Current Output
               icon: mdi:fan-chevron-down
               vertical: false
               features_position: bottom
+            grid_options:
+              columns: 12
+              rows: 1
           - type: tile
-            entity: select.aura_ventilation_timer
+            entity: select.project_aura_fan_timer
             name: Ventilation Timer
             icon: mdi:timer-outline
             vertical: false
             features:
               - type: select-options
             features_position: bottom
+            grid_options:
+              columns: 12
+              rows: 2
           - type: tile
-            entity: sensor.project_aura_room1_fan_timer_remaining
+            entity: sensor.project_aura_fan_timer_remaining
             name: Timer Remaining
             icon: mdi:timer-sand
             vertical: false
             features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 1
           - type: tile
-            entity: switch.project_aura_room1_fan_stop
+            entity: switch.project_aura_fan_stop
             name: Stop
             icon: mdi:stop-circle-outline
             vertical: false
             features_position: bottom
+            grid_options:
+              columns: 6
+              rows: 1
       - type: grid
-        columns: 2
-        square: false
         cards:
+          - type: heading
+            heading: System
+            icon: mdi:tune-variant
           - type: tile
             entity: switch.project_aura_night_mode
             name: Night Mode
@@ -254,4 +322,61 @@ views:
                 entity_id: button.project_aura_restart
               confirmation:
                 text: Are you sure you want to restart the Project Aura?
-    type: masonry
+      - type: grid
+        column_span: 1
+        cards:
+          - type: heading
+            heading: Events
+            icon: mdi:history
+          - type: logbook
+            title: Aura Events
+            target:
+              entity_id:
+                - sensor.project_aura_events
+            hours_to_show: 24
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: Trends
+            icon: mdi:chart-line
+          - chart_type: line
+            period: hour
+            type: statistics-graph
+            entities:
+              - sensor.project_aura_co2
+            min_y_axis: 400
+            max_y_axis: 3000
+            stat_types:
+              - min
+              - max
+            days_to_show: 1
+            hide_legend: true
+            title: CO2 Concentration
+          - chart_type: line
+            period: hour
+            type: statistics-graph
+            entities:
+              - sensor.project_aura_temperature
+            stat_types:
+              - min
+              - max
+            min_y_axis: 10
+            max_y_axis: 30
+            hide_legend: true
+            title: Temperature
+            days_to_show: 1
+          - chart_type: line
+            period: hour
+            type: statistics-graph
+            entities:
+              - sensor.project_aura_humidity
+            stat_types:
+              - min
+              - max
+            min_y_axis: 20
+            max_y_axis: 100
+            hide_legend: true
+            logarithmic_scale: false
+            title: Humidity
+            days_to_show: 1

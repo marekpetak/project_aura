@@ -6,19 +6,8 @@
 
 #include "web/WebEventsUtils.h"
 
+#include "core/SystemEventPolicy.h"
 #include "web/WebApiUtils.h"
-
-namespace {
-
-const char *safe_tag(const Logger::RecentEntry &entry) {
-    return entry.tag[0] ? entry.tag : "SYSTEM";
-}
-
-const char *safe_message(const Logger::RecentEntry &entry, const char *fallback) {
-    return entry.message[0] ? entry.message : fallback;
-}
-
-} // namespace
 
 namespace WebEventsUtils {
 
@@ -39,8 +28,8 @@ size_t fillRecentErrorsJson(ArduinoJson::JsonArray errors,
         ArduinoJson::JsonObject item = errors.add<ArduinoJson::JsonObject>();
         item["ts_ms"] = entry.ms;
         item["level"] = WebApiUtils::eventLevelText(entry.level);
-        item["tag"] = safe_tag(entry);
-        item["message"] = safe_message(entry, "");
+        item["tag"] = SystemEventPolicy::typeText(entry);
+        item["message"] = entry.message[0] ? entry.message : "";
         added++;
     }
     return added;
@@ -63,8 +52,8 @@ uint32_t fillEventsJson(ArduinoJson::JsonArray events,
         item["ts_ms"] = entry.ms;
         item["level"] = WebApiUtils::eventLevelText(entry.level);
         item["severity"] = WebApiUtils::eventSeverityText(entry.level);
-        item["type"] = safe_tag(entry);
-        item["message"] = safe_message(entry, "Event");
+        item["type"] = SystemEventPolicy::typeText(entry);
+        item["message"] = SystemEventPolicy::messageText(entry);
         emitted_count++;
     }
     return emitted_count;

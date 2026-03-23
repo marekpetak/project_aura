@@ -48,3 +48,18 @@ Recommended examples:
 - `project_aura_kitchen`
 - `project_aura_bedroom`
 - `project_aura_office`
+
+## Events Sensor
+
+Aura now mirrors the same event stream shown in the built-in web dashboard `Events` tab to Home Assistant over MQTT.
+
+Discovery creates one additional entity derived from your MQTT base topic, for example:
+- `sensor.project_aura_room1_events`
+
+Behavior:
+- Sensor state is the human-readable event message.
+- Attributes include `ts_ms`, `level`, `severity`, and `type`.
+- The entity uses `force_update`, so repeated identical messages are still recorded as new state changes when they are not deduplicated by firmware.
+- This entity is intended for Home Assistant `Activity` / `logbook` views.
+- Long-term event history in Home Assistant is controlled by `recorder`, not by the firmware queue size.
+- The final `entity_id` depends on your configured MQTT base topic, so names in `dashboard.yaml` may need to be adjusted to match the entities discovered in your own Home Assistant instance.

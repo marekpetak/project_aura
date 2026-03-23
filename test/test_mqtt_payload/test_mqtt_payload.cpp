@@ -126,6 +126,30 @@ void test_state_payload_keeps_aqi_available_during_warmup_when_pm_is_ready() {
     assert_contains(payload, "\"aqi\":50");
 }
 
+void test_state_payload_includes_summary_fields_for_air_status_and_issue() {
+    SensorData data{};
+    data.co2_valid = true;
+    data.co2 = static_cast<int>(Config::AQ_CO2_ORANGE_MAX_PPM);
+
+    String payload = MqttPayloadBuilder::buildStatePayload(data, false, false, false, false);
+
+    assert_contains(payload, "\"aqi\":75");
+    assert_contains(payload, "\"air_status\":\"Fair\"");
+    assert_contains(payload, "\"main_issue\":\"CO2\"");
+}
+
+void test_state_payload_reports_no_issue_when_air_is_good() {
+    SensorData data{};
+    data.co2_valid = true;
+    data.co2 = static_cast<int>(Config::AQ_CO2_YELLOW_MAX_PPM);
+
+    String payload = MqttPayloadBuilder::buildStatePayload(data, false, false, false, false);
+
+    assert_contains(payload, "\"aqi\":50");
+    assert_contains(payload, "\"air_status\":\"Good\"");
+    assert_contains(payload, "\"main_issue\":\"Clear\"");
+}
+
 void test_state_payload_includes_fan_fields_when_present() {
     setMillis(0);
     SensorData data{};
@@ -223,6 +247,8 @@ int main(int, char **) {
     RUN_TEST(test_state_payload_includes_aqi_when_computable);
     RUN_TEST(test_state_payload_excludes_aqi_when_only_warmup_gas_metrics_exist);
     RUN_TEST(test_state_payload_keeps_aqi_available_during_warmup_when_pm_is_ready);
+    RUN_TEST(test_state_payload_includes_summary_fields_for_air_status_and_issue);
+    RUN_TEST(test_state_payload_reports_no_issue_when_air_is_good);
     RUN_TEST(test_state_payload_includes_fan_fields_when_present);
     RUN_TEST(test_state_payload_reports_fan_timer_remaining_when_manual_timer_is_active);
     RUN_TEST(test_discovery_sensor_payload_contains_pm05_template_and_topics);

@@ -5,6 +5,8 @@
 // Purchase a Commercial License: see COMMERCIAL_LICENSE_SUMMARY.md
 
 #include "core/Logger.h"
+#include "core/MqttEventQueue.h"
+#include "core/SystemEventPolicy.h"
 #include "core/SystemLogFilter.h"
 
 #include <stdio.h>
@@ -14,7 +16,7 @@ namespace {
 constexpr size_t kLogBufferSize = 256;
 constexpr uint32_t kRecentDedupWindowMs = 30000;
 
-void storeRecentInBuffer(Logger::RecentEntry *buffer,
+bool storeRecentInBuffer(Logger::RecentEntry *buffer,
                          size_t capacity,
                          size_t &head,
                          size_t &count,
@@ -23,7 +25,7 @@ void storeRecentInBuffer(Logger::RecentEntry *buffer,
                          const char *message,
                          uint32_t now_ms) {
     if (!buffer || capacity == 0) {
-        return;
+        return false;
     }
 
     if (count > 0) {
@@ -35,7 +37,7 @@ void storeRecentInBuffer(Logger::RecentEntry *buffer,
             strcmp(last.message, message) == 0;
         const bool within_dedup_window = (now_ms - last.ms) <= kRecentDedupWindowMs;
         if (same_event && within_dedup_window) {
-            return;
+            return false;
         }
     }
 
@@ -51,6 +53,7 @@ void storeRecentInBuffer(Logger::RecentEntry *buffer,
     if (count < capacity) {
         count++;
     }
+    return true;
 }
 
 size_t copyRecentFromBuffer(const Logger::RecentEntry *buffer,
@@ -183,8 +186,22 @@ void Logger::storeRecent(Level level, const char *tag, const char *message) {
         message_buf[sizeof(message_buf) - 1] = '\0';
     }
 
-    storeRecentInBuffer(recent_, kRecentCapacity, recent_head_, recent_count_,
-                        level, tag_buf, message_buf, now_ms);
+    const bool stored_recent =
+        storeRecentInBuffer(recent_, kRecentCapacity, recent_head_, recent_count_,
+                            level, tag_buf, message_buf, now_ms);
+
+    if (stored_recent) {
+        RecentEntry entry{};
+        entry.ms = now_ms;
+        entry.level = level;
+        strncpy(entry.tag, tag_buf, sizeof(entry.tag) - 1);
+        entry.tag[sizeof(entry.tag) - 1] = '\0';
+        strncpy(entry.message, message_buf, sizeof(entry.message) - 1);
+        entry.message[sizeof(entry.message) - 1] = '\0';
+        if (SystemEventPolicy::shouldEmit(entry)) {
+            MqttEventQueue::instance().enqueueIfCapturing(entry);
+        }
+    }
 
     if (SystemLogFilter::shouldStoreAlert(level, tag_buf, message_buf)) {
         storeRecentInBuffer(recent_alerts_, kRecentAlertCapacity, recent_alert_head_, recent_alert_count_,
