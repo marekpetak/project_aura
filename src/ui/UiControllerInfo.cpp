@@ -114,10 +114,13 @@ void UiController::update_sensor_info_ui() {
             set_visible(objects.label_hcho_text, true);
             set_visible(objects.label_aqi_text, false);
             set_visible(objects.aqi_info_thresholds, false);
+            const bool hcho_warmup = sensorManager.isSfaWarmupActive();
             if (currentData.hcho_valid) {
                 char buf[16];
                 snprintf(buf, sizeof(buf), "%d", static_cast<int>(lroundf(currentData.hcho)));
                 safe_label_set_text(objects.label_sensor_value, buf);
+            } else if (hcho_warmup) {
+                safe_label_set_text(objects.label_sensor_value, UiText::BootDiagStarting());
             } else {
                 safe_label_set_text(objects.label_sensor_value, UiText::ValueMissing());
             }
@@ -128,8 +131,10 @@ void UiController::update_sensor_info_ui() {
                 unit = UiText::UnitPpb();
             }
             safe_label_set_text(objects.label_sensor_info_unit, unit);
-            lv_color_t hcho_col = getHCHOColor(currentData.hcho, currentData.hcho_valid);
-            set_dot_color(objects.dot_sensor_info, alert_color_for_mode(hcho_col));
+            lv_color_t hcho_col = hcho_warmup ? color_blue()
+                                              : getHCHOColor(currentData.hcho, currentData.hcho_valid);
+            set_dot_color(objects.dot_sensor_info,
+                          hcho_warmup ? hcho_col : alert_color_for_mode(hcho_col));
             set_hcho_info_mode(hcho_graph_mode_);
             if (hcho_graph_mode_ &&
                 should_refresh_active_graph(INFO_HCHO, hcho_graph_range_, hcho_graph_points())) {

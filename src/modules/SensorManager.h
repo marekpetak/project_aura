@@ -44,6 +44,7 @@ public:
     bool isSfaOk() const { return sfa3x_.isOk(); }
     bool isSfaPresent() const { return sfa3x_.isPresent(); }
     bool hasSfaFault() const { return sfa3x_.hasFault(); }
+    bool isSfaWarmupActive() const { return sfa3x_.isWarmupActive(); }
     SfaStatus sfaStatus() const { return sfa3x_.status(); }
     bool isCoPresent() const { return sen0466_.isPresent(); }
     bool isCoValid() const { return sen0466_.isDataValid(); }
@@ -77,6 +78,8 @@ private:
     Sen0466 sen0466_;
     Sen66 sen66_;
     bool warmup_active_last_ = false;
+    bool sfa_warmup_active_last_ = false;
+    SfaStatus sfa_status_last_ = SfaStatus::Absent;
     uint8_t sen66_start_attempts_ = 0;
     bool sen66_retry_exhausted_logged_ = false;
     PressureSensorType pressure_sensor_ = PRESSURE_NONE;

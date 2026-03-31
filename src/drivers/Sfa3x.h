@@ -9,6 +9,12 @@
 
 class Sfa3x {
 public:
+    enum class Variant : uint8_t {
+        Unknown = 0,
+        Sfa30,
+        Sfa40,
+    };
+
     enum class Status : uint8_t {
         Absent = 0,
         Ok,
@@ -25,6 +31,9 @@ public:
     bool isPresent() const { return status_ != Status::Absent; }
     bool hasFault() const { return status_ == Status::Fault; }
     Status status() const { return status_; }
+    Variant variant() const { return variant_; }
+    bool isWarmupActive() const { return warmup_active_; }
+    const char *label() const;
     uint32_t lastDataMs() const { return last_data_ms_; }
     bool takeNewData(float &hcho_ppb);
     void invalidate();
@@ -37,9 +46,13 @@ private:
         ReadCommand,
         ReadBytes,
         ReadCrc,
+        ReadStatus,
     };
 
     bool readWords(uint16_t cmd, uint16_t *out, size_t words, uint32_t delay_ms);
+    void detectVariant();
+    void refreshWarmupState(uint32_t now_ms);
+    bool ensureIdleBeforeDetect();
     bool pingAddress();
     bool writeCmd(uint16_t cmd);
     bool readBytes(uint8_t *buf, size_t len);
@@ -54,7 +67,10 @@ private:
     float last_hcho_ppb_ = 0.0f;
     uint32_t last_poll_ms_ = 0;
     uint32_t last_data_ms_ = 0;
+    uint32_t warmup_started_ms_ = 0;
     uint8_t fail_count_ = 0;
+    Variant variant_ = Variant::Unknown;
     Status status_ = Status::Absent;
     ErrorCause last_error_cause_ = ErrorCause::None;
+    bool warmup_active_ = false;
 };

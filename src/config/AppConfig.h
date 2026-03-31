@@ -110,6 +110,10 @@ namespace Config {
     constexpr uint16_t SFA3X_CMD_START = 0x0006;
     constexpr uint16_t SFA3X_CMD_STOP = 0x0104;
     constexpr uint16_t SFA3X_CMD_READ_VALUES = 0x0327;
+    constexpr uint16_t SFA40_CMD_START = 0x00AC;
+    constexpr uint16_t SFA40_CMD_STOP = 0x50D2;
+    constexpr uint16_t SFA40_CMD_READ_VALUES = 0xE06D;
+    constexpr uint16_t SFA40_CMD_ID = 0x02CE;
     constexpr uint8_t SEN0466_ADDR = 0x74;
     constexpr uint8_t SEN0466_CMD_CHANGE_MODE = 0x78;
     constexpr uint8_t SEN0466_CMD_READ_GAS = 0x86;
@@ -257,6 +261,7 @@ namespace Config {
     constexpr uint32_t SFA3X_READ_DELAY_MS = 5;
     constexpr uint32_t SFA3X_POLL_MS = 3000;
     constexpr uint32_t SFA3X_STALE_MS = 10000;
+    constexpr uint32_t SFA40_WARMUP_MS = 300000;
     constexpr uint32_t SEN0466_CMD_DELAY_MS = 10;
     constexpr uint32_t SEN0466_POLL_MS = 3000;
     constexpr uint32_t SEN0466_STALE_MS = 18000;

@@ -205,7 +205,7 @@
     "I2C:",
     "Touch:",
     "SEN66:",
-    "SFA30:",
+    "SFA3X:",
     "PCF8523:",
     "Fehler erkannt",
     "FEHLER ANZEIGEN",

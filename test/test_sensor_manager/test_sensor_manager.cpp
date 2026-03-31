@@ -280,6 +280,35 @@ void test_sensor_manager_sfa_fault_is_reported() {
     TEST_ASSERT_TRUE(manager.hasSfaFault());
 }
 
+void test_sensor_manager_sfa_state_change_marks_data_changed() {
+    StorageManager storage;
+    storage.begin();
+    PressureHistory history;
+    SensorManager manager;
+    SensorData data;
+
+    auto &sfa = Sfa3x::state();
+    sfa.status = Sfa3x::Status::Ok;
+    sfa.warmup_active = false;
+
+    manager.begin(storage, 0.0f, 0.0f);
+
+    SensorManager::PollResult first =
+        manager.poll(data, storage, history, true);
+    TEST_ASSERT_FALSE(first.data_changed);
+
+    sfa.warmup_active = true;
+    SensorManager::PollResult second =
+        manager.poll(data, storage, history, true);
+    TEST_ASSERT_TRUE(second.data_changed);
+
+    sfa.warmup_active = false;
+    sfa.status = Sfa3x::Status::Fault;
+    SensorManager::PollResult third =
+        manager.poll(data, storage, history, true);
+    TEST_ASSERT_TRUE(third.data_changed);
+}
+
 void test_sensor_manager_bmp58x_label_reports_bmp580_581_family() {
     StorageManager storage;
     storage.begin();
@@ -407,6 +436,7 @@ int main(int, char **) {
     RUN_TEST(test_sensor_manager_without_co_sensor_keeps_pm1_and_clears_co);
     RUN_TEST(test_sensor_manager_sfa_absent_is_not_fault);
     RUN_TEST(test_sensor_manager_sfa_fault_is_reported);
+    RUN_TEST(test_sensor_manager_sfa_state_change_marks_data_changed);
     RUN_TEST(test_sensor_manager_bmp58x_label_reports_bmp580_581_family);
     RUN_TEST(test_sensor_manager_bmp58x_label_reports_bmp585);
     RUN_TEST(test_sensor_manager_bmp3xx_label_reports_bmp388);
@@ -415,3 +445,4 @@ int main(int, char **) {
     RUN_TEST(test_sensor_manager_stale_resets_temp_warning_state);
     return UNITY_END();
 }
+

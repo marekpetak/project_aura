@@ -288,24 +288,35 @@ void UiController::update_sensor_cards(const AirQuality &aq, bool gas_warmup, bo
                                     : (currentData.nox_valid ? getNOxColor(currentData.nox_index) : color_inactive());
     set_dot_color(objects.dot_nox_1, gas_warmup ? nox_col : alert_color_for_mode(nox_col));
 
+    const bool hcho_warmup = sensorManager.isSfaWarmupActive();
     const bool hcho_available = currentData.hcho_valid;
     if (objects.label_hcho_title_1) {
-        safe_label_set_text_static(objects.label_hcho_title_1, hcho_available ? UiText::LabelHcho() : UiText::LabelAqi());
+        safe_label_set_text_static(objects.label_hcho_title_1,
+                                   (hcho_available || hcho_warmup)
+                                       ? UiText::LabelHcho()
+                                       : UiText::LabelAqi());
     }
     if (objects.label_hcho_unit_1) {
-        safe_label_set_text_static(objects.label_hcho_unit_1, hcho_available ? UiText::UnitPpb() : UiText::UnitIndex());
+        safe_label_set_text_static(objects.label_hcho_unit_1,
+                                   (hcho_available || hcho_warmup)
+                                       ? UiText::UnitPpb()
+                                       : UiText::UnitIndex());
     }
     if (objects.label_hcho_value_1) {
         if (hcho_available) {
             snprintf(buf, sizeof(buf), "%d", static_cast<int>(lroundf(currentData.hcho)));
+        } else if (hcho_warmup) {
+            snprintf(buf, sizeof(buf), "...");
         } else {
             snprintf(buf, sizeof(buf), "%d", aq.score);
         }
         safe_label_set_text(objects.label_hcho_value_1, buf);
     }
     if (objects.dot_hcho_1) {
-        lv_color_t hcho_col = hcho_available ? getHCHOColor(currentData.hcho, true) : aq.color;
-        set_dot_color(objects.dot_hcho_1, alert_color_for_mode(hcho_col));
+        lv_color_t hcho_col = hcho_available ? getHCHOColor(currentData.hcho, true)
+                                             : (hcho_warmup ? color_blue() : aq.color);
+        set_dot_color(objects.dot_hcho_1,
+                      hcho_warmup ? hcho_col : alert_color_for_mode(hcho_col));
     }
 
     const bool co_warmup = co_sensor_present && currentData.co_warmup;

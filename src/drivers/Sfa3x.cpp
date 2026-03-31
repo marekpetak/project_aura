@@ -28,9 +28,12 @@ bool Sfa3x::begin() {
     last_hcho_ppb_ = 0.0f;
     last_poll_ms_ = 0;
     last_data_ms_ = 0;
+    warmup_started_ms_ = 0;
     fail_count_ = 0;
+    variant_ = Variant::Unknown;
     status_ = Status::Absent;
     last_error_cause_ = ErrorCause::None;
+    warmup_active_ = false;
     return true;
 }
 
@@ -41,26 +44,42 @@ void Sfa3x::start() {
     if (!pingAddress()) {
         ok_ = false;
         status_ = Status::Absent;
+        variant_ = Variant::Unknown;
         last_error_cause_ = ErrorCause::None;
+        warmup_active_ = false;
+        warmup_started_ms_ = 0;
         return;
     }
+
+    if (!ensureIdleBeforeDetect()) {
+        ok_ = false;
+        status_ = Status::Fault;
+        LOGW("SFA3X", "variant pre-stop failed (%s)", errorCauseLabel());
+        return;
+    }
+
+    detectVariant();
 
     // The device ACKed on the bus, so any STOP/START failure is a fault, not absence.
     status_ = Status::Fault;
     if (!ensureIdleBeforeStart()) {
         ok_ = false;
-        LOGW("SFA30", "start aborted (%s)", errorCauseLabel());
+        LOGW(label(), "start aborted (%s)", errorCauseLabel());
         return;
     }
-    if (!writeCmd(Config::SFA3X_CMD_START)) {
+    const uint16_t start_cmd =
+        (variant_ == Variant::Sfa40) ? Config::SFA40_CMD_START : Config::SFA3X_CMD_START;
+    if (!writeCmd(start_cmd)) {
         ok_ = false;
         last_error_cause_ = ErrorCause::StartCommand;
-        LOGW("SFA30", "start failed (%s)", errorCauseLabel());
+        LOGW(label(), "start failed (%s)", errorCauseLabel());
         return;
     }
     delay(Config::SFA3X_START_DELAY_MS);
     measuring_ = true;
     measurement_state_unknown_ = false;
+    warmup_started_ms_ = millis();
+    warmup_active_ = (variant_ == Variant::Sfa40);
     ok_ = true;
     status_ = Status::Ok;
     last_error_cause_ = ErrorCause::None;
@@ -70,15 +89,34 @@ void Sfa3x::stop() {
     if (!measuring_ && !measurement_state_unknown_) {
         return;
     }
-    if (!writeCmd(Config::SFA3X_CMD_STOP)) {
+    const uint16_t stop_cmd =
+        (variant_ == Variant::Sfa40) ? Config::SFA40_CMD_STOP : Config::SFA3X_CMD_STOP;
+    if (!writeCmd(stop_cmd)) {
         return;
     }
     delay(Config::SFA3X_STOP_DELAY_MS);
     measuring_ = false;
     measurement_state_unknown_ = false;
+    warmup_active_ = false;
+    warmup_started_ms_ = 0;
 }
 
 bool Sfa3x::readData(float &hcho_ppb) {
+    if (variant_ == Variant::Sfa40) {
+        uint16_t words[4];
+        if (!readWords(Config::SFA40_CMD_READ_VALUES, words, 4, 0)) {
+            return false;
+        }
+        if ((words[3] & 0x0001U) != 0U || (words[3] & 0x0002U) != 0U) {
+            last_error_cause_ = ErrorCause::ReadStatus;
+            refreshWarmupState(millis());
+            return false;
+        }
+        warmup_active_ = false;
+        hcho_ppb = static_cast<float>(words[0]) / 10.0f;
+        return true;
+    }
+
     uint16_t words[3];
     if (!readWords(Config::SFA3X_CMD_READ_VALUES, words, 3, Config::SFA3X_READ_DELAY_MS)) {
         return false;
@@ -93,6 +131,7 @@ void Sfa3x::poll() {
         return;
     }
     const uint32_t now = millis();
+    refreshWarmupState(now);
     if (now - last_poll_ms_ < Config::SFA3X_POLL_MS) {
         return;
     }
@@ -100,10 +139,24 @@ void Sfa3x::poll() {
 
     float hcho_ppb = 0.0f;
     if (!readData(hcho_ppb)) {
+        if (variant_ == Variant::Sfa40 &&
+            last_error_cause_ == ErrorCause::ReadStatus) {
+            if (warmup_active_) {
+                status_ = Status::Ok;
+                return;
+            }
+            const bool was_fault = (status_ == Status::Fault);
+            status_ = Status::Fault;
+            fail_count_ = 0;
+            if (!was_fault) {
+                LOGW(label(), "read values failed (%s)", errorCauseLabel());
+            }
+            return;
+        }
         if (++fail_count_ == 3) {
             if (status_ != Status::Absent) {
                 status_ = Status::Fault;
-                LOGW("SFA30", "read values failed (%s)", errorCauseLabel());
+                LOGW(label(), "read values failed (%s)", errorCauseLabel());
             }
             fail_count_ = 0;
         }
@@ -118,6 +171,7 @@ void Sfa3x::poll() {
         data_valid_ = true;
         has_new_data_ = true;
         last_data_ms_ = now;
+        warmup_active_ = false;
     }
 }
 
@@ -142,7 +196,7 @@ bool Sfa3x::readWords(uint16_t cmd, uint16_t *out, size_t words, uint32_t delay_
     }
     delay(delay_ms);
     const size_t bytes = words * 3;
-    uint8_t buf[9];
+    uint8_t buf[12];
     if (bytes > sizeof(buf)) {
         return false;
     }
@@ -158,6 +212,63 @@ bool Sfa3x::readWords(uint16_t cmd, uint16_t *out, size_t words, uint32_t delay_
         }
         out[i] = (static_cast<uint16_t>(p[0]) << 8) | p[1];
     }
+    return true;
+}
+
+void Sfa3x::detectVariant() {
+    uint16_t words[3];
+    if (readWords(Config::SFA40_CMD_ID, words, 3, 0)) {
+        bool has_non_zero_serial = false;
+        for (uint16_t word : words) {
+            if (word != 0) {
+                has_non_zero_serial = true;
+                break;
+            }
+        }
+        if (has_non_zero_serial) {
+            variant_ = Variant::Sfa40;
+            last_error_cause_ = ErrorCause::None;
+            return;
+        }
+    }
+
+    variant_ = Variant::Sfa30;
+    last_error_cause_ = ErrorCause::None;
+}
+
+void Sfa3x::refreshWarmupState(uint32_t now_ms) {
+    if (!warmup_active_ || variant_ != Variant::Sfa40) {
+        return;
+    }
+    if (warmup_started_ms_ == 0 || (now_ms - warmup_started_ms_) >= Config::SFA40_WARMUP_MS) {
+        warmup_active_ = false;
+    }
+}
+
+bool Sfa3x::ensureIdleBeforeDetect() {
+    if (!measurement_state_unknown_) {
+        return true;
+    }
+
+    LOGI("SFA3X", "forcing idle before variant detect after warm restart");
+
+    bool stopped = false;
+    if (writeCmd(Config::SFA40_CMD_STOP)) {
+        delay(Config::SFA3X_STOP_DELAY_MS);
+        stopped = true;
+    }
+    if (writeCmd(Config::SFA3X_CMD_STOP)) {
+        delay(Config::SFA3X_STOP_DELAY_MS);
+        stopped = true;
+    }
+    if (!stopped) {
+        last_error_cause_ = ErrorCause::WarmRestartStop;
+        return false;
+    }
+
+    measuring_ = false;
+    measurement_state_unknown_ = false;
+    last_error_cause_ = ErrorCause::None;
     return true;
 }
 
@@ -192,8 +303,10 @@ bool Sfa3x::ensureIdleBeforeStart() {
         return true;
     }
 
-    LOGI("SFA30", "forcing idle after warm restart");
-    if (!writeCmd(Config::SFA3X_CMD_STOP)) {
+    LOGI(label(), "forcing idle after warm restart");
+    const uint16_t stop_cmd =
+        (variant_ == Variant::Sfa40) ? Config::SFA40_CMD_STOP : Config::SFA3X_CMD_STOP;
+    if (!writeCmd(stop_cmd)) {
         last_error_cause_ = ErrorCause::WarmRestartStop;
         return false;
     }
@@ -216,7 +329,20 @@ const char *Sfa3x::errorCauseLabel() const {
             return "read-bytes";
         case ErrorCause::ReadCrc:
             return "crc";
+        case ErrorCause::ReadStatus:
+            return "status";
         default:
             return "unknown";
+    }
+}
+
+const char *Sfa3x::label() const {
+    switch (variant_) {
+        case Variant::Sfa40:
+            return "SFA40";
+        case Variant::Sfa30:
+            return "SFA30";
+        default:
+            return "SFA3X";
     }
 }

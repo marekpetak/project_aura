@@ -174,7 +174,7 @@ bool UiBootFlow::bootDiagHasErrors(UiController &owner, uint32_t now_ms) {
     if (!owner.sensorManager.isDpsOk()) {
         has_error = true;
     }
-    if (owner.sensorManager.hasSfaFault()) {
+    if (owner.sensorManager.hasSfaFault() && !owner.sensorManager.isSfaWarmupActive()) {
         has_error = true;
     }
     if (owner.timeManager.isRtcPresent()) {
@@ -291,20 +291,24 @@ void UiBootFlow::updateBootDiag(UiController &owner, uint32_t now_ms) {
     }
     if (objects.lbl_diag_sfa) {
         const char *status = UiText::BootDiagNotFound();
-        switch (owner.sensorManager.sfaStatus()) {
-            case SensorManager::SfaStatus::Ok:
-                status = UiText::StatusOk();
-                break;
-            case SensorManager::SfaStatus::Fault:
-                status = UiText::StatusErr();
-                break;
-            case SensorManager::SfaStatus::Absent:
-                break;
+        if (owner.sensorManager.isSfaWarmupActive()) {
+            status = UiText::BootDiagStarting();
+        } else {
+            switch (owner.sensorManager.sfaStatus()) {
+                case SensorManager::SfaStatus::Ok:
+                    status = UiText::StatusOk();
+                    break;
+                case SensorManager::SfaStatus::Fault:
+                    status = UiText::StatusErr();
+                    break;
+                case SensorManager::SfaStatus::Absent:
+                    break;
+            }
         }
         owner.safe_label_set_text(objects.lbl_diag_sfa, status);
     }
-    if (owner.sensorManager.hasSfaFault()) {
-        append_error_line(error_lines, sizeof(error_lines), error_len, "SFA30 communication failed");
+    if (owner.sensorManager.hasSfaFault() && !owner.sensorManager.isSfaWarmupActive()) {
+        append_error_line(error_lines, sizeof(error_lines), error_len, "SFA3X communication failed");
     }
     if (objects.lbl_diag_co) {
         const char *status = UiText::BootDiagNotFound();

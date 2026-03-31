@@ -836,7 +836,7 @@ void UiController::on_card_hcho_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
-    info_sensor = currentData.hcho_valid ? INFO_HCHO : INFO_AQI;
+    info_sensor = (currentData.hcho_valid || sensorManager.isSfaWarmupActive()) ? INFO_HCHO : INFO_AQI;
     restore_sensor_info_selection();
     pending_screen_id = SCREEN_ID_PAGE_SENSORS_INFO;
 }

@@ -548,15 +548,21 @@ void SensorManager::begin(StorageManager &storage, float temp_offset, float hum_
     sfa3x_.start();
     switch (sfa3x_.status()) {
         case Sfa3x::Status::Ok:
-            LOGI("Sensors", "SFA30 OK");
+            if (sfa3x_.isWarmupActive()) {
+                Logger::log(Logger::Info, "Sensors", "%s starting", sfa3x_.label());
+            } else {
+                Logger::log(Logger::Info, "Sensors", "%s OK", sfa3x_.label());
+            }
             break;
         case Sfa3x::Status::Absent:
-            LOGI("Sensors", "SFA30 not installed");
+            Logger::log(Logger::Info, "Sensors", "%s not installed", sfa3x_.label());
             break;
         case Sfa3x::Status::Fault:
-            LOGW("Sensors", "SFA30 init failed");
+            Logger::log(Logger::Warn, "Sensors", "%s init failed", sfa3x_.label());
             break;
     }
+    sfa_warmup_active_last_ = sfa3x_.isWarmupActive();
+    sfa_status_last_ = sfa3x_.status();
 
     sen0466_.begin();
     if (sen0466_.start()) {
@@ -585,6 +591,13 @@ SensorManager::PollResult SensorManager::poll(SensorData &data,
     sen66_.saveVocState(storage);
 
     sfa3x_.poll();
+    const bool sfa_warmup_now = sfa3x_.isWarmupActive();
+    const SfaStatus sfa_status_now = sfa3x_.status();
+    if (sfa_warmup_now != sfa_warmup_active_last_ || sfa_status_now != sfa_status_last_) {
+        sfa_warmup_active_last_ = sfa_warmup_now;
+        sfa_status_last_ = sfa_status_now;
+        result.data_changed = true;
+    }
     float hcho_ppb = 0.0f;
     if (sfa3x_.takeNewData(hcho_ppb)) {
         data.hcho = hcho_ppb;
