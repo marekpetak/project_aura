@@ -31,7 +31,8 @@ using namespace Config;
 
 namespace {
 
-constexpr uint32_t kWifiActionFeedbackMs = 220;
+constexpr uint32_t kBriefActionFeedbackMs = 220;
+constexpr uint32_t kCo2CalibOverlayHoldMs = 10000;
 
 bool persist_ui_config(StorageManager &storage, const char *what) {
     if (storage.saveConfig(true)) {
@@ -42,7 +43,7 @@ bool persist_ui_config(StorageManager &storage, const char *what) {
     return false;
 }
 
-void wifi_action_feedback_timer_cb(lv_timer_t *timer) {
+void brief_action_feedback_timer_cb(lv_timer_t *timer) {
     if (!timer) {
         return;
     }
@@ -55,14 +56,14 @@ void wifi_action_feedback_timer_cb(lv_timer_t *timer) {
     lv_timer_del(timer);
 }
 
-void show_wifi_action_feedback(lv_obj_t *btn) {
+void show_brief_action_feedback(lv_obj_t *btn) {
     if (!btn || !lv_obj_is_valid(btn)) {
         return;
     }
 
     lv_obj_add_state(btn, LV_STATE_CHECKED);
     lv_obj_invalidate(btn);
-    lv_timer_t *timer = lv_timer_create(wifi_action_feedback_timer_cb, kWifiActionFeedbackMs, btn);
+    lv_timer_t *timer = lv_timer_create(brief_action_feedback_timer_cb, kBriefActionFeedbackMs, btn);
     if (timer) {
         lv_timer_set_repeat_count(timer, 1);
     } else {
@@ -117,6 +118,8 @@ void UiController::on_co2_calib_event_cb(lv_event_t *e) { if (instance_) instanc
 void UiController::on_co2_calib_back_event_cb(lv_event_t *e) { if (instance_) instance_->on_co2_calib_back_event(e); }
 void UiController::on_co2_calib_asc_event_cb(lv_event_t *e) { if (instance_) instance_->on_co2_calib_asc_event(e); }
 void UiController::on_co2_calib_start_event_cb(lv_event_t *e) { if (instance_) instance_->on_co2_calib_start_event(e); }
+void UiController::on_co2_calib_confirm_ok_event_cb(lv_event_t *e) { if (instance_) instance_->on_co2_calib_confirm_ok_event(e); }
+void UiController::on_co2_calib_confirm_cancel_event_cb(lv_event_t *e) { if (instance_) instance_->on_co2_calib_confirm_cancel_event(e); }
 void UiController::on_time_date_event_cb(lv_event_t *e) { if (instance_) instance_->on_time_date_event(e); }
 void UiController::on_backlight_settings_event_cb(lv_event_t *e) { if (instance_) instance_->on_backlight_settings_event(e); }
 void UiController::on_backlight_back_event_cb(lv_event_t *e) { if (instance_) instance_->on_backlight_back_event(e); }
@@ -535,7 +538,7 @@ void UiController::on_wifi_reconnect_event(lv_event_t *e) {
         return;
     }
     lv_obj_t *btn = lv_event_get_target(e);
-    show_wifi_action_feedback(btn);
+    show_brief_action_feedback(btn);
     requestWifiReconnectFromUi();
 }
 
@@ -1655,18 +1658,19 @@ void UiController::on_co2_calib_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
-    if (objects.btn_co2_calib_asc) {
-        if (co2_asc_enabled) {
-            lv_obj_add_state(objects.btn_co2_calib_asc, LV_STATE_CHECKED);
-        } else {
-            lv_obj_clear_state(objects.btn_co2_calib_asc, LV_STATE_CHECKED);
-        }
-    }
+    set_co2_calib_confirm_visible(false);
+    sync_co2_asc_toggle_ui();
     pending_screen_id = SCREEN_ID_PAGE_CO2_CALIB;
 }
 
 void UiController::on_co2_calib_back_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+        return;
+    }
+    if (co2_calib_confirm_visible()) {
+        if (co2_calib_confirm_interactive()) {
+            set_co2_calib_confirm_visible(false);
+        }
         return;
     }
     pending_screen_id = SCREEN_ID_PAGE_SETTINGS;
@@ -1712,30 +1716,106 @@ void UiController::on_co2_calib_asc_event(lv_event_t *e) {
         return;
     }
     lv_obj_t *btn = lv_event_get_target(e);
-    bool enabled = lv_obj_has_state(btn, LV_STATE_CHECKED);
-    if (enabled == co2_asc_enabled) {
+    const bool requested_enabled = lv_obj_has_state(btn, LV_STATE_CHECKED);
+    if (requested_enabled == co2_asc_enabled) {
         return;
     }
-    co2_asc_enabled = enabled;
-    storage.config().asc_enabled = co2_asc_enabled;
-    persist_ui_config(storage, "CO2 ASC");
-    if (sensorManager.isOk()) {
-        sensorManager.setAscEnabled(co2_asc_enabled);
+
+    const bool previous_enabled = co2_asc_enabled;
+    const UiCo2Workflow::AscApplyPlan begin_plan =
+        UiCo2Workflow::beginAscApply(previous_enabled,
+                                     requested_enabled,
+                                     sensorManager.isOk());
+
+    co2_asc_enabled = begin_plan.runtime_enabled;
+    storage.config().asc_enabled = begin_plan.config_enabled;
+
+    if (!begin_plan.attempt_live_apply) {
+        if (begin_plan.persist_now) {
+            persist_ui_config(storage, "CO2 ASC");
+            data_dirty = true;
+        }
+        sync_co2_asc_toggle_ui();
+        LOGI("UI", "CO2 ASC %s saved; will apply when SEN66 is ready",
+             requested_enabled ? "enabled" : "disabled");
+        return;
     }
-    data_dirty = true;
+
+    set_co2_asc_progress_visible(true, requested_enabled);
+    arm_co2_calib_overlay_autohide(kCo2CalibOverlayHoldMs);
+    flush_ui_now();
+
+    LOGI("UI", "Applying CO2 ASC: %s", requested_enabled ? "enable" : "disable");
+    const bool live_apply_ok = sensorManager.setAscEnabled(requested_enabled);
+    const UiCo2Workflow::AscApplyPlan finish_plan =
+        UiCo2Workflow::finishAscApply(previous_enabled,
+                                      requested_enabled,
+                                      live_apply_ok);
+    co2_asc_enabled = finish_plan.runtime_enabled;
+    storage.config().asc_enabled = finish_plan.config_enabled;
+
+    if (!live_apply_ok) {
+        sync_co2_asc_toggle_ui();
+        LOGW("UI", "Failed to apply CO2 ASC (%s)",
+             requested_enabled ? "enable" : "disable");
+        return;
+    }
+
+    if (finish_plan.persist_now) {
+        persist_ui_config(storage, "CO2 ASC");
+        data_dirty = true;
+    }
+    sync_co2_asc_toggle_ui();
+    LOGI("UI", "CO2 ASC %s", requested_enabled ? "enabled" : "disabled");
 }
 
 void UiController::on_co2_calib_start_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
-    if (!sensorManager.isOk()) {
-        LOGW("UI", "SEN66 FRC requested but sensor not ready");
+    lv_obj_t *btn = lv_event_get_target(e);
+    show_brief_action_feedback(btn);
+    set_co2_calib_confirm_visible(true);
+}
+
+void UiController::on_co2_calib_confirm_ok_event(lv_event_t *e) {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
+    if (!sensorManager.isOk()) {
+        set_co2_calib_confirm_visible(false);
+        LOGW("UI", "CO2 calibration requested but SEN66 is not ready");
+        return;
+    }
+
+    set_co2_calib_progress_visible(true);
+    arm_co2_calib_overlay_autohide(kCo2CalibOverlayHoldMs);
+    flush_ui_now();
+
+    LOGI("UI", "CO2 calibration started (420 ppm reference)");
+
     uint16_t correction = 0;
-    sensorManager.calibrateFrc(SEN66_FRC_REF_PPM, currentData.pressure_valid, currentData.pressure,
-                               correction);
+    if (!sensorManager.calibrateFrc(SEN66_FRC_REF_PPM,
+                                    currentData.pressure_valid,
+                                    currentData.pressure,
+                                    correction)) {
+        LOGW("UI", "CO2 calibration failed");
+        return;
+    }
+
+    if (correction == 0xFFFF) {
+        LOGW("UI", "CO2 calibration finished but correction is invalid");
+        return;
+    }
+
+    LOGI("UI", "CO2 calibration complete. correction: %u", static_cast<unsigned>(correction));
+}
+
+void UiController::on_co2_calib_confirm_cancel_event(lv_event_t *e) {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+        return;
+    }
+    set_co2_calib_confirm_visible(false);
 }
 
 void UiController::on_time_date_event(lv_event_t *e) {

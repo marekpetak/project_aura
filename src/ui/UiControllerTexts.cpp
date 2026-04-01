@@ -253,6 +253,12 @@ void UiController::update_co2_calib_texts() {
     if (objects.label_btn_co2_calib_start) safe_label_set_text(objects.label_btn_co2_calib_start, UiText::LabelCo2CalibStart());
     if (objects.label_co2_calib_asc_text) safe_label_set_text(objects.label_co2_calib_asc_text, UiText::LabelCo2CalibAscInfo());
     if (objects.label_co2_calib_fresh_text) safe_label_set_text(objects.label_co2_calib_fresh_text, UiText::LabelCo2CalibFreshInfo());
+    if (objects.label_btn_co2_calib_confirm_ok) safe_label_set_text(objects.label_btn_co2_calib_confirm_ok, UiText::LabelCo2CalibConfirmStart());
+    if (objects.label_btn_co2_calib_confirm_cancel) safe_label_set_text(objects.label_btn_co2_calib_confirm_cancel, UiText::LabelConfirmCancelButton());
+    if (objects.label_co2_calib_confirm_title) safe_label_set_text(objects.label_co2_calib_confirm_title, UiText::LabelCo2CalibConfirmTitle());
+    if (objects.label_co2_calib_confirm_text) safe_label_set_text(objects.label_co2_calib_confirm_text, UiText::LabelCo2CalibConfirmText());
+    if (objects.label_co2_calib_progress_title) safe_label_set_text(objects.label_co2_calib_progress_title, UiText::LabelCo2CalibProgressTitle());
+    update_co2_calib_overlay_ui();
 }
 
 void UiController::update_fw_update_texts() {

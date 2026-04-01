@@ -238,6 +238,8 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_co2_calib, UiController::on_co2_calib_event_cb, LV_EVENT_CLICKED},
         {objects.btn_co2_calib_back, UiController::on_co2_calib_back_event_cb, LV_EVENT_CLICKED},
         {objects.btn_co2_calib_start, UiController::on_co2_calib_start_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co2_calib_confirm_ok, UiController::on_co2_calib_confirm_ok_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_co2_calib_confirm_cancel, UiController::on_co2_calib_confirm_cancel_event_cb, LV_EVENT_CLICKED},
         {objects.btn_temp_offset_minus, UiController::on_temp_offset_minus_cb, LV_EVENT_CLICKED},
         {objects.btn_temp_offset_plus, UiController::on_temp_offset_plus_cb, LV_EVENT_CLICKED},
         {objects.btn_hum_offset_minus, UiController::on_hum_offset_minus_cb, LV_EVENT_CLICKED},

@@ -12,6 +12,7 @@
 #include "core/ConnectivityRuntime.h"
 #include "core/MqttRuntimeState.h"
 #include "core/NetworkCommandQueue.h"
+#include "ui/UiCo2Workflow.h"
 #include "ui/UiDeferredUnload.h"
 #include "web/WebUiBridge.h"
 #include <lvgl.h>
@@ -100,6 +101,7 @@ private:
         CONFIRM_RESTART,
         CONFIRM_FACTORY_RESET,
     };
+    using Co2CalibOverlayMode = UiCo2Workflow::OverlayMode;
     enum InfoSensor {
         INFO_NONE = 0,
         INFO_TEMP,
@@ -365,6 +367,16 @@ private:
     float pressure_delta_to_display(float pressure_delta_hpa) const;
     const char *pressure_display_unit() const;
     bool pressure_display_uses_inhg() const { return !temp_units_c; }
+    bool co2_calib_confirm_visible() const;
+    bool co2_calib_confirm_interactive() const;
+    void set_co2_calib_confirm_visible(bool visible);
+    void set_co2_calib_progress_visible(bool visible);
+    void set_co2_asc_progress_visible(bool visible, bool enabling);
+    void sync_co2_asc_toggle_ui();
+    void update_co2_calib_overlay_ui();
+    void clear_co2_calib_overlay_timer();
+    void arm_co2_calib_overlay_autohide(uint32_t delay_ms);
+    void flush_ui_now();
     void reset_pressure_altitude_pending();
     void set_pressure_altitude_overlay_visible(bool visible);
     void sync_pressure_altitude_ui();
@@ -510,6 +522,8 @@ private:
     void on_co2_calib_back_event(lv_event_t *e);
     void on_co2_calib_asc_event(lv_event_t *e);
     void on_co2_calib_start_event(lv_event_t *e);
+    void on_co2_calib_confirm_ok_event(lv_event_t *e);
+    void on_co2_calib_confirm_cancel_event(lv_event_t *e);
     void on_time_date_event(lv_event_t *e);
     void on_backlight_settings_event(lv_event_t *e);
     void on_backlight_back_event(lv_event_t *e);
@@ -678,6 +692,9 @@ private:
     static void on_co2_calib_back_event_cb(lv_event_t *e);
     static void on_co2_calib_asc_event_cb(lv_event_t *e);
     static void on_co2_calib_start_event_cb(lv_event_t *e);
+    static void on_co2_calib_confirm_ok_event_cb(lv_event_t *e);
+    static void on_co2_calib_confirm_cancel_event_cb(lv_event_t *e);
+    static void co2_calib_overlay_timer_cb(lv_timer_t *timer);
     static void on_time_date_event_cb(lv_event_t *e);
     static void on_backlight_settings_event_cb(lv_event_t *e);
     static void on_backlight_back_event_cb(lv_event_t *e);
@@ -886,6 +903,9 @@ private:
     float hum_offset_saved = 0.0f;
     bool hum_offset_dirty = false;
     bool hum_offset_ui_dirty = false;
+    Co2CalibOverlayMode co2_calib_overlay_mode_ = Co2CalibOverlayMode::Hidden;
+    lv_timer_t *co2_calib_overlay_timer_ = nullptr;
+    bool co2_asc_progress_enabling_ = true;
     int pressure_altitude_pending_m_ = Config::PRESSURE_ALTITUDE_DEFAULT_M;
     bool pressure_altitude_overlay_open_ = false;
     Config::Language ui_language = Config::Language::EN;

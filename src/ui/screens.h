@@ -442,6 +442,16 @@ typedef struct _objects_t {
     lv_obj_t *label_co2_calib_title;
     lv_obj_t *btn_co2_calib_back;
     lv_obj_t *label_btn_co2_calib_back;
+    lv_obj_t *overlay_co2_calib_confirm;
+    lv_obj_t *container_co2_calib_confirm;
+    lv_obj_t *btn_co2_calib_confirm_ok;
+    lv_obj_t *label_btn_co2_calib_confirm_ok;
+    lv_obj_t *btn_co2_calib_confirm_cancel;
+    lv_obj_t *label_btn_co2_calib_confirm_cancel;
+    lv_obj_t *label_co2_calib_confirm_title;
+    lv_obj_t *label_co2_calib_confirm_text;
+    lv_obj_t *label_co2_calib_progress_title;
+    lv_obj_t *label_asc_progress_title;
     lv_obj_t *background_clock_1;
     lv_obj_t *container_auto_night_start;
     lv_obj_t *label_auto_night_start_hours_value;

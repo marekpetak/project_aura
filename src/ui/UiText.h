@@ -170,6 +170,12 @@ inline const char *LabelCo2CalibTitle() { return UiStrings::text(UiStrings::Text
 inline const char *LabelCo2CalibStart() { return UiStrings::text(UiStrings::TextId::LabelCo2CalibStart); }
 inline const char *LabelCo2CalibAscInfo() { return UiStrings::text(UiStrings::TextId::LabelCo2CalibAscInfo); }
 inline const char *LabelCo2CalibFreshInfo() { return UiStrings::text(UiStrings::TextId::LabelCo2CalibFreshInfo); }
+inline const char *LabelCo2CalibConfirmStart() { return UiStrings::text(UiStrings::TextId::LabelCo2CalibConfirmStart); }
+inline const char *LabelCo2CalibConfirmTitle() { return UiStrings::text(UiStrings::TextId::LabelCo2CalibConfirmTitle); }
+inline const char *LabelCo2CalibConfirmText() { return UiStrings::text(UiStrings::TextId::LabelCo2CalibConfirmText); }
+inline const char *LabelCo2CalibProgressTitle() { return UiStrings::text(UiStrings::TextId::LabelCo2CalibProgressTitle); }
+inline const char *LabelCo2AscProgressEnableTitle() { return UiStrings::text(UiStrings::TextId::LabelCo2AscProgressEnableTitle); }
+inline const char *LabelCo2AscProgressDisableTitle() { return UiStrings::text(UiStrings::TextId::LabelCo2AscProgressDisableTitle); }
 inline const char *LabelBootTapToContinue() { return UiStrings::text(UiStrings::TextId::LabelBootTapToContinue); }
 inline const char *LabelBootDiagTitle() { return UiStrings::text(UiStrings::TextId::LabelBootDiagTitle); }
 inline const char *LabelBootDiagSystemTitle() { return UiStrings::text(UiStrings::TextId::LabelBootDiagSystemTitle); }

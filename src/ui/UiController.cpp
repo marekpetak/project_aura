@@ -1128,6 +1128,9 @@ void UiController::webRequestRestart() {
 void UiController::poll(uint32_t now) {
     refreshConnectivitySnapshot();
     processWebUiBridgeCommands();
+    const bool co2_overlay_progress_active =
+        co2_calib_overlay_mode_ == Co2CalibOverlayMode::CalibrationProgress ||
+        co2_calib_overlay_mode_ == Co2CalibOverlayMode::AscProgress;
     backlightManager.setAlarmWakeActive(
         should_wake_backlight_on_alert(currentData, sensorManager.isWarmupActive()));
     bool desired = false;
@@ -1178,8 +1181,13 @@ void UiController::poll(uint32_t now) {
             lvgl_diag_prev_heartbeat_lock_fail_count = lvgl_diag.lock_fail_count;
             lvgl_diag_prev_heartbeat_touch_err_count = lvgl_diag.touch_read_error_count;
 
+            const bool suppress_expected_lock_fail_warning =
+                co2_overlay_progress_active &&
+                !lvgl_diag.paused &&
+                lock_fail_delta > 0 &&
+                touch_err_delta < UI_LVGL_DIAG_TOUCH_WARN_DELTA;
             if (lvgl_diag.paused ||
-                lock_fail_delta > 0 ||
+                (!suppress_expected_lock_fail_warning && lock_fail_delta > 0) ||
                 touch_err_delta >= UI_LVGL_DIAG_TOUCH_WARN_DELTA) {
                 LOGW("UI",
                      "LVGL heartbeat: handler=%lu(age=%lu ms), flush=%lu(age=%lu ms), vsync=%lu(age=%lu ms), lock_fail=%lu(+%lu), touch_err=%lu(+%lu), paused=%s",
@@ -1307,6 +1315,7 @@ void UiController::poll(uint32_t now) {
             ++lvgl_lock_fail_streak;
         }
         if (lvgl_lock_fail_streak >= UI_LVGL_LOCK_WARN_FAIL_STREAK &&
+            !co2_overlay_progress_active &&
             (now - last_lvgl_lock_warn_ms) >= UI_LVGL_LOCK_WARN_MS) {
             last_lvgl_lock_warn_ms = now;
             LOGW("UI", "LVGL lock timeout in poll (screen=%d, backlight=%s, streak=%u)",
@@ -1868,6 +1877,132 @@ void UiController::sync_pressure_altitude_ui() {
     }
 
     set_pressure_info_mode(pressure_graph_mode_);
+}
+
+bool UiController::co2_calib_confirm_visible() const {
+    return objects.overlay_co2_calib_confirm &&
+           !lv_obj_has_flag(objects.overlay_co2_calib_confirm, LV_OBJ_FLAG_HIDDEN);
+}
+
+bool UiController::co2_calib_confirm_interactive() const {
+    return co2_calib_overlay_mode_ == Co2CalibOverlayMode::Confirm;
+}
+
+void UiController::clear_co2_calib_overlay_timer() {
+    if (co2_calib_overlay_timer_) {
+        lv_timer_del(co2_calib_overlay_timer_);
+        co2_calib_overlay_timer_ = nullptr;
+    }
+}
+
+void UiController::co2_calib_overlay_timer_cb(lv_timer_t *timer) {
+    if (!timer) {
+        return;
+    }
+    UiController *owner = static_cast<UiController *>(timer->user_data);
+    if (owner) {
+        owner->co2_calib_overlay_timer_ = nullptr;
+        owner->co2_calib_overlay_mode_ =
+            UiCo2Workflow::nextOverlayMode(owner->co2_calib_overlay_mode_,
+                                           UiCo2Workflow::OverlayTransition::Hide);
+        owner->update_co2_calib_overlay_ui();
+    }
+    lv_timer_del(timer);
+}
+
+void UiController::arm_co2_calib_overlay_autohide(uint32_t delay_ms) {
+    clear_co2_calib_overlay_timer();
+    if (delay_ms == 0) {
+        co2_calib_overlay_mode_ =
+            UiCo2Workflow::nextOverlayMode(co2_calib_overlay_mode_,
+                                           UiCo2Workflow::OverlayTransition::Hide);
+        update_co2_calib_overlay_ui();
+        return;
+    }
+
+    co2_calib_overlay_timer_ = lv_timer_create(co2_calib_overlay_timer_cb, delay_ms, this);
+    if (co2_calib_overlay_timer_) {
+        lv_timer_set_repeat_count(co2_calib_overlay_timer_, 1);
+    }
+}
+
+void UiController::sync_co2_asc_toggle_ui() {
+    if (!objects.btn_co2_calib_asc) {
+        return;
+    }
+    if (co2_asc_enabled) {
+        lv_obj_add_state(objects.btn_co2_calib_asc, LV_STATE_CHECKED);
+    } else {
+        lv_obj_clear_state(objects.btn_co2_calib_asc, LV_STATE_CHECKED);
+    }
+}
+
+void UiController::update_co2_calib_overlay_ui() {
+    const bool visible = co2_calib_overlay_mode_ != Co2CalibOverlayMode::Hidden;
+    const bool confirm_visible = co2_calib_overlay_mode_ == Co2CalibOverlayMode::Confirm;
+    const bool calib_progress_visible =
+        co2_calib_overlay_mode_ == Co2CalibOverlayMode::CalibrationProgress;
+    const bool asc_progress_visible =
+        co2_calib_overlay_mode_ == Co2CalibOverlayMode::AscProgress;
+
+    set_visible(objects.overlay_co2_calib_confirm, visible);
+    set_visible(objects.btn_co2_calib_confirm_ok, confirm_visible);
+    set_visible(objects.btn_co2_calib_confirm_cancel, confirm_visible);
+    set_visible(objects.label_co2_calib_confirm_title, confirm_visible);
+    set_visible(objects.label_co2_calib_confirm_text, confirm_visible);
+    set_visible(objects.label_co2_calib_progress_title, calib_progress_visible);
+    set_visible(objects.label_asc_progress_title, asc_progress_visible);
+
+    if (asc_progress_visible && objects.label_asc_progress_title) {
+        safe_label_set_text(objects.label_asc_progress_title,
+                            co2_asc_progress_enabling_
+                                ? UiText::LabelCo2AscProgressEnableTitle()
+                                : UiText::LabelCo2AscProgressDisableTitle());
+    }
+
+    if (visible && objects.overlay_co2_calib_confirm) {
+        lv_obj_add_flag(objects.overlay_co2_calib_confirm, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_move_foreground(objects.overlay_co2_calib_confirm);
+    }
+}
+
+void UiController::set_co2_calib_confirm_visible(bool visible) {
+    clear_co2_calib_overlay_timer();
+    co2_calib_overlay_mode_ = UiCo2Workflow::nextOverlayMode(
+        co2_calib_overlay_mode_,
+        visible ? UiCo2Workflow::OverlayTransition::ShowConfirm
+                : UiCo2Workflow::OverlayTransition::Hide);
+    update_co2_calib_overlay_ui();
+}
+
+void UiController::set_co2_calib_progress_visible(bool visible) {
+    clear_co2_calib_overlay_timer();
+    co2_calib_overlay_mode_ = UiCo2Workflow::nextOverlayMode(
+        co2_calib_overlay_mode_,
+        visible ? UiCo2Workflow::OverlayTransition::ShowCalibrationProgress
+                : UiCo2Workflow::OverlayTransition::Hide);
+    update_co2_calib_overlay_ui();
+}
+
+void UiController::set_co2_asc_progress_visible(bool visible, bool enabling) {
+    clear_co2_calib_overlay_timer();
+    co2_asc_progress_enabling_ = enabling;
+    co2_calib_overlay_mode_ = UiCo2Workflow::nextOverlayMode(
+        co2_calib_overlay_mode_,
+        visible ? UiCo2Workflow::OverlayTransition::ShowAscProgress
+                : UiCo2Workflow::OverlayTransition::Hide);
+    update_co2_calib_overlay_ui();
+}
+
+void UiController::flush_ui_now() {
+    lv_disp_t *disp = lv_disp_get_default();
+    if (!disp) {
+        return;
+    }
+    if (objects.overlay_co2_calib_confirm) {
+        lv_obj_update_layout(objects.overlay_co2_calib_confirm);
+    }
+    lv_refr_now(disp);
 }
 
 void UiController::set_pressure_altitude_overlay_visible(bool visible) {
@@ -2532,6 +2667,9 @@ void UiController::init_ui_defaults() {
     set_visible(objects.container_about, false);
     set_visible(objects.container_web_page, false);
     set_visible(objects.container_rtc_detection, false);
+    clear_co2_calib_overlay_timer();
+    co2_calib_overlay_mode_ = Co2CalibOverlayMode::Hidden;
+    update_co2_calib_overlay_ui();
 
     if (objects.btn_info_graph) {
         lv_obj_add_flag(objects.btn_info_graph, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
