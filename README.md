@@ -118,17 +118,17 @@ look for these specific modules for the reference build:
 | :--- | :--- |
 | Core Board | [Waveshare ESP32-S3-Touch-LCD-4.3 (800x480)](https://www.waveshare.com/esp32-s3-touch-lcd-4.3.htm?&aff_id=144793) |
 | Main Sensor | Sensirion SEN66 (via Adafruit breakout) |
-| Carbon Monoxide (CO) | DFRobot Fermion SEN0466 (optional) |
-| Formaldehyde | Sensirion SFA30 (Grove interface, optional) |
+| Carbon Monoxide (CO) | [DFRobot Gravity: Factory Calibrated Electrochemical CO Sensor (0-1000 ppm, I2C & UART), SEN0466](https://www.dfrobot.com/product-2508.html?tracking=aJ5V32) (optional) |
+| Formaldehyde | Sensirion SFA30 (Grove interface) or [DFRobot Gravity: SFA40 Formaldehyde (HCHO) Sensor (0-1000 ppb, High Accuracy +/-20 ppb), SEN0661](https://www.dfrobot.com/product-3020.html?tracking=aJ5V32) (optional) |
 | Pressure | Adafruit BMP580 or DPS310 (recommended) |
 | RTC | Adafruit PCF8523 (recommended) |
-| DAC Output | GP8403 2-channel 0-10V DAC (optional, VOUT0 used) |
+| DAC Output | [DFRobot Gravity: 2-Channel I2C DAC Module (0-10V), DFR0971](https://www.dfrobot.com/product-2613.html?tracking=aJ5V32) (optional, VOUT0 used) |
 
 Affiliate note: the Waveshare board link above is an affiliate link and helps support Project Aura at no extra cost.
 
 Pressure note: the reference BOM uses BMP580 or DPS310. Firmware auto-detects BMP580/581, BMP585, BMP388, BMP390, and DPS310.
 RTC note: the reference BOM uses PCF8523. Firmware auto-detects PCF8523 and DS3231, and also provides a manual RTC override mode.
-Sensor note: the SFA30 is fully supported and widely available. Support for the successor model (SFA40) is on the roadmap.
+Sensor note: both the Sensirion SFA30 and the DFRobot Gravity SFA40 are supported for HCHO monitoring. Aura auto-detects the compatible SFA3x variant at boot and handles SFA40 warmup/startup behavior automatically.
 CO note: the SEN0466 is optional. If not detected at boot, CO is marked unavailable and PM1 telemetry remains active.
 Note: SEN66 gas indices (VOC/NOx) require about 5 minutes of warmup for reliable readings; the UI shows WARMUP during this period.
 
@@ -148,7 +148,7 @@ DIY: verify pinouts against the pin table below before powering on to avoid dama
 | :--- | :--- | :--- |
 | 3V3 | 3V3 | Power for external I2C sensors |
 | GND | GND | Common ground |
-| I2C SDA | GPIO 8 | Shared bus: SEN66, SFA30, SEN0466, BMP58x/BMP3xx/DPS310, PCF8523/DS3231, GP8403 |
+| I2C SDA | GPIO 8 | Shared bus: SEN66, SFA30/SFA40, SEN0466, BMP58x/BMP3xx/DPS310, PCF8523/DS3231, GP8403 |
 | I2C SCL | GPIO 9 | Shared bus |
 
 Display and touch are integrated on the board; no external wiring is needed for them.
@@ -171,7 +171,7 @@ Data flow and responsibilities are intentionally split into small managers:
 ```mermaid
 graph TD
     subgraph Hardware
-        Sensors[Sensors<br/>SEN66, SFA30, SEN0466, BMP58x/BMP3xx/DPS310]
+        Sensors[Sensors<br/>SEN66, SFA30/SFA40, SEN0466, BMP58x/BMP3xx/DPS310]
         Touch[Touch<br/>GT911]
         RTC[RTC<br/>PCF8523 or DS3231]
         DAC[DAC<br/>GP8403]
