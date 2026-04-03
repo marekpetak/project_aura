@@ -43,6 +43,7 @@ public:
     bool isAlarmWakeSyncing() const { return alarm_wake_syncing_; }
     bool isScheduleEnabled() const { return schedule_enabled_; }
     bool isAlarmWakeEnabled() const { return alarm_wake_enabled_; }
+    bool hasPrefsDirty() const { return prefs_dirty_; }
 
 private:
     uint32_t normalizeTimeoutMs(uint32_t timeout_ms) const;

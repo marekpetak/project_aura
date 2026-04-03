@@ -30,6 +30,7 @@ public:
     bool isUiDirty() const { return ui_dirty_; }
     bool isToggleSyncing() const { return toggle_syncing_; }
     bool isAutoEnabled() const { return auto_enabled_; }
+    bool hasPrefsDirty() const { return prefs_dirty_; }
 
 private:
     bool applyInternal(bool night_mode, bool &desired_night_mode);

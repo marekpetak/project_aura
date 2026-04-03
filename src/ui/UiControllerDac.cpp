@@ -172,6 +172,7 @@ void update_reason_candidate(uint8_t percent,
 
 void UiController::update_dac_ui(uint32_t now_ms) {
     refreshConnectivitySnapshot();
+    sync_back_button_label(objects.label_btn_dac_settings_back, false);
 
     const bool available = fanControl.isAvailable();
     const bool faulted = fanControl.isFaulted();

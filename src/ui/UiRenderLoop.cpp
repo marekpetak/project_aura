@@ -79,10 +79,12 @@ void UiRenderLoop::process(UiController &owner, uint32_t now_ms) {
     }
     if (owner.backlightManager.isUiDirty() && owner.current_screen_id == SCREEN_ID_PAGE_BACKLIGHT) {
         owner.backlightManager.updateUi();
+        owner.update_backlight_texts();
         did_update = true;
     }
     if (owner.nightModeManager.isUiDirty() && owner.current_screen_id == SCREEN_ID_PAGE_AUTO_NIGHT_MODE) {
         owner.nightModeManager.updateUi();
+        owner.update_auto_night_texts();
         did_update = true;
     }
     if ((owner.current_screen_id == SCREEN_ID_PAGE_SETTINGS ||

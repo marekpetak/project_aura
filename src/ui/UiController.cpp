@@ -1355,6 +1355,27 @@ void UiController::safe_label_set_text_static(lv_obj_t *obj, const char *new_tex
     lv_label_set_text_static(obj, new_text);
 }
 
+bool UiController::settings_has_unsaved_changes() const {
+    return temp_offset_dirty || hum_offset_dirty || language_dirty;
+}
+
+bool UiController::datetime_has_unsaved_changes() const {
+    return datetime_changed ||
+           (rtc_detection_overlay_visible() &&
+            rtc_detection_pending_mode_ != rtc_detection_saved_mode_);
+}
+
+const char *UiController::back_button_label(bool has_unsaved_changes) const {
+    return has_unsaved_changes ? UiText::LabelSettingsBack() : UiText::LabelDiagBack();
+}
+
+void UiController::sync_back_button_label(lv_obj_t *label, bool has_unsaved_changes) {
+    if (!label) {
+        return;
+    }
+    safe_label_set_text_static(label, back_button_label(has_unsaved_changes));
+}
+
 void UiController::update_qrcode_if_needed(lv_obj_t *obj, const char *text, char *cache, size_t cache_size) {
     if (!obj || !text || !cache || cache_size == 0) {
         return;
@@ -2402,6 +2423,7 @@ void UiController::update_temp_offset_label() {
         snprintf(buf, sizeof(buf), "%.1f", val);
     }
     safe_label_set_text(objects.label_temp_offset_value, buf);
+    sync_back_button_label(objects.label_btn_back, settings_has_unsaved_changes());
 }
 
 void UiController::update_hum_offset_label() {
@@ -2421,6 +2443,7 @@ void UiController::update_hum_offset_label() {
         strcpy(buf, UiText::ValueZeroPercent());
     }
     safe_label_set_text(objects.label_hum_offset_value, buf);
+    sync_back_button_label(objects.label_btn_back, settings_has_unsaved_changes());
 }
 
 void UiController::update_led_indicators() {
@@ -2533,6 +2556,7 @@ void UiController::update_settings_header() {
     if (!objects.container_settings_header) {
         return;
     }
+    sync_back_button_label(objects.label_btn_back, settings_has_unsaved_changes());
     AirQuality aq = getAirQuality(currentData);
     bool co_alert_active = false;
     uint8_t status_severity = static_cast<uint8_t>(StatusMessages::STATUS_NONE);

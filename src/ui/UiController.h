@@ -406,6 +406,10 @@ private:
     void init_ui_defaults();
     void set_visible(lv_obj_t *obj, bool visible);
     void hide_all_sensor_info_containers();
+    bool settings_has_unsaved_changes() const;
+    bool datetime_has_unsaved_changes() const;
+    const char *back_button_label(bool has_unsaved_changes) const;
+    void sync_back_button_label(lv_obj_t *label, bool has_unsaved_changes);
 
     void safe_label_set_text(lv_obj_t *obj, const char *new_text);
     void safe_label_set_text_static(lv_obj_t *obj, const char *new_text);

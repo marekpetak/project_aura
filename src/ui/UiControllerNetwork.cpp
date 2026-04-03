@@ -86,6 +86,7 @@ WebUiBridge::ApplyResult finalize_network_bridge_result(bool success,
 
 void UiController::update_datetime_ui() {
     const bool controls_enabled = !timeManager.isManualLocked(millis());
+    sync_back_button_label(objects.label_btn_datetime_back, datetime_has_unsaved_changes());
     // Keep editable fields in sync with system time unless user is actively editing.
     if (!datetime_changed || !controls_enabled) {
         timeManager.syncInputsFromSystem(set_hour, set_minute, set_day, set_month, set_year);
@@ -413,7 +414,7 @@ void UiController::update_wifi_texts() {
     if (objects.label_btn_wifi_forget) safe_label_set_text(objects.label_btn_wifi_forget, UiText::LabelWifiForget());
     if (objects.label_btn_wifi_reconnect) safe_label_set_text(objects.label_btn_wifi_reconnect, UiText::LabelWifiReconnect());
     if (objects.label_btn_wifi_start_ap) safe_label_set_text(objects.label_btn_wifi_start_ap, UiText::LabelWifiStartAp());
-    if (objects.label_btn_wifi_back) safe_label_set_text(objects.label_btn_wifi_back, UiText::LabelSettingsBack());
+    sync_back_button_label(objects.label_btn_wifi_back, false);
 }
 
 void UiController::update_wifi_ui() {
@@ -827,7 +828,7 @@ void UiController::update_mqtt_texts() {
     if (objects.label_mqtt_topic) safe_label_set_text(objects.label_mqtt_topic, UiText::LabelMqttTopic());
     if (objects.label_btn_mqtt_toggle) safe_label_set_text(objects.label_btn_mqtt_toggle, UiText::MqttToggleLabel());
     if (objects.label_btn_mqtt_reconnect) safe_label_set_text(objects.label_btn_mqtt_reconnect, UiText::LabelMqttReconnect());
-    if (objects.label_btn_mqtt_back) safe_label_set_text(objects.label_btn_mqtt_back, UiText::LabelSettingsBack());
+    sync_back_button_label(objects.label_btn_mqtt_back, false);
 }
 
 void UiController::update_datetime_texts() {
@@ -844,6 +845,7 @@ void UiController::update_datetime_texts() {
     if (objects.label_set_date_year_title) safe_label_set_text(objects.label_set_date_year_title, UiText::LabelSetDateYear());
     if (objects.label_time_title_1) safe_label_set_text(objects.label_time_title_1, UiText::LabelTimeCard());
     if (objects.label_btn_datetime_apply) safe_label_set_text(objects.label_btn_datetime_apply, UiText::LabelApplyNow());
+    sync_back_button_label(objects.label_btn_datetime_back, datetime_has_unsaved_changes());
     if (objects.label_rtc_title) safe_label_set_text(objects.label_rtc_title, UiText::LabelRtc());
     if (objects.label_wifi_title_1) safe_label_set_text(objects.label_wifi_title_1, UiText::LabelWifiChip());
     if (objects.label_chip_ntp_title) safe_label_set_text(objects.label_chip_ntp_title, UiText::LabelNtpChip());

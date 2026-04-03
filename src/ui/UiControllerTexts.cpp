@@ -9,12 +9,14 @@
 #include <stdio.h>
 
 #include "core/AppVersion.h"
+#include "ui/BacklightManager.h"
+#include "ui/NightModeManager.h"
 #include "ui/UiText.h"
 #include "ui/ui.h"
 
 void UiController::update_settings_texts() {
     if (objects.label_settings_title) safe_label_set_text(objects.label_settings_title, UiText::LabelSettingsTitle());
-    if (objects.label_btn_back) safe_label_set_text(objects.label_btn_back, UiText::LabelSettingsBack());
+    sync_back_button_label(objects.label_btn_back, settings_has_unsaved_changes());
     if (objects.label_temp_offset_title) safe_label_set_text(objects.label_temp_offset_title, UiText::LabelTempOffsetTitle());
     if (objects.label_hum_offset_title) safe_label_set_text(objects.label_hum_offset_title, UiText::LabelHumOffsetTitle());
     if (objects.label_btn_night_mode) safe_label_set_text(objects.label_btn_night_mode, UiText::LabelNightMode());
@@ -32,20 +34,8 @@ void UiController::update_settings_texts() {
     if (objects.label_btn_web_page) safe_label_set_text(objects.label_btn_web_page, "WEB\nPAGE");
     if (objects.label_dac_settings) safe_label_set_text(objects.label_dac_settings, UiText::LabelDacSettings());
     if (objects.label_dac_settings_title) safe_label_set_text(objects.label_dac_settings_title, UiText::LabelDacSettingsTitle());
-    if (objects.label_btn_about_back) {
-        const char *back_label = UiText::LabelSettingsBack();
-        if (ui_language == Config::Language::EN) {
-            back_label = "BACK";
-        }
-        safe_label_set_text(objects.label_btn_about_back, back_label);
-    }
-    if (objects.label_btn_web_page_back) {
-        const char *back_label = UiText::LabelSettingsBack();
-        if (ui_language == Config::Language::EN) {
-            back_label = "BACK";
-        }
-        safe_label_set_text(objects.label_btn_web_page_back, back_label);
-    }
+    sync_back_button_label(objects.label_btn_about_back, false);
+    sync_back_button_label(objects.label_btn_web_page_back, false);
     if (objects.container_about_text) {
         char about_text[256];
         snprintf(about_text, sizeof(about_text),
@@ -75,7 +65,7 @@ void UiController::update_main_texts() {
 }
 
 void UiController::update_sensor_info_texts() {
-    if (objects.label_btn_back_1) safe_label_set_text_static(objects.label_btn_back_1, UiText::LabelSettingsBack());
+    sync_back_button_label(objects.label_btn_back_1, false);
     if (objects.label_btn_set_altitude) safe_label_set_text_static(objects.label_btn_set_altitude, UiText::LabelSetAltitudeButton());
     if (objects.set_altitude_title_1) safe_label_set_text_static(objects.set_altitude_title_1, UiText::LabelMslPressureInfo());
     if (objects.set_altitude_title_2) safe_label_set_text_static(objects.set_altitude_title_2, UiText::LabelAltitudeAboveSeaLevel());
@@ -216,7 +206,7 @@ void UiController::update_theme_texts() {
 
 void UiController::update_auto_night_texts() {
     if (objects.label_auto_night_title) safe_label_set_text(objects.label_auto_night_title, UiText::LabelAutoNightTitle());
-    if (objects.label_btn_auto_night_back) safe_label_set_text(objects.label_btn_auto_night_back, UiText::LabelSettingsBack());
+    sync_back_button_label(objects.label_btn_auto_night_back, nightModeManager.hasPrefsDirty());
     if (objects.label_auto_night_hint) safe_label_set_text(objects.label_auto_night_hint, UiText::LabelAutoNightHint());
     if (objects.label_auto_night_start_title) safe_label_set_text(objects.label_auto_night_start_title, UiText::LabelAutoNightStartTitle());
     if (objects.label_auto_night_end_title) safe_label_set_text(objects.label_auto_night_end_title, UiText::LabelAutoNightEndTitle());
@@ -239,7 +229,7 @@ void UiController::update_backlight_texts() {
     if (objects.label_backlight_sleep_minutes) safe_label_set_text(objects.label_backlight_sleep_minutes, UiText::LabelSetTimeMinutes());
     if (objects.label_backlight_wake_hours) safe_label_set_text(objects.label_backlight_wake_hours, UiText::LabelSetTimeHours());
     if (objects.label_backlight_wake_minutes) safe_label_set_text(objects.label_backlight_wake_minutes, UiText::LabelSetTimeMinutes());
-    if (objects.label_btn_backlight_back) safe_label_set_text(objects.label_btn_backlight_back, UiText::LabelSettingsBack());
+    sync_back_button_label(objects.label_btn_backlight_back, backlightManager.hasPrefsDirty());
     if (objects.label_btn_backlight_schedule_toggle) safe_label_set_text(objects.label_btn_backlight_schedule_toggle, UiText::MqttToggleLabel());
     if (objects.label_btn_backlight_alarm_wake_toggle) safe_label_set_text(objects.label_btn_backlight_alarm_wake_toggle, UiText::LabelBacklightAlarmWakeToggle());
     if (objects.label_btn_backlight_always_on) safe_label_set_text(objects.label_btn_backlight_always_on, UiText::LabelBacklightAlwaysOn());
@@ -249,7 +239,7 @@ void UiController::update_backlight_texts() {
 
 void UiController::update_co2_calib_texts() {
     if (objects.label_co2_calib_title) safe_label_set_text(objects.label_co2_calib_title, UiText::LabelCo2CalibTitle());
-    if (objects.label_btn_co2_calib_back) safe_label_set_text(objects.label_btn_co2_calib_back, UiText::LabelSettingsBack());
+    sync_back_button_label(objects.label_btn_co2_calib_back, false);
     if (objects.label_btn_co2_calib_start) safe_label_set_text(objects.label_btn_co2_calib_start, UiText::LabelCo2CalibStart());
     if (objects.label_co2_calib_asc_text) safe_label_set_text(objects.label_co2_calib_asc_text, UiText::LabelCo2CalibAscInfo());
     if (objects.label_co2_calib_fresh_text) safe_label_set_text(objects.label_co2_calib_fresh_text, UiText::LabelCo2CalibFreshInfo());
