@@ -15,6 +15,8 @@ include/secrets.h
 *.log
 tmpclaude-*
 .tmp_*.ps1
+build_*.log
+envdump_*.log
 nul
 
 # Local web installer artifacts and site files
@@ -26,3 +28,10 @@ release-assets/
 # Generated web assets
 src/web/generated/*.inc
 scripts/__pycache__/
+
+# Local ESP-IDF / component-manager artifacts
+/.dummy/
+/managed_components/
+/dependencies.lock
+/sdkconfig.project_aura
+/CMakeLists.txt
