@@ -230,6 +230,8 @@ const char *DfrMultiGasSensor::gasTypeLabel(GasType type) {
             return "CO";
         case GasType::H2S:
             return "H2S";
+        case GasType::O3:
+            return "O3";
         case GasType::Unknown:
             return "Unknown";
         case GasType::None:
@@ -242,6 +244,8 @@ DfrMultiGasSensor::GasType DfrMultiGasSensor::mapGasType(uint8_t gas_type_raw) {
     switch (gas_type_raw) {
         case Config::DFR_GAS_TYPE_NH3:
             return GasType::NH3;
+        case Config::DFR_GAS_TYPE_O3:
+            return GasType::O3;
         case Config::DFR_GAS_TYPE_SO2:
             return GasType::SO2;
         case Config::DFR_GAS_TYPE_NO2:

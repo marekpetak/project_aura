@@ -687,6 +687,7 @@ size_t buildStatePayload(char *out,
     const bool so2_valid = optional_gas_value_valid_for_type(data, OptionalGasType::SO2);
     const bool no2_valid = optional_gas_value_valid_for_type(data, OptionalGasType::NO2);
     const bool h2s_valid = optional_gas_value_valid_for_type(data, OptionalGasType::H2S);
+    const bool o3_valid = optional_gas_value_valid_for_type(data, OptionalGasType::O3);
     const bool optional_gas_valid = optional_gas_value_valid(data);
     const bool voc_publish_valid = !gas_warmup && data.voc_valid;
     const bool nox_publish_valid = !gas_warmup && data.nox_valid;
@@ -704,6 +705,7 @@ size_t buildStatePayload(char *out,
         !add_float("optional_gas", optional_gas_valid, data.optional_gas_ppm, 1) ||
         !add_nullable_cstr("optional_gas_type", optional_gas_type_text(data)) ||
         !add_float("nh3", nh3_valid, data.nh3_ppm, 1) ||
+        !add_float("o3", o3_valid, data.optional_gas_ppm, 1) ||
         !add_float("so2", so2_valid, data.optional_gas_ppm, 1) ||
         !add_float("no2", no2_valid, data.optional_gas_ppm, 1) ||
         !add_float("h2s", h2s_valid, data.optional_gas_ppm, 1) ||

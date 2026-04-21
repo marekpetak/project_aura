@@ -29,6 +29,7 @@ public:
         CO,
         Unknown,
         H2S,
+        O3,
     };
 
     explicit DfrMultiGasSensor(const DfrMultiGasSensorConfig &config) : config_(config) {}

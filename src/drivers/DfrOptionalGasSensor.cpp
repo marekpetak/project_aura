@@ -12,6 +12,7 @@ namespace {
 
 constexpr uint8_t kOptionalGasTypes[] = {
     Config::DFR_GAS_TYPE_NH3,
+    Config::DFR_GAS_TYPE_O3,
     Config::DFR_GAS_TYPE_SO2,
     Config::DFR_GAS_TYPE_NO2,
     Config::DFR_GAS_TYPE_H2S,
@@ -41,6 +42,8 @@ DfrOptionalGasSensor::OptionalGasType DfrOptionalGasSensor::optionalGasType() co
             return OptionalGasType::NO2;
         case GasType::H2S:
             return OptionalGasType::H2S;
+        case GasType::O3:
+            return OptionalGasType::O3;
         case GasType::None:
         case GasType::CO:
         case GasType::Unknown:
@@ -63,6 +66,8 @@ const char *DfrOptionalGasSensor::optionalGasLabel(OptionalGasType type) {
             return "NO2";
         case OptionalGasType::H2S:
             return "H2S";
+        case OptionalGasType::O3:
+            return "O3";
         case OptionalGasType::None:
         default:
             return "None";
@@ -75,6 +80,8 @@ float DfrOptionalGasSensor::minPpmForType(OptionalGasType type) {
             return Config::SEN0469_NH3_MIN_PPM;
         case OptionalGasType::H2S:
             return Config::SEN0467_H2S_MIN_PPM;
+        case OptionalGasType::O3:
+            return Config::SEN0472_O3_MIN_PPM;
         case OptionalGasType::SO2:
         case OptionalGasType::NO2:
         case OptionalGasType::None:
@@ -89,6 +96,8 @@ float DfrOptionalGasSensor::maxPpmForType(OptionalGasType type) {
             return Config::SEN0469_NH3_MAX_PPM;
         case OptionalGasType::H2S:
             return Config::SEN0467_H2S_MAX_PPM;
+        case OptionalGasType::O3:
+            return Config::SEN0472_O3_MAX_PPM;
         case OptionalGasType::SO2:
         case OptionalGasType::NO2:
             return 20.0f;

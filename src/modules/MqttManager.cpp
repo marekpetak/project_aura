@@ -933,6 +933,8 @@ void MqttManager::publishDiscovery(const MqttRuntimeSnapshot &runtime) {
                            "", "", "{{ value_json.optional_gas_type }}", "mdi:molecule");
     publishDiscoverySensor("nh3", "NH3", "ppm",
                            "", "measurement", "{{ value_json.nh3 }}", "mdi:molecule");
+    publishDiscoverySensor("o3", "O3", "ppm",
+                           "", "measurement", "{{ value_json.o3 }}", "mdi:molecule");
     publishDiscoverySensor("h2s", "H2S", "ppm",
                            "", "measurement", "{{ value_json.h2s }}", "mdi:molecule");
     publishDiscoverySensor("so2", "SO2", "ppm",

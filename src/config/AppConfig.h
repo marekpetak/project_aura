@@ -124,6 +124,7 @@ namespace Config {
     constexpr uint8_t DFR_GAS_TYPE_NH3 = 0x02;
     constexpr uint8_t DFR_GAS_TYPE_H2S = 0x03;
     constexpr uint8_t DFR_GAS_TYPE_CO = 0x04;
+    constexpr uint8_t DFR_GAS_TYPE_O3 = 0x2A;
     constexpr uint8_t DFR_GAS_TYPE_SO2 = 0x2B;
     constexpr uint8_t DFR_GAS_TYPE_NO2 = 0x2C;
     constexpr uint8_t SEN0466_ADDR = 0x74;
@@ -132,6 +133,7 @@ namespace Config {
     constexpr uint8_t SEN0469_ADDR = DFR_OPTIONAL_GAS_ADDR;
     constexpr uint8_t SEN0467_GAS_TYPE_H2S = DFR_GAS_TYPE_H2S;
     constexpr uint8_t SEN0469_GAS_TYPE_NH3 = DFR_GAS_TYPE_NH3;
+    constexpr uint8_t SEN0472_GAS_TYPE_O3 = DFR_GAS_TYPE_O3;
     constexpr uint8_t SEN0470_GAS_TYPE_SO2 = DFR_GAS_TYPE_SO2;
     constexpr uint8_t SEN0471_GAS_TYPE_NO2 = DFR_GAS_TYPE_NO2;
     constexpr uint8_t PCF8523_ADDR = 0x68;
@@ -322,6 +324,8 @@ namespace Config {
     constexpr float SEN0467_H2S_MAX_PPM = 100.0f;
     constexpr float SEN0469_NH3_MIN_PPM = 0.0f;
     constexpr float SEN0469_NH3_MAX_PPM = 100.0f;
+    constexpr float SEN0472_O3_MIN_PPM = 0.0f;
+    constexpr float SEN0472_O3_MAX_PPM = 10.0f;
 
     // Shared air-quality thresholds used by auto-demand logic and UI diagnostics.
     constexpr float AQ_CO2_GREEN_MAX_PPM = 800.0f;

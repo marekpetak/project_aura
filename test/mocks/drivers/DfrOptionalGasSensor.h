@@ -9,6 +9,7 @@ struct DfrOptionalGasSensorTestState {
         SO2,
         NO2,
         H2S,
+        O3,
     };
 
     bool present = false;
@@ -68,6 +69,8 @@ public:
                 return "NO2";
             case OptionalGasType::H2S:
                 return "H2S";
+            case OptionalGasType::O3:
+                return "O3";
             case OptionalGasType::None:
             default:
                 return "None";
@@ -80,6 +83,7 @@ public:
             case OptionalGasType::SO2:
             case OptionalGasType::NO2:
             case OptionalGasType::H2S:
+            case OptionalGasType::O3:
             case OptionalGasType::None:
             default:
                 return 0.0f;
@@ -94,6 +98,8 @@ public:
             case OptionalGasType::SO2:
             case OptionalGasType::NO2:
                 return 20.0f;
+            case OptionalGasType::O3:
+                return 10.0f;
             case OptionalGasType::None:
             default:
                 return 0.0f;
