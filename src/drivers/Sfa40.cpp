@@ -291,6 +291,7 @@ bool Sfa40::shouldFallbackToSfa30() const {
     }
     switch (last_error_cause_) {
         case ErrorCause::DetectSensor:
+        case ErrorCause::WarmRestartStop:
         case ErrorCause::ReadCommand:
         case ErrorCause::ReadBytes:
         case ErrorCause::ReadCrc:

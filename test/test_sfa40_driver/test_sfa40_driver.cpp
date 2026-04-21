@@ -88,6 +88,7 @@ void test_real_sfa40_warm_restart_stop_failure_marks_fault_when_device_acks() {
     TEST_ASSERT_FALSE(sfa.isOk());
     TEST_ASSERT_TRUE(sfa.hasFault());
     TEST_ASSERT_FALSE(sfa.isWarmupActive());
+    TEST_ASSERT_TRUE(sfa.shouldFallbackToSfa30());
     TEST_ASSERT_EQUAL(static_cast<int>(Sfa40::Status::Fault),
                       static_cast<int>(sfa.status()));
 }
