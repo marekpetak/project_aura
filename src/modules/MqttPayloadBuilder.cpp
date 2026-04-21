@@ -14,6 +14,7 @@
 #include "core/MathUtils.h"
 #include "core/AirQualityEngine.h"
 #include "config/AppConfig.h"
+#include "drivers/DfrOptionalGasSensor.h"
 
 namespace MqttPayloadBuilder {
 
@@ -367,6 +368,36 @@ const char *main_issue_text(const AirQualityEngine::Result &aqi) {
     }
 }
 
+using OptionalGasType = DfrOptionalGasSensor::OptionalGasType;
+
+OptionalGasType optional_gas_type_from_data(const SensorData &data) {
+    return static_cast<OptionalGasType>(data.optional_gas_type);
+}
+
+bool optional_gas_type_known(const SensorData &data) {
+    return data.optional_gas_sensor_present &&
+           optional_gas_type_from_data(data) != OptionalGasType::None;
+}
+
+bool optional_gas_value_valid(const SensorData &data) {
+    return data.optional_gas_sensor_present &&
+           data.optional_gas_valid &&
+           optional_gas_type_from_data(data) != OptionalGasType::None &&
+           isfinite(data.optional_gas_ppm) &&
+           data.optional_gas_ppm >= 0.0f;
+}
+
+bool optional_gas_value_valid_for_type(const SensorData &data, OptionalGasType type) {
+    return optional_gas_value_valid(data) &&
+           optional_gas_type_from_data(data) == type;
+}
+
+const char *optional_gas_type_text(const SensorData &data) {
+    return optional_gas_type_known(data)
+               ? DfrOptionalGasSensor::optionalGasLabel(optional_gas_type_from_data(data))
+               : nullptr;
+}
+
 } // namespace
 
 String buildDiscoveryEntityObjectId(const String &base_topic,
@@ -605,6 +636,16 @@ size_t buildStatePayload(char *out,
         first = false;
         return true;
     };
+    auto add_nullable_cstr = [&](const char *key, const char *value) {
+        if (!payload.appendf("%s\"%s\":", first ? "" : ",", key)) {
+            return false;
+        }
+        first = false;
+        if (!value || value[0] == '\0') {
+            return payload.appendf("null");
+        }
+        return payload.appendf("\"%s\"", value);
+    };
 
     float dew_c = NAN;
     bool dew_valid = data.temp_valid && data.hum_valid;
@@ -642,10 +683,10 @@ size_t buildStatePayload(char *out,
                           data.co_valid &&
                           isfinite(data.co_ppm) &&
                           data.co_ppm >= 0.0f;
-    const bool nh3_valid = data.nh3_sensor_present &&
-                           data.nh3_valid &&
-                           isfinite(data.nh3_ppm) &&
-                           data.nh3_ppm >= 0.0f;
+    const bool nh3_valid = optional_gas_value_valid_for_type(data, OptionalGasType::NH3);
+    const bool so2_valid = optional_gas_value_valid_for_type(data, OptionalGasType::SO2);
+    const bool no2_valid = optional_gas_value_valid_for_type(data, OptionalGasType::NO2);
+    const bool optional_gas_valid = optional_gas_value_valid(data);
     const bool voc_publish_valid = !gas_warmup && data.voc_valid;
     const bool nox_publish_valid = !gas_warmup && data.nox_valid;
     const bool fan_output_valid = fan.present && fan.output_known;
@@ -659,7 +700,11 @@ size_t buildStatePayload(char *out,
                                sizeof(fan_timer_remaining_text),
                                fan_timer_remaining);
     if (!add_float("co", co_valid, data.co_ppm, 1) ||
+        !add_float("optional_gas", optional_gas_valid, data.optional_gas_ppm, 1) ||
+        !add_nullable_cstr("optional_gas_type", optional_gas_type_text(data)) ||
         !add_float("nh3", nh3_valid, data.nh3_ppm, 1) ||
+        !add_float("so2", so2_valid, data.optional_gas_ppm, 1) ||
+        !add_float("no2", no2_valid, data.optional_gas_ppm, 1) ||
         !add_int("voc_index", voc_publish_valid, data.voc_index) ||
         !add_int("nox_index", nox_publish_valid, data.nox_index) ||
         !add_float("hcho", data.hcho_valid, data.hcho, 1) ||
