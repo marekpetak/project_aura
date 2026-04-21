@@ -6,6 +6,9 @@
 
 #include "ui/UiBootFlow.h"
 
+#include <stdio.h>
+#include <string.h>
+
 #include <WiFi.h>
 #include <esp_heap_caps.h>
 
@@ -308,7 +311,17 @@ void UiBootFlow::updateBootDiag(UiController &owner, uint32_t now_ms) {
         owner.safe_label_set_text(objects.lbl_diag_sfa, status);
     }
     if (owner.sensorManager.hasSfaFault() && !owner.sensorManager.isSfaWarmupActive()) {
-        append_error_line(error_lines, sizeof(error_lines), error_len, "SFA3X communication failed");
+        const char *hcho_label = owner.sensorManager.hchoSensorLabel();
+        if (strcmp(hcho_label, "SFA30/40") == 0) {
+            append_error_line(error_lines,
+                              sizeof(error_lines),
+                              error_len,
+                              "HCHO sensor communication failed");
+        } else {
+            char hcho_error[48];
+            snprintf(hcho_error, sizeof(hcho_error), "%s communication failed", hcho_label);
+            append_error_line(error_lines, sizeof(error_lines), error_len, hcho_error);
+        }
     }
     if (objects.lbl_diag_co) {
         const char *status = UiText::BootDiagNotFound();

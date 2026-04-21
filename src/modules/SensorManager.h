@@ -62,6 +62,7 @@ public:
     bool isPressureOk() const;
     PressureSensorType pressureSensorType() const { return pressure_sensor_; }
     const char *pressureSensorLabel() const;
+    const char *hchoSensorLabel() const;
     bool deviceReset() { return sen66_.deviceReset(); }
     void scheduleRetry(uint32_t delay_ms) {
         sen66_start_attempts_ = 0;

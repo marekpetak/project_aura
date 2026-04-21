@@ -347,6 +347,39 @@ void test_sensor_manager_warm_restart_tries_sfa40_when_sfa30_probe_does_not_conf
     TEST_ASSERT_TRUE(manager.isSfaOk());
 }
 
+void test_sensor_manager_hcho_sensor_label_reports_sfa30_when_active() {
+    StorageManager storage;
+    storage.begin();
+    SensorManager manager;
+
+    auto &sfa40 = Sfa40::state();
+    sfa40.status = Sfa40::Status::Fault;
+    sfa40.fallback_to_sfa30 = true;
+
+    auto &sfa30 = Sfa30::state();
+    sfa30.status = Sfa30::Status::Ok;
+
+    manager.begin(storage, 0.0f, 0.0f);
+
+    TEST_ASSERT_EQUAL_STRING("SFA30", manager.hchoSensorLabel());
+}
+
+void test_sensor_manager_hcho_sensor_label_reports_sfa40_when_active() {
+    StorageManager storage;
+    storage.begin();
+    SensorManager manager;
+
+    auto &sfa40 = Sfa40::state();
+    sfa40.status = Sfa40::Status::Ok;
+
+    auto &sfa30 = Sfa30::state();
+    sfa30.status = Sfa30::Status::Absent;
+
+    manager.begin(storage, 0.0f, 0.0f);
+
+    TEST_ASSERT_EQUAL_STRING("SFA40", manager.hchoSensorLabel());
+}
+
 void test_sensor_manager_sfa30_warmup_keeps_new_hcho_data_invalid() {
     StorageManager storage;
     storage.begin();
@@ -648,6 +681,8 @@ int main(int, char **) {
     RUN_TEST(test_sensor_manager_falls_back_to_sfa30_when_sfa40_probe_is_rejected);
     RUN_TEST(test_sensor_manager_warm_restart_prefers_confirmed_sfa30_before_sfa40);
     RUN_TEST(test_sensor_manager_warm_restart_tries_sfa40_when_sfa30_probe_does_not_confirm);
+    RUN_TEST(test_sensor_manager_hcho_sensor_label_reports_sfa30_when_active);
+    RUN_TEST(test_sensor_manager_hcho_sensor_label_reports_sfa40_when_active);
     RUN_TEST(test_sensor_manager_sfa30_warmup_keeps_new_hcho_data_invalid);
     RUN_TEST(test_sensor_manager_sfa_fault_is_reported);
     RUN_TEST(test_sensor_manager_sfa_state_change_marks_data_changed);

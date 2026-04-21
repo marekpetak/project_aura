@@ -906,6 +906,26 @@ const char *SensorManager::pressureSensorLabel() const {
     }
 }
 
+const char *SensorManager::hchoSensorLabel() const {
+    switch (hcho_sensor_type_) {
+        case HCHO_SENSOR_SFA30:
+            return sfa30_.label();
+        case HCHO_SENSOR_SFA40:
+            return sfa40_.label();
+        case HCHO_SENSOR_NONE:
+        default:
+            break;
+    }
+
+    if (sfa30_.status() == Sfa30::Status::Fault) {
+        return sfa30_.label();
+    }
+    if (sfa40_.status() == Sfa40::Status::Fault) {
+        return sfa40_.label();
+    }
+    return "SFA30/40";
+}
+
 void SensorManager::setOffsets(float temp_offset, float hum_offset) {
     sen66_.setOffsets(temp_offset, hum_offset);
 }

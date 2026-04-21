@@ -276,7 +276,11 @@ void UiController::update_boot_diag_texts() {
     if (objects.lbl_diag_i2c_label) safe_label_set_text(objects.lbl_diag_i2c_label, UiText::LabelBootDiagI2cLabel());
     if (objects.lbl_diag_touch_label) safe_label_set_text(objects.lbl_diag_touch_label, UiText::LabelBootDiagTouchLabel());
     if (objects.lbl_diag_sen_label) safe_label_set_text(objects.lbl_diag_sen_label, UiText::LabelBootDiagSenLabel());
-    if (objects.lbl_diag_sfa_label) safe_label_set_text(objects.lbl_diag_sfa_label, UiText::LabelBootDiagSfaLabel());
+    if (objects.lbl_diag_sfa_label) {
+        char hcho_label[16];
+        snprintf(hcho_label, sizeof(hcho_label), "%s:", sensorManager.hchoSensorLabel());
+        safe_label_set_text(objects.lbl_diag_sfa_label, hcho_label);
+    }
     if (objects.lbl_diag_rtc_label) {
         char rtc_label[16];
         snprintf(rtc_label, sizeof(rtc_label), "%s:", timeManager.rtcLabel());
