@@ -839,8 +839,8 @@ void UiController::on_card_nox_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
-    if (currentData.nh3_sensor_present) {
-        // NH3 reuses the NOx card slot, but its dedicated info page is not implemented yet.
+    if (currentData.optional_gas_sensor_present) {
+        // Optional DFR gas sensor reuses the NOx card slot, but its dedicated info page is not implemented yet.
         return;
     }
     info_sensor = INFO_NOX;

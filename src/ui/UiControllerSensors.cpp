@@ -27,19 +27,44 @@ bool has_valid_co_sensor_data(const SensorData &data) {
            data.co_ppm >= 0.0f;
 }
 
-bool has_nh3_sensor_data(const SensorData &data) {
-    return data.nh3_sensor_present;
+using OptionalGasType = DfrOptionalGasSensor::OptionalGasType;
+
+OptionalGasType get_optional_gas_type(const SensorData &data) {
+    return static_cast<OptionalGasType>(data.optional_gas_type);
 }
 
-bool has_valid_nh3_sensor_data(const SensorData &data) {
-    return data.nh3_sensor_present &&
-           data.nh3_valid &&
-           isfinite(data.nh3_ppm) &&
-           data.nh3_ppm >= 0.0f;
+bool has_optional_gas_sensor_data(const SensorData &data) {
+    return data.optional_gas_sensor_present &&
+           get_optional_gas_type(data) != OptionalGasType::None;
 }
 
-float get_nh3_ppm_value(const SensorData &data) {
-    return data.nh3_ppm;
+bool has_valid_optional_gas_sensor_data(const SensorData &data) {
+    return data.optional_gas_sensor_present &&
+           data.optional_gas_valid &&
+           get_optional_gas_type(data) != OptionalGasType::None &&
+           isfinite(data.optional_gas_ppm) &&
+           data.optional_gas_ppm >= 0.0f;
+}
+
+float get_optional_gas_ppm_value(const SensorData &data) {
+    return data.optional_gas_ppm;
+}
+
+const char *get_optional_gas_label(const SensorData &data) {
+    return DfrOptionalGasSensor::optionalGasLabel(get_optional_gas_type(data));
+}
+
+void format_optional_gas_value(const SensorData &data, char *buf, size_t buf_size) {
+    const float ppm = get_optional_gas_ppm_value(data);
+    if (get_optional_gas_type(data) == OptionalGasType::NH3) {
+        snprintf(buf, buf_size, "%.0f", ppm);
+        return;
+    }
+    if (ppm < 10.0f) {
+        snprintf(buf, buf_size, "%.1f", ppm);
+        return;
+    }
+    snprintf(buf, buf_size, "%.0f", ppm);
 }
 
 float get_co_ppm_value(const SensorData &data) {
@@ -259,11 +284,12 @@ void UiController::update_sensor_cards(const AirQuality &aq, bool gas_warmup, bo
         set_dot_color(objects.dot_pm1, alert_color_for_mode(pm1_col));
     }
 
-    const bool nh3_sensor_present = has_nh3_sensor_data(currentData);
-    const bool nh3_available = has_valid_nh3_sensor_data(currentData);
-    const bool nh3_warmup = nh3_sensor_present && currentData.nh3_warmup;
-    // With NH3 connected, keep VOC and NOx visible together and reuse the standalone NOx slot for NH3.
-    const bool show_voc_nox_combo = nh3_sensor_present;
+    const OptionalGasType optional_gas_type = get_optional_gas_type(currentData);
+    const bool optional_gas_present = has_optional_gas_sensor_data(currentData);
+    const bool optional_gas_available = has_valid_optional_gas_sensor_data(currentData);
+    const bool optional_gas_warmup = optional_gas_present && currentData.optional_gas_warmup;
+    // With optional gas connected, keep VOC and NOx visible together and reuse the standalone NOx slot.
+    const bool show_voc_nox_combo = optional_gas_present;
     set_visible(objects.card_voc_pro, !show_voc_nox_combo);
     set_visible(objects.card_voc_nox, show_voc_nox_combo);
     if (objects.card_nox_pro) {
@@ -323,16 +349,22 @@ void UiController::update_sensor_cards(const AirQuality &aq, bool gas_warmup, bo
         set_dot_color(objects.dot_nox_2, alert_color_for_mode(nox_col));
     }
 
-    const bool nox_card_is_nh3 = nh3_sensor_present;
-    const bool nox_card_warmup = nox_card_is_nh3 ? nh3_warmup : gas_warmup;
-    const lv_color_t nox_card_col = nox_card_is_nh3
-        ? (nh3_warmup ? color_blue() : getNH3Color(currentData.nh3_ppm, nh3_available))
+    const bool nox_card_is_optional_gas = optional_gas_present;
+    const bool nox_card_warmup = nox_card_is_optional_gas ? optional_gas_warmup : gas_warmup;
+    const lv_color_t nox_card_col = nox_card_is_optional_gas
+        ? (optional_gas_warmup
+               ? color_blue()
+               : getOptionalGasColor(optional_gas_type,
+                                     currentData.optional_gas_ppm,
+                                     optional_gas_available))
         : nox_col;
     if (objects.label_nox_title_1) {
-        safe_label_set_text_static(objects.label_nox_title_1, nox_card_is_nh3 ? "NH3" : "NOx");
+        safe_label_set_text_static(objects.label_nox_title_1,
+                                   nox_card_is_optional_gas ? get_optional_gas_label(currentData) : "NOx");
     }
     if (objects.label_nox_unit_1) {
-        safe_label_set_text_static(objects.label_nox_unit_1, nox_card_is_nh3 ? "ppm" : UiText::UnitIndex());
+        safe_label_set_text_static(objects.label_nox_unit_1,
+                                   nox_card_is_optional_gas ? "ppm" : UiText::UnitIndex());
         nox_card_warmup ? lv_obj_add_flag(objects.label_nox_unit_1, LV_OBJ_FLAG_HIDDEN)
                         : lv_obj_clear_flag(objects.label_nox_unit_1, LV_OBJ_FLAG_HIDDEN);
     }
@@ -343,9 +375,9 @@ void UiController::update_sensor_cards(const AirQuality &aq, bool gas_warmup, bo
     if (objects.label_nox_value_1) {
         nox_card_warmup ? lv_obj_add_flag(objects.label_nox_value_1, LV_OBJ_FLAG_HIDDEN)
                         : lv_obj_clear_flag(objects.label_nox_value_1, LV_OBJ_FLAG_HIDDEN);
-        if (nox_card_is_nh3) {
-            if (nh3_available) {
-                snprintf(buf, sizeof(buf), "%.0f", get_nh3_ppm_value(currentData));
+        if (nox_card_is_optional_gas) {
+            if (optional_gas_available) {
+                format_optional_gas_value(currentData, buf, sizeof(buf));
                 safe_label_set_text(objects.label_nox_value_1, buf);
             } else {
                 safe_label_set_text_static(objects.label_nox_value_1, UiText::ValueMissing());

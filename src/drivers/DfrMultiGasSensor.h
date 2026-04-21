@@ -15,10 +15,21 @@ struct DfrMultiGasSensorConfig {
     uint8_t expected_gas_type = 0;
     float min_ppm = 0.0f;
     float max_ppm = 0.0f;
+    const uint8_t *allowed_gas_types = nullptr;
+    size_t allowed_gas_type_count = 0;
 };
 
 class DfrMultiGasSensor {
 public:
+    enum class GasType : uint8_t {
+        None = 0,
+        NH3,
+        SO2,
+        NO2,
+        CO,
+        Unknown,
+    };
+
     explicit DfrMultiGasSensor(const DfrMultiGasSensorConfig &config) : config_(config) {}
 
     bool begin();
@@ -29,13 +40,20 @@ public:
     bool isDataValid() const { return data_valid_; }
     bool isWarmupActive() const;
     float ppm() const { return ppm_; }
+    GasType gasType() const { return gas_type_; }
+    uint8_t rawGasType() const { return raw_gas_type_; }
     uint32_t lastDataMs() const { return last_data_ms_; }
     void invalidate();
 
     const char *label() const { return config_.label; }
     uint8_t address() const { return config_.address; }
+    static const char *gasTypeLabel(GasType type);
+
+protected:
+    static GasType mapGasType(uint8_t gas_type_raw);
 
 private:
+    bool isGasTypeAccepted(uint8_t gas_type_raw) const;
     bool pingAddress();
     bool setPassiveMode();
     bool readGasConcentration(float &ppm, uint8_t &gas_type);
@@ -55,6 +73,8 @@ private:
     bool data_valid_ = false;
     bool warned_type_mismatch_ = false;
     float ppm_ = 0.0f;
+    GasType gas_type_ = GasType::None;
+    uint8_t raw_gas_type_ = 0;
     uint8_t fail_count_ = 0;
     uint32_t warmup_started_ms_ = 0;
     uint32_t last_poll_ms_ = 0;

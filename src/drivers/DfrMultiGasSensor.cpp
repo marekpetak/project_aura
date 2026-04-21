@@ -24,6 +24,8 @@ bool DfrMultiGasSensor::begin() {
     data_valid_ = false;
     warned_type_mismatch_ = false;
     ppm_ = 0.0f;
+    gas_type_ = GasType::None;
+    raw_gas_type_ = 0;
     fail_count_ = 0;
     warmup_started_ms_ = 0;
     last_poll_ms_ = 0;
@@ -52,6 +54,8 @@ bool DfrMultiGasSensor::start() {
         present_ = false;
         data_valid_ = false;
         ppm_ = 0.0f;
+        gas_type_ = GasType::None;
+        raw_gas_type_ = 0;
         fail_count_ = 0;
         warned_type_mismatch_ = false;
         fail_cooldown_active_ = false;
@@ -68,6 +72,8 @@ bool DfrMultiGasSensor::start() {
         warmup_started_ms_ = millis();
         data_valid_ = false;
         ppm_ = 0.0f;
+        gas_type_ = GasType::None;
+        raw_gas_type_ = 0;
         fail_count_ = 0;
         warned_type_mismatch_ = false;
         fail_cooldown_active_ = false;
@@ -111,6 +117,8 @@ void DfrMultiGasSensor::poll() {
                 present_ = false;
                 data_valid_ = false;
                 ppm_ = 0.0f;
+                gas_type_ = GasType::None;
+                raw_gas_type_ = 0;
                 fail_count_ = 0;
                 warned_type_mismatch_ = false;
                 fail_cooldown_active_ = false;
@@ -166,12 +174,20 @@ void DfrMultiGasSensor::poll() {
     cooldown_recover_fail_count_ = 0;
     fail_count_ = 0;
     last_data_ms_ = now;
+    raw_gas_type_ = gas_type;
+    gas_type_ = mapGasType(gas_type);
 
-    if (gas_type != config_.expected_gas_type) {
+    if (!isGasTypeAccepted(gas_type)) {
         if (!warned_type_mismatch_) {
-            Logger::log(Logger::Warn, config_.log_tag,
-                        "unexpected gas type 0x%02X (expected 0x%02X)",
-                        gas_type, config_.expected_gas_type);
+            if (config_.allowed_gas_type_count > 0) {
+                Logger::log(Logger::Warn, config_.log_tag,
+                            "unsupported gas type 0x%02X for this slot",
+                            gas_type);
+            } else {
+                Logger::log(Logger::Warn, config_.log_tag,
+                            "unexpected gas type 0x%02X (expected 0x%02X)",
+                            gas_type, config_.expected_gas_type);
+            }
             warned_type_mismatch_ = true;
         }
         data_valid_ = false;
@@ -200,6 +216,58 @@ bool DfrMultiGasSensor::isWarmupActive() const {
 
 void DfrMultiGasSensor::invalidate() {
     data_valid_ = false;
+}
+
+const char *DfrMultiGasSensor::gasTypeLabel(GasType type) {
+    switch (type) {
+        case GasType::NH3:
+            return "NH3";
+        case GasType::SO2:
+            return "SO2";
+        case GasType::NO2:
+            return "NO2";
+        case GasType::CO:
+            return "CO";
+        case GasType::Unknown:
+            return "Unknown";
+        case GasType::None:
+        default:
+            return "None";
+    }
+}
+
+DfrMultiGasSensor::GasType DfrMultiGasSensor::mapGasType(uint8_t gas_type_raw) {
+    switch (gas_type_raw) {
+        case Config::DFR_GAS_TYPE_NH3:
+            return GasType::NH3;
+        case Config::DFR_GAS_TYPE_SO2:
+            return GasType::SO2;
+        case Config::DFR_GAS_TYPE_NO2:
+            return GasType::NO2;
+        case Config::DFR_GAS_TYPE_CO:
+            return GasType::CO;
+        case 0:
+            return GasType::None;
+        default:
+            return GasType::Unknown;
+    }
+}
+
+bool DfrMultiGasSensor::isGasTypeAccepted(uint8_t gas_type_raw) const {
+    if (config_.allowed_gas_type_count > 0 && config_.allowed_gas_types) {
+        for (size_t i = 0; i < config_.allowed_gas_type_count; ++i) {
+            if (config_.allowed_gas_types[i] == gas_type_raw) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (config_.expected_gas_type != 0) {
+        return gas_type_raw == config_.expected_gas_type;
+    }
+
+    return true;
 }
 
 bool DfrMultiGasSensor::pingAddress() {

@@ -440,7 +440,9 @@ private:
     lv_color_t getPressureDeltaColor(float delta, bool valid, bool is24h);
     lv_color_t getVOCColor(int voc);
     lv_color_t getNOxColor(int nox);
-    lv_color_t getNH3Color(float nh3_ppm, bool valid);
+    lv_color_t getOptionalGasColor(DfrOptionalGasSensor::OptionalGasType type,
+                                   float ppm,
+                                   bool valid);
     lv_color_t getHCHOColor(float hcho_ppb, bool valid);
     AirQuality getAirQuality(const SensorData &data);
     bool has_poor_gas_background_alert();

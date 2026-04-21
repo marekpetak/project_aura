@@ -1,0 +1,90 @@
+// SPDX-FileCopyrightText: 2025-2026 Volodymyr Papush (21CNCStudio)
+// SPDX-License-Identifier: GPL-3.0-or-later
+// GPL-3.0-or-later: https://www.gnu.org/licenses/gpl-3.0.html
+// Want to use this code in a commercial product while keeping modifications proprietary?
+// Purchase a Commercial License: see COMMERCIAL_LICENSE_SUMMARY.md
+
+#include "drivers/DfrOptionalGasSensor.h"
+
+#include "config/AppConfig.h"
+
+namespace {
+
+constexpr uint8_t kOptionalGasTypes[] = {
+    Config::DFR_GAS_TYPE_NH3,
+    Config::DFR_GAS_TYPE_SO2,
+    Config::DFR_GAS_TYPE_NO2,
+};
+
+} // namespace
+
+DfrOptionalGasSensor::DfrOptionalGasSensor()
+    : DfrMultiGasSensor({
+          "DFR-GAS",
+          "DFR Optional Gas",
+          Config::DFR_OPTIONAL_GAS_ADDR,
+          0,
+          0.0f,
+          Config::SEN0469_NH3_MAX_PPM,
+          kOptionalGasTypes,
+          sizeof(kOptionalGasTypes) / sizeof(kOptionalGasTypes[0]),
+      }) {}
+
+DfrOptionalGasSensor::OptionalGasType DfrOptionalGasSensor::optionalGasType() const {
+    switch (gasType()) {
+        case GasType::NH3:
+            return OptionalGasType::NH3;
+        case GasType::SO2:
+            return OptionalGasType::SO2;
+        case GasType::NO2:
+            return OptionalGasType::NO2;
+        case GasType::None:
+        case GasType::CO:
+        case GasType::Unknown:
+        default:
+            return OptionalGasType::None;
+    }
+}
+
+const char *DfrOptionalGasSensor::optionalGasLabel() const {
+    return optionalGasLabel(optionalGasType());
+}
+
+const char *DfrOptionalGasSensor::optionalGasLabel(OptionalGasType type) {
+    switch (type) {
+        case OptionalGasType::NH3:
+            return "NH3";
+        case OptionalGasType::SO2:
+            return "SO2";
+        case OptionalGasType::NO2:
+            return "NO2";
+        case OptionalGasType::None:
+        default:
+            return "None";
+    }
+}
+
+float DfrOptionalGasSensor::minPpmForType(OptionalGasType type) {
+    switch (type) {
+        case OptionalGasType::NH3:
+            return Config::SEN0469_NH3_MIN_PPM;
+        case OptionalGasType::SO2:
+        case OptionalGasType::NO2:
+        case OptionalGasType::None:
+        default:
+            return 0.0f;
+    }
+}
+
+float DfrOptionalGasSensor::maxPpmForType(OptionalGasType type) {
+    switch (type) {
+        case OptionalGasType::NH3:
+            return Config::SEN0469_NH3_MAX_PPM;
+        case OptionalGasType::SO2:
+        case OptionalGasType::NO2:
+            return 20.0f;
+        case OptionalGasType::None:
+        default:
+            return 0.0f;
+    }
+}

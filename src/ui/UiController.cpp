@@ -1564,12 +1564,22 @@ lv_color_t UiController::getNOxColor(int nox) {
     return color_red();
 }
 
-lv_color_t UiController::getNH3Color(float nh3_ppm, bool valid) {
-    // Temporary UI-only thresholds until NH3-specific limits are defined.
-    if (!valid || !isfinite(nh3_ppm) || nh3_ppm < 0.0f) return color_inactive();
-    if (nh3_ppm <= 25.0f) return color_green();
-    if (nh3_ppm <= 50.0f) return color_yellow();
-    if (nh3_ppm <= 75.0f) return color_orange();
+lv_color_t UiController::getOptionalGasColor(DfrOptionalGasSensor::OptionalGasType type,
+                                             float ppm,
+                                             bool valid) {
+    // Temporary UI-only thresholds until per-gas product limits are finalized.
+    if (!valid || !isfinite(ppm) || ppm < 0.0f) return color_inactive();
+
+    const float max_ppm = DfrOptionalGasSensor::maxPpmForType(type);
+    if (max_ppm <= 0.0f) return color_inactive();
+
+    const float green_max = max_ppm * 0.25f;
+    const float yellow_max = max_ppm * 0.50f;
+    const float orange_max = max_ppm * 0.75f;
+
+    if (ppm <= green_max) return color_green();
+    if (ppm <= yellow_max) return color_yellow();
+    if (ppm <= orange_max) return color_orange();
     return color_red();
 }
 

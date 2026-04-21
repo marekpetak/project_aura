@@ -11,6 +11,7 @@
 #include "modules/StorageManager.h"
 #include "drivers/Bmp3xx.h"
 #include "drivers/Bmp580.h"
+#include "drivers/DfrOptionalGasSensor.h"
 #include "drivers/Dps310.h"
 #include "drivers/Sen0466.h"
 #include "drivers/Sen66.h"
@@ -29,6 +30,7 @@ static void resetDriverStates() {
     Sfa30::state() = Sfa30TestState();
     Sfa40::state() = Sfa40TestState();
     Sen0466::state() = Sen0466TestState();
+    DfrOptionalGasSensor::state() = DfrOptionalGasSensorTestState();
 }
 
 void setUp() {
@@ -248,6 +250,68 @@ void test_sensor_manager_without_co_sensor_keeps_pm1_and_clears_co() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, data.co_ppm);
     TEST_ASSERT_TRUE(data.pm1_valid);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 6.0f, data.pm1);
+}
+
+void test_sensor_manager_optional_gas_nh3_updates_generic_and_legacy_fields() {
+    StorageManager storage;
+    storage.begin();
+    PressureHistory history;
+    SensorManager manager;
+    SensorData data;
+
+    auto &optional_gas = DfrOptionalGasSensor::state();
+    optional_gas.start_ok = true;
+    optional_gas.present = true;
+    optional_gas.data_valid = true;
+    optional_gas.warmup = false;
+    optional_gas.ppm = 12.5f;
+    optional_gas.gas_type = DfrOptionalGasSensor::OptionalGasType::NH3;
+
+    manager.begin(storage, 0.0f, 0.0f);
+
+    SensorManager::PollResult result =
+        manager.poll(data, storage, history, true);
+
+    TEST_ASSERT_TRUE(result.data_changed);
+    TEST_ASSERT_TRUE(data.optional_gas_sensor_present);
+    TEST_ASSERT_TRUE(data.optional_gas_valid);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.5f, data.optional_gas_ppm);
+    TEST_ASSERT_EQUAL(static_cast<uint8_t>(DfrOptionalGasSensor::OptionalGasType::NH3),
+                      data.optional_gas_type);
+    TEST_ASSERT_TRUE(data.nh3_sensor_present);
+    TEST_ASSERT_TRUE(data.nh3_valid);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.5f, data.nh3_ppm);
+}
+
+void test_sensor_manager_optional_gas_so2_does_not_populate_nh3_compat_fields() {
+    StorageManager storage;
+    storage.begin();
+    PressureHistory history;
+    SensorManager manager;
+    SensorData data;
+
+    auto &optional_gas = DfrOptionalGasSensor::state();
+    optional_gas.start_ok = true;
+    optional_gas.present = true;
+    optional_gas.data_valid = true;
+    optional_gas.warmup = false;
+    optional_gas.ppm = 7.5f;
+    optional_gas.gas_type = DfrOptionalGasSensor::OptionalGasType::SO2;
+
+    manager.begin(storage, 0.0f, 0.0f);
+
+    SensorManager::PollResult result =
+        manager.poll(data, storage, history, true);
+
+    TEST_ASSERT_TRUE(result.data_changed);
+    TEST_ASSERT_TRUE(data.optional_gas_sensor_present);
+    TEST_ASSERT_TRUE(data.optional_gas_valid);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 7.5f, data.optional_gas_ppm);
+    TEST_ASSERT_EQUAL(static_cast<uint8_t>(DfrOptionalGasSensor::OptionalGasType::SO2),
+                      data.optional_gas_type);
+    TEST_ASSERT_FALSE(data.nh3_sensor_present);
+    TEST_ASSERT_FALSE(data.nh3_valid);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, data.nh3_ppm);
 }
 
 void test_sensor_manager_sfa_absent_is_not_fault() {
@@ -677,6 +741,8 @@ int main(int, char **) {
     RUN_TEST(test_sensor_manager_pm05_clamps_to_sensor_limit);
     RUN_TEST(test_sensor_manager_pm1_invalid_resets_stale_value);
     RUN_TEST(test_sensor_manager_without_co_sensor_keeps_pm1_and_clears_co);
+    RUN_TEST(test_sensor_manager_optional_gas_nh3_updates_generic_and_legacy_fields);
+    RUN_TEST(test_sensor_manager_optional_gas_so2_does_not_populate_nh3_compat_fields);
     RUN_TEST(test_sensor_manager_sfa_absent_is_not_fault);
     RUN_TEST(test_sensor_manager_falls_back_to_sfa30_when_sfa40_probe_is_rejected);
     RUN_TEST(test_sensor_manager_warm_restart_prefers_confirmed_sfa30_before_sfa40);

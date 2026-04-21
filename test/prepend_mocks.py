@@ -6,6 +6,7 @@ project_dir = env["PROJECT_DIR"]
 mocks_path = os.path.join(project_dir, "test", "mocks")
 prefer_real_headers = env["PIOENV"] == "native_test_sfa40_driver"
 prefer_real_headers = prefer_real_headers or env["PIOENV"] == "native_test_sfa30_driver"
+prefer_real_headers = prefer_real_headers or env["PIOENV"] == "native_test_dfr_optional_gas_driver"
 
 # Most native tests rely on mock headers shadowing src/, but the dedicated
 # SFA40 driver test needs the real driver headers while still seeing shared

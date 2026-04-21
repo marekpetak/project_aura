@@ -165,6 +165,18 @@ esp_err_t i2c_master_write_read_device(i2c_port_t,
     if (device(addr).read_fail[reg]) {
         return ESP_FAIL;
     }
+    if (device(addr).has_last_sensor_cmd) {
+        auto it = device(addr).cmd_reads.find(device(addr).last_sensor_cmd);
+        if (it != device(addr).cmd_reads.end()) {
+            if (it->second.size() < read_size) {
+                return ESP_FAIL;
+            }
+            for (size_t i = 0; i < read_size; ++i) {
+                read_buffer[i] = it->second[i];
+            }
+            return ESP_OK;
+        }
+    }
     uint8_t current_reg = reg;
     for (size_t i = 0; i < read_size; ++i) {
         read_buffer[i] = device(addr).regs[current_reg];
@@ -192,6 +204,11 @@ esp_err_t i2c_master_write_to_device(i2c_port_t,
     }
     if (write_size == 1) {
         return ESP_OK;
+    }
+    if (write_size >= 4 && write_buffer[0] == 0x00 && write_buffer[1] == 0xFF &&
+        write_buffer[2] == 0x01) {
+        device(addr).last_sensor_cmd = write_buffer[3];
+        device(addr).has_last_sensor_cmd = true;
     }
     for (size_t i = 1; i < write_size; ++i) {
         device(addr).regs[static_cast<uint8_t>(reg + i - 1)] = write_buffer[i];

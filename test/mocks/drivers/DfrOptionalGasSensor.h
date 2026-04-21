@@ -1,0 +1,97 @@
+#pragma once
+
+#include "Arduino.h"
+
+struct DfrOptionalGasSensorTestState {
+    enum class OptionalGasType : uint8_t {
+        None = 0,
+        NH3,
+        SO2,
+        NO2,
+    };
+
+    bool present = false;
+    bool start_ok = false;
+    bool start_called = false;
+    bool data_valid = false;
+    bool warmup = false;
+    bool invalidate_called = false;
+    float ppm = 0.0f;
+    uint32_t last_data_ms = 0;
+    OptionalGasType gas_type = OptionalGasType::None;
+};
+
+class DfrOptionalGasSensor {
+public:
+    using OptionalGasType = DfrOptionalGasSensorTestState::OptionalGasType;
+
+    bool begin() { return true; }
+    bool start() {
+        state().start_called = true;
+        state().present = state().start_ok;
+        if (!state().present) {
+            state().data_valid = false;
+            state().ppm = 0.0f;
+            state().warmup = false;
+            state().gas_type = OptionalGasType::None;
+        }
+        return state().start_ok;
+    }
+    void poll() {}
+    bool isPresent() const { return state().present; }
+    bool isDataValid() const { return state().data_valid; }
+    bool isWarmupActive() const { return state().warmup; }
+    float ppm() const { return state().ppm; }
+    OptionalGasType optionalGasType() const { return state().gas_type; }
+    const char *optionalGasLabel() const { return optionalGasLabel(state().gas_type); }
+    const char *label() const { return "DFR Optional Gas"; }
+    uint8_t address() const { return 0x75; }
+    uint32_t lastDataMs() const { return state().last_data_ms; }
+    void invalidate() {
+        state().invalidate_called = true;
+        state().data_valid = false;
+    }
+
+    static DfrOptionalGasSensorTestState &state() {
+        static DfrOptionalGasSensorTestState instance;
+        return instance;
+    }
+
+    static const char *optionalGasLabel(OptionalGasType type) {
+        switch (type) {
+            case OptionalGasType::NH3:
+                return "NH3";
+            case OptionalGasType::SO2:
+                return "SO2";
+            case OptionalGasType::NO2:
+                return "NO2";
+            case OptionalGasType::None:
+            default:
+                return "None";
+        }
+    }
+
+    static float minPpmForType(OptionalGasType type) {
+        switch (type) {
+            case OptionalGasType::NH3:
+            case OptionalGasType::SO2:
+            case OptionalGasType::NO2:
+            case OptionalGasType::None:
+            default:
+                return 0.0f;
+        }
+    }
+
+    static float maxPpmForType(OptionalGasType type) {
+        switch (type) {
+            case OptionalGasType::NH3:
+                return 100.0f;
+            case OptionalGasType::SO2:
+            case OptionalGasType::NO2:
+                return 20.0f;
+            case OptionalGasType::None:
+            default:
+                return 0.0f;
+        }
+    }
+};

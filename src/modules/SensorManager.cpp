@@ -91,17 +91,47 @@ bool sync_co_fields(SensorData &data, const Sen0466 &co_sensor) {
                                   data.co_ppm);
 }
 
-bool sync_nh3_fields(SensorData &data, const Sen0469 &nh3_sensor) {
-    return sync_ppm_sensor_fields(nh3_sensor.isPresent(),
-                                  nh3_sensor.isWarmupActive(),
-                                  nh3_sensor.isDataValid(),
-                                  nh3_sensor.nh3Ppm(),
-                                  Config::SEN0469_NH3_MIN_PPM,
-                                  Config::SEN0469_NH3_MAX_PPM,
-                                  data.nh3_sensor_present,
-                                  data.nh3_warmup,
-                                  data.nh3_valid,
-                                  data.nh3_ppm);
+bool sync_optional_gas_fields(SensorData &data, const DfrOptionalGasSensor &optional_gas) {
+    const DfrOptionalGasSensor::OptionalGasType gas_type = optional_gas.optionalGasType();
+    const bool sensor_present = optional_gas.isPresent() &&
+                                gas_type != DfrOptionalGasSensor::OptionalGasType::None;
+    const bool sensor_warmup = sensor_present && optional_gas.isWarmupActive();
+    const bool sensor_valid = sensor_present && optional_gas.isDataValid();
+    const float sensor_ppm = sensor_present ? optional_gas.ppm() : 0.0f;
+    const float min_ppm = DfrOptionalGasSensor::minPpmForType(gas_type);
+    const float max_ppm = DfrOptionalGasSensor::maxPpmForType(gas_type);
+
+    bool changed = sync_ppm_sensor_fields(sensor_present,
+                                          sensor_warmup,
+                                          sensor_valid,
+                                          sensor_ppm,
+                                          min_ppm,
+                                          max_ppm,
+                                          data.optional_gas_sensor_present,
+                                          data.optional_gas_warmup,
+                                          data.optional_gas_valid,
+                                          data.optional_gas_ppm);
+
+    const uint8_t gas_type_raw = static_cast<uint8_t>(gas_type);
+    if (data.optional_gas_type != gas_type_raw) {
+        data.optional_gas_type = gas_type_raw;
+        changed = true;
+    }
+
+    const bool nh3_present = sensor_present &&
+                             gas_type == DfrOptionalGasSensor::OptionalGasType::NH3;
+    changed |= sync_ppm_sensor_fields(nh3_present,
+                                      nh3_present && sensor_warmup,
+                                      nh3_present && sensor_valid,
+                                      nh3_present ? sensor_ppm : 0.0f,
+                                      Config::SEN0469_NH3_MIN_PPM,
+                                      Config::SEN0469_NH3_MAX_PPM,
+                                      data.nh3_sensor_present,
+                                      data.nh3_warmup,
+                                      data.nh3_valid,
+                                      data.nh3_ppm);
+
+    return changed;
 }
 
 bool apply_sanity_filters(SensorData &data, float hcho_min_ppb, float hcho_max_ppb) {
@@ -634,13 +664,13 @@ void SensorManager::begin(StorageManager &storage, float temp_offset, float hum_
         Logger::log(Logger::Info, "Sensors", "%s not installed", sen0466_.label());
     }
 
-    sen0469_.begin();
-    if (sen0469_.start()) {
-        Logger::log(Logger::Info, "Sensors", "%s OK at 0x%02X",
-                    sen0469_.label(),
-                    static_cast<unsigned>(sen0469_.address()));
+    optional_gas_.begin();
+    if (optional_gas_.start()) {
+        Logger::log(Logger::Info, "Sensors", "%s slot OK at 0x%02X",
+                    optional_gas_.label(),
+                    static_cast<unsigned>(optional_gas_.address()));
     } else {
-        Logger::log(Logger::Info, "Sensors", "%s not installed", sen0469_.label());
+        Logger::log(Logger::Info, "Sensors", "%s slot not installed", optional_gas_.label());
     }
 
     sen66_.scheduleRetry(Config::SEN66_STARTUP_GRACE_MS);
@@ -690,7 +720,7 @@ SensorManager::PollResult SensorManager::poll(SensorData &data,
     }
 
     sen0466_.poll();
-    sen0469_.poll();
+    optional_gas_.poll();
 
     float pressure_hpa = 0.0f;
     float temperature_c = 0.0f;
@@ -777,7 +807,7 @@ SensorManager::PollResult SensorManager::poll(SensorData &data,
     if (sync_co_fields(data, sen0466_)) {
         result.data_changed = true;
     }
-    if (sync_nh3_fields(data, sen0469_)) {
+    if (sync_optional_gas_fields(data, optional_gas_)) {
         result.data_changed = true;
     }
 

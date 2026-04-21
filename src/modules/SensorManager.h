@@ -10,9 +10,9 @@
 #include "config/AppData.h"
 #include "drivers/Bmp3xx.h"
 #include "drivers/Bmp580.h"
+#include "drivers/DfrOptionalGasSensor.h"
 #include "drivers/Dps310.h"
 #include "drivers/Sen0466.h"
-#include "drivers/Sen0469.h"
 #include "drivers/Sen66.h"
 #include "drivers/Sfa30.h"
 #include "drivers/Sfa40.h"
@@ -56,9 +56,22 @@ public:
     bool isCoPresent() const { return sen0466_.isPresent(); }
     bool isCoValid() const { return sen0466_.isDataValid(); }
     bool isCoWarmupActive() const { return sen0466_.isWarmupActive(); }
-    bool isNh3Present() const { return sen0469_.isPresent(); }
-    bool isNh3Valid() const { return sen0469_.isDataValid(); }
-    bool isNh3WarmupActive() const { return sen0469_.isWarmupActive(); }
+    DfrOptionalGasSensor::OptionalGasType optionalGasType() const { return optional_gas_.optionalGasType(); }
+    bool isOptionalGasPresent() const { return optional_gas_.isPresent(); }
+    bool isOptionalGasValid() const { return optional_gas_.isDataValid(); }
+    bool isOptionalGasWarmupActive() const { return optional_gas_.isWarmupActive(); }
+    bool isNh3Present() const {
+        return optional_gas_.isPresent() &&
+               optional_gas_.optionalGasType() == DfrOptionalGasSensor::OptionalGasType::NH3;
+    }
+    bool isNh3Valid() const {
+        return optional_gas_.isDataValid() &&
+               optional_gas_.optionalGasType() == DfrOptionalGasSensor::OptionalGasType::NH3;
+    }
+    bool isNh3WarmupActive() const {
+        return optional_gas_.isWarmupActive() &&
+               optional_gas_.optionalGasType() == DfrOptionalGasSensor::OptionalGasType::NH3;
+    }
     bool isPressureOk() const;
     PressureSensorType pressureSensorType() const { return pressure_sensor_; }
     const char *pressureSensorLabel() const;
@@ -96,7 +109,7 @@ private:
     Sfa30 sfa30_;
     Sfa40 sfa40_;
     Sen0466 sen0466_;
-    Sen0469 sen0469_;
+    DfrOptionalGasSensor optional_gas_;
     Sen66 sen66_;
     HchoSensorType hcho_sensor_type_ = HCHO_SENSOR_NONE;
     bool warmup_active_last_ = false;
