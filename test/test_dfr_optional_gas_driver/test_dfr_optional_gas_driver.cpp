@@ -47,6 +47,7 @@ void setReadGasResponse(uint16_t raw_ppm, uint8_t gas_type, uint8_t decimals) {
 } // namespace
 
 static_assert(Config::DFR_GAS_TYPE_NH3 == 0x02, "DFR NH3 gas type drifted");
+static_assert(Config::DFR_GAS_TYPE_H2S == 0x03, "DFR H2S gas type drifted");
 static_assert(Config::DFR_GAS_TYPE_SO2 == 0x2B, "DFR SO2 gas type drifted");
 static_assert(Config::DFR_GAS_TYPE_NO2 == 0x2C, "DFR NO2 gas type drifted");
 
@@ -99,6 +100,25 @@ void test_optional_gas_detects_so2_after_warmup() {
     TEST_ASSERT_EQUAL_STRING("SO2", sensor.optionalGasLabel());
 }
 
+void test_optional_gas_detects_h2s_after_warmup() {
+    I2cMock::setDevicePresent(Config::DFR_OPTIONAL_GAS_ADDR, true);
+    setPassiveModeAck();
+
+    DfrOptionalGasSensor sensor;
+    TEST_ASSERT_TRUE(sensor.begin());
+    TEST_ASSERT_TRUE(sensor.start());
+
+    setReadGasResponse(84, Config::DFR_GAS_TYPE_H2S, 1);
+    setMillis(Config::DFR_GAS_WARMUP_MS + Config::DFR_GAS_POLL_MS);
+    sensor.poll();
+
+    TEST_ASSERT_EQUAL(static_cast<int>(DfrOptionalGasSensor::OptionalGasType::H2S),
+                      static_cast<int>(sensor.optionalGasType()));
+    TEST_ASSERT_TRUE(sensor.isDataValid());
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 8.4f, sensor.ppm());
+    TEST_ASSERT_EQUAL_STRING("H2S", sensor.optionalGasLabel());
+}
+
 void test_optional_gas_detects_no2_after_warmup() {
     I2cMock::setDevicePresent(Config::DFR_OPTIONAL_GAS_ADDR, true);
     setPassiveModeAck();
@@ -141,6 +161,7 @@ int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_optional_gas_detects_nh3_after_warmup);
     RUN_TEST(test_optional_gas_detects_so2_after_warmup);
+    RUN_TEST(test_optional_gas_detects_h2s_after_warmup);
     RUN_TEST(test_optional_gas_detects_no2_after_warmup);
     RUN_TEST(test_optional_gas_rejects_unsupported_gas_type);
     return UNITY_END();

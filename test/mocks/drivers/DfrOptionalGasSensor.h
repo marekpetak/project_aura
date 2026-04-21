@@ -8,6 +8,7 @@ struct DfrOptionalGasSensorTestState {
         NH3,
         SO2,
         NO2,
+        H2S,
     };
 
     bool present = false;
@@ -65,6 +66,8 @@ public:
                 return "SO2";
             case OptionalGasType::NO2:
                 return "NO2";
+            case OptionalGasType::H2S:
+                return "H2S";
             case OptionalGasType::None:
             default:
                 return "None";
@@ -76,6 +79,7 @@ public:
             case OptionalGasType::NH3:
             case OptionalGasType::SO2:
             case OptionalGasType::NO2:
+            case OptionalGasType::H2S:
             case OptionalGasType::None:
             default:
                 return 0.0f;
@@ -85,6 +89,7 @@ public:
     static float maxPpmForType(OptionalGasType type) {
         switch (type) {
             case OptionalGasType::NH3:
+            case OptionalGasType::H2S:
                 return 100.0f;
             case OptionalGasType::SO2:
             case OptionalGasType::NO2:

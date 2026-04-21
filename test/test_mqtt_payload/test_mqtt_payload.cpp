@@ -227,6 +227,26 @@ void test_state_payload_includes_specific_so2_and_hides_legacy_nh3() {
     assert_contains(payload, "\"no2\":null");
 }
 
+void test_state_payload_includes_specific_h2s_and_hides_other_optional_gases() {
+    SensorData data{};
+    data.optional_gas_sensor_present = true;
+    data.optional_gas_valid = true;
+    data.optional_gas_ppm = 4.0f;
+    data.optional_gas_type = static_cast<uint8_t>(DfrOptionalGasSensor::OptionalGasType::H2S);
+    data.nh3_sensor_present = false;
+    data.nh3_valid = false;
+    data.nh3_ppm = 0.0f;
+
+    String payload = MqttPayloadBuilder::buildStatePayload(data, false, false, false, false);
+
+    assert_contains(payload, "\"optional_gas\":4.0");
+    assert_contains(payload, "\"optional_gas_type\":\"H2S\"");
+    assert_contains(payload, "\"nh3\":null");
+    assert_contains(payload, "\"so2\":null");
+    assert_contains(payload, "\"no2\":null");
+    assert_contains(payload, "\"h2s\":4.0");
+}
+
 void test_state_payload_includes_summary_fields_for_air_status_and_issue() {
     SensorData data{};
     data.co2_valid = true;
@@ -353,6 +373,7 @@ int main(int, char **) {
     RUN_TEST(test_state_payload_hides_hcho_when_only_raw_sample_exists_from_sfa40_warmup_model);
     RUN_TEST(test_state_payload_includes_optional_gas_generic_and_nh3_compat_fields);
     RUN_TEST(test_state_payload_includes_specific_so2_and_hides_legacy_nh3);
+    RUN_TEST(test_state_payload_includes_specific_h2s_and_hides_other_optional_gases);
     RUN_TEST(test_state_payload_includes_summary_fields_for_air_status_and_issue);
     RUN_TEST(test_state_payload_reports_no_issue_when_air_is_good);
     RUN_TEST(test_state_payload_includes_fan_fields_when_present);

@@ -56,7 +56,8 @@ const char *get_optional_gas_label(const SensorData &data) {
 
 void format_optional_gas_value(const SensorData &data, char *buf, size_t buf_size) {
     const float ppm = get_optional_gas_ppm_value(data);
-    if (get_optional_gas_type(data) == OptionalGasType::NH3) {
+    if (get_optional_gas_type(data) == OptionalGasType::NH3 ||
+        get_optional_gas_type(data) == OptionalGasType::H2S) {
         snprintf(buf, buf_size, "%.0f", ppm);
         return;
     }

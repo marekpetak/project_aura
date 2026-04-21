@@ -15,6 +15,7 @@ public:
         NH3,
         SO2,
         NO2,
+        H2S,
     };
 
     DfrOptionalGasSensor();

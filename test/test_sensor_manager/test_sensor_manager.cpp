@@ -314,6 +314,37 @@ void test_sensor_manager_optional_gas_so2_does_not_populate_nh3_compat_fields() 
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, data.nh3_ppm);
 }
 
+void test_sensor_manager_optional_gas_h2s_updates_generic_without_nh3_compat_fields() {
+    StorageManager storage;
+    storage.begin();
+    PressureHistory history;
+    SensorManager manager;
+    SensorData data;
+
+    auto &optional_gas = DfrOptionalGasSensor::state();
+    optional_gas.start_ok = true;
+    optional_gas.present = true;
+    optional_gas.data_valid = true;
+    optional_gas.warmup = false;
+    optional_gas.ppm = 18.0f;
+    optional_gas.gas_type = DfrOptionalGasSensor::OptionalGasType::H2S;
+
+    manager.begin(storage, 0.0f, 0.0f);
+
+    SensorManager::PollResult result =
+        manager.poll(data, storage, history, true);
+
+    TEST_ASSERT_TRUE(result.data_changed);
+    TEST_ASSERT_TRUE(data.optional_gas_sensor_present);
+    TEST_ASSERT_TRUE(data.optional_gas_valid);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 18.0f, data.optional_gas_ppm);
+    TEST_ASSERT_EQUAL(static_cast<uint8_t>(DfrOptionalGasSensor::OptionalGasType::H2S),
+                      data.optional_gas_type);
+    TEST_ASSERT_FALSE(data.nh3_sensor_present);
+    TEST_ASSERT_FALSE(data.nh3_valid);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, data.nh3_ppm);
+}
+
 void test_sensor_manager_sfa_absent_is_not_fault() {
     StorageManager storage;
     storage.begin();
@@ -743,6 +774,7 @@ int main(int, char **) {
     RUN_TEST(test_sensor_manager_without_co_sensor_keeps_pm1_and_clears_co);
     RUN_TEST(test_sensor_manager_optional_gas_nh3_updates_generic_and_legacy_fields);
     RUN_TEST(test_sensor_manager_optional_gas_so2_does_not_populate_nh3_compat_fields);
+    RUN_TEST(test_sensor_manager_optional_gas_h2s_updates_generic_without_nh3_compat_fields);
     RUN_TEST(test_sensor_manager_sfa_absent_is_not_fault);
     RUN_TEST(test_sensor_manager_falls_back_to_sfa30_when_sfa40_probe_is_rejected);
     RUN_TEST(test_sensor_manager_warm_restart_prefers_confirmed_sfa30_before_sfa40);
