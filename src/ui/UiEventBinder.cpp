@@ -594,6 +594,9 @@ void UiEventBinder::initThemeControlsIfAvailable(UiController &owner) {
 
     owner.themeManager.selectSwatchByCurrent();
     bool presets = owner.themeManager.isCurrentPreset();
+    if (!presets && !owner.storage.config().theme.valid) {
+        presets = owner.themeManager.selectDefaultPreset();
+    }
     if (objects.btn_theme_presets) {
         if (presets) lv_obj_add_state(objects.btn_theme_presets, LV_STATE_CHECKED);
         else lv_obj_clear_state(objects.btn_theme_presets, LV_STATE_CHECKED);

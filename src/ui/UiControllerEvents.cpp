@@ -449,6 +449,9 @@ void UiController::on_theme_color_event(lv_event_t *e) {
         themeManager.selectSwatchByCurrent();
     }
     bool presets = !has_unsaved && themeManager.isCurrentPreset();
+    if (!has_unsaved && !presets && !storage.config().theme.valid) {
+        presets = themeManager.selectDefaultPreset();
+    }
     if (objects.btn_theme_presets) {
         if (presets) lv_obj_add_state(objects.btn_theme_presets, LV_STATE_CHECKED);
         else lv_obj_clear_state(objects.btn_theme_presets, LV_STATE_CHECKED);

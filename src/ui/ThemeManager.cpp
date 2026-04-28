@@ -12,6 +12,8 @@
 
 namespace {
 
+constexpr size_t kIndustrialAmberSwatchIndex = 0;
+
 uint32_t themeColorToU32(lv_color_t color) {
     return static_cast<uint32_t>(color.full);
 }
@@ -62,6 +64,8 @@ void ThemeManager::loadFromPrefs(StorageManager &storage) {
 }
 
 void ThemeManager::initAfterUi(StorageManager &storage, bool night_mode, bool &datetime_ui_dirty) {
+    initSwatches();
+    bool selected_default_preset = false;
     ThemeColors detected = {};
     if (readFromUi(detected)) {
         current_ = detected;
@@ -70,22 +74,23 @@ void ThemeManager::initAfterUi(StorageManager &storage, bool night_mode, bool &d
         current_ = saved_;
         applyMain(current_);
     } else {
-        ThemeSwatch amber = {
-            objects.btn_theme_industrial_amber,
-            objects.card_theme_industrial_amber,
-            objects.label_btn_theme_industrial_amber
-        };
         ThemeColors amber_colors = {};
-        if (readFromSwatch(amber, amber_colors)) {
+        if (readFromSwatch(swatches_[kIndustrialAmberSwatchIndex], amber_colors)) {
             current_ = amber_colors;
             saved_ = amber_colors;
             saved_valid_ = true;
             applyMain(current_);
             saveToPrefs(storage, current_);
+            setSelectedSwatch(&swatches_[kIndustrialAmberSwatchIndex]);
+            selected_default_preset = true;
         }
     }
     syncPreviewWithCurrent();
-    selectSwatchByColors(current_);
+    if (selected_default_preset) {
+        setSelectedSwatch(&swatches_[kIndustrialAmberSwatchIndex]);
+    } else {
+        selectSwatchByColors(current_);
+    }
     applyActive(night_mode, datetime_ui_dirty);
 }
 
@@ -172,6 +177,19 @@ void ThemeManager::applyActive(bool night_mode, bool &datetime_ui_dirty) {
 void ThemeManager::selectSwatchByCurrent() {
     initSwatches();
     selectSwatchByColors(current_);
+}
+
+bool ThemeManager::selectDefaultPreset() {
+    initSwatches();
+    ThemeColors colors = {};
+    if (!readFromSwatch(swatches_[kIndustrialAmberSwatchIndex], colors)) {
+        return false;
+    }
+    preview_ = colors;
+    preview_valid_ = true;
+    applyPreview(preview_);
+    setSelectedSwatch(&swatches_[kIndustrialAmberSwatchIndex]);
+    return true;
 }
 
 ThemeColors ThemeManager::previewOrCurrent() const {
@@ -361,7 +379,7 @@ bool ThemeManager::colorsEqual(const ThemeColors &a, const ThemeColors &b) const
 }
 
 void ThemeManager::initSwatches() {
-    swatches_[0] = { objects.btn_theme_industrial_amber, objects.card_theme_industrial_amber, objects.label_btn_theme_industrial_amber };
+    swatches_[kIndustrialAmberSwatchIndex] = { objects.btn_theme_industrial_amber, objects.card_theme_industrial_amber, objects.label_btn_theme_industrial_amber };
     swatches_[1] = { objects.btn_theme_nord_frost, objects.card_theme_nord_frost, objects.label_btn_theme_nord_frost };
     swatches_[2] = { objects.btn_theme_orbital_command, objects.card_theme_orbital_command, objects.label_btn_theme_orbital_command };
     swatches_[3] = { objects.btn_theme_vintage_sepia, objects.card_theme_vintage_sepia, objects.label_btn_theme_vintage_sepia };

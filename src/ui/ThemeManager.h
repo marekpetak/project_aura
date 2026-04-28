@@ -27,6 +27,7 @@ public:
     void applyPreviewAsCurrent(StorageManager &storage, bool night_mode, bool &datetime_ui_dirty);
     void applyActive(bool night_mode, bool &datetime_ui_dirty);
     void selectSwatchByCurrent();
+    bool selectDefaultPreset();
     bool hasPreview() const { return preview_valid_; }
     bool hasUnsavedPreview() const;
     bool isCurrentPreset() const { return selected_index_ >= 0; }
