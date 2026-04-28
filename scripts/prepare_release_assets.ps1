@@ -185,6 +185,7 @@ $baseUrl = "https://github.com/$Repo/releases/download/$Tag"
 $manifestFull = [ordered]@{
   name = "Project Aura"
   version = $displayVersion
+  new_install_improv_wait_time = 0
   builds = @(
     [ordered]@{
       chipFamily = "ESP32-S3"
@@ -201,6 +202,7 @@ $manifestFull = [ordered]@{
 $manifestUpdate = [ordered]@{
   name = "Project Aura"
   version = $displayVersion
+  new_install_improv_wait_time = 0
   new_install_prompt_erase = $true
   builds = @(
     [ordered]@{
