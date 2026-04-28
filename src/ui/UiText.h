@@ -124,6 +124,7 @@ inline const char *RtcDetectionNone() { return UiStrings::text(UiStrings::TextId
 inline const char *RtcDetectionStatusNotFound() { return UiStrings::text(UiStrings::TextId::RtcDetectionStatusNotFound); }
 inline const char *RtcDetectionStatusBatteryLow() { return UiStrings::text(UiStrings::TextId::RtcDetectionStatusBatteryLow); }
 inline const char *RtcDetectionStatusLostPower() { return UiStrings::text(UiStrings::TextId::RtcDetectionStatusLostPower); }
+inline const char *RtcDetectionStatusTimeNotSet() { return UiStrings::text(UiStrings::TextId::RtcDetectionStatusTimeNotSet); }
 inline const char *RtcDetectionStatusTimeInvalid() { return UiStrings::text(UiStrings::TextId::RtcDetectionStatusTimeInvalid); }
 inline const char *RtcDetectionStatusOk() { return UiStrings::text(UiStrings::TextId::RtcDetectionStatusOk); }
 inline const char *RtcDetectionStatusRestartRequired() { return UiStrings::text(UiStrings::TextId::RtcDetectionStatusRestartRequired); }
@@ -209,6 +210,7 @@ inline const char *BootDiagFail() { return UiStrings::text(UiStrings::TextId::Bo
 inline const char *BootDiagStarting() { return UiStrings::text(UiStrings::TextId::BootDiagStarting); }
 inline const char *BootDiagNotFound() { return UiStrings::text(UiStrings::TextId::BootDiagNotFound); }
 inline const char *BootDiagLost() { return UiStrings::text(UiStrings::TextId::BootDiagLost); }
+inline const char *BootDiagTimeNotSet() { return UiStrings::text(UiStrings::TextId::BootDiagTimeNotSet); }
 
 inline const char *InfoTempText() { return UiStrings::text(UiStrings::TextId::InfoTempText); }
 inline const char *InfoTempExcellent() { return UiStrings::text(UiStrings::TextId::InfoTempExcellent); }

@@ -181,7 +181,8 @@ bool UiBootFlow::bootDiagHasErrors(UiController &owner, uint32_t now_ms) {
         has_error = true;
     }
     if (owner.timeManager.isRtcPresent()) {
-        if (owner.timeManager.isRtcLostPower() || !owner.timeManager.isRtcValid()) {
+        if (owner.timeManager.isRtcReadFault() ||
+            (!owner.timeManager.isRtcValid() && !owner.timeManager.isRtcTimeUnset())) {
             has_error = true;
         }
     }
@@ -356,7 +357,9 @@ void UiBootFlow::updateBootDiag(UiController &owner, uint32_t now_ms) {
     if (objects.lbl_diag_rtc) {
         const char *status = UiText::BootDiagNotFound();
         if (owner.timeManager.isRtcPresent()) {
-            if (owner.timeManager.isRtcLostPower()) {
+            if (owner.timeManager.isRtcTimeUnset()) {
+                status = UiText::BootDiagTimeNotSet();
+            } else if (owner.timeManager.isRtcLostPower()) {
                 status = UiText::BootDiagLost();
             } else if (owner.timeManager.isRtcValid()) {
                 status = UiText::StatusOk();
@@ -367,7 +370,9 @@ void UiBootFlow::updateBootDiag(UiController &owner, uint32_t now_ms) {
         owner.safe_label_set_text(objects.lbl_diag_rtc, status);
     }
     if (owner.timeManager.isRtcPresent()) {
-        if (owner.timeManager.isRtcLostPower()) {
+        if (owner.timeManager.isRtcTimeUnset()) {
+            // New RTC modules can ship without a valid clock. NTP or manual set will initialize them.
+        } else if (owner.timeManager.isRtcLostPower()) {
             append_error_line(error_lines, sizeof(error_lines), error_len, "RTC lost power");
         } else if (!owner.timeManager.isRtcValid()) {
             append_error_line(error_lines, sizeof(error_lines), error_len, "RTC invalid time");

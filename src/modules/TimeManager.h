@@ -57,6 +57,10 @@ public:
     bool isRtcPresent() const { return rtc_present_; }
     bool isRtcValid() const { return rtc_valid_; }
     bool isRtcLostPower() const { return rtc_lost_power_; }
+    bool isRtcTimeUnset() const { return rtc_time_unset_; }
+    bool isRtcReadFault() const {
+        return rtc_present_ && rtc_read_fail_count_ >= Config::RTC_STATUS_READ_FAIL_LIMIT;
+    }
     bool isRtcBatteryLow() const { return rtc_battery_low_; }
     Config::RtcMode configuredRtcMode() const { return rtc_mode_; }
     const char *rtcLabel() const;
@@ -107,6 +111,7 @@ private:
     bool rtc_present_ = false;
     bool rtc_valid_ = false;
     bool rtc_lost_power_ = false;
+    bool rtc_time_unset_ = false;
     bool rtc_battery_low_ = false;
     bool rtc_probe_needs_pcf_verification_ = false;
 

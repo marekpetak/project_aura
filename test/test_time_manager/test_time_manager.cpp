@@ -4,6 +4,7 @@
 #include "I2cMock.h"
 #include "SntpMock.h"
 #include "TimeMock.h"
+#include "core/BootState.h"
 #include "core/Logger.h"
 #include "modules/StorageManager.h"
 #include "modules/TimeManager.h"
@@ -24,6 +25,22 @@ void seedPcf8523WithOldValidTime() {
 
     const uint8_t time_regs[] = {
         toBcd(56), toBcd(34), toBcd(12), toBcd(15), 0x02, toBcd(4), toBcd(19)
+    };
+    I2cMock::setRegisters(Config::PCF8523_ADDR, Config::PCF8523_REG_SECONDS,
+                          time_regs, sizeof(time_regs));
+    I2cMock::setRegister(Config::PCF8523_ADDR, Config::PCF8523_REG_CONTROL_3, 0x00);
+}
+
+void seedPcf8523WithUnsetTime() {
+    I2cMock::setDevicePresent(Config::PCF8523_ADDR, true);
+    I2cMock::setReadWrap(Config::PCF8523_ADDR, Config::PCF8523_REG_TMR_B_REG);
+
+    const uint8_t signature[] = {0x00, 0x00, 0x07, 0x00, 0x07};
+    I2cMock::setRegisters(Config::PCF8523_ADDR, Config::PCF8523_REG_OFFSET,
+                          signature, sizeof(signature));
+
+    const uint8_t time_regs[] = {
+        0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     };
     I2cMock::setRegisters(Config::PCF8523_ADDR, Config::PCF8523_REG_SECONDS,
                           time_regs, sizeof(time_regs));
@@ -147,6 +164,7 @@ void seedPcf8523ThatLooksLikeWeakDs3231() {
 void setUp() {
     setMillis(0);
     setNowEpoch(0);
+    boot_reset_reason = ESP_RST_POWERON;
     I2cMock::reset();
     SntpMock::reset();
     Logger::begin(Serial, Logger::Debug);
@@ -189,6 +207,43 @@ void test_time_manager_init_rtc_selects_pcf8523() {
     TEST_ASSERT_EQUAL_STRING("PCF8523", manager.rtcLabel());
 }
 
+void test_time_manager_init_rtc_marks_unset_pcf8523_as_time_unset_not_fault() {
+    seedPcf8523WithUnsetTime();
+
+    StorageManager storage;
+    storage.begin();
+
+    TimeManager manager;
+    manager.begin(storage);
+
+    TEST_ASSERT_FALSE(manager.initRtc());
+    TEST_ASSERT_TRUE(manager.isRtcPresent());
+    TEST_ASSERT_FALSE(manager.isRtcValid());
+    TEST_ASSERT_TRUE(manager.isRtcLostPower());
+    TEST_ASSERT_TRUE(manager.isRtcTimeUnset());
+    TEST_ASSERT_FALSE(manager.isRtcReadFault());
+    TEST_ASSERT_EQUAL_STRING("PCF8523", manager.rtcLabel());
+}
+
+void test_time_manager_set_local_time_initializes_unset_rtc() {
+    seedPcf8523WithUnsetTime();
+
+    StorageManager storage;
+    storage.begin();
+
+    TimeManager manager;
+    manager.begin(storage);
+
+    TEST_ASSERT_FALSE(manager.initRtc());
+    TEST_ASSERT_TRUE(manager.isRtcTimeUnset());
+
+    TEST_ASSERT_TRUE(manager.setLocalTime(2026, 4, 15, 12, 34));
+    TEST_ASSERT_TRUE(manager.isRtcPresent());
+    TEST_ASSERT_TRUE(manager.isRtcValid());
+    TEST_ASSERT_FALSE(manager.isRtcLostPower());
+    TEST_ASSERT_FALSE(manager.isRtcTimeUnset());
+}
+
 void test_time_manager_init_rtc_selects_ds3231() {
     seedDs3231WithOldValidTime();
 
@@ -202,6 +257,7 @@ void test_time_manager_init_rtc_selects_ds3231() {
     TEST_ASSERT_TRUE(manager.isRtcPresent());
     TEST_ASSERT_FALSE(manager.isRtcValid());
     TEST_ASSERT_FALSE(manager.isRtcLostPower());
+    TEST_ASSERT_FALSE(manager.isRtcTimeUnset());
     TEST_ASSERT_EQUAL_STRING("DS3231", manager.rtcLabel());
 }
 
@@ -235,6 +291,7 @@ void test_time_manager_init_rtc_keeps_dirty_ds3231_visible_when_osf_set() {
     TEST_ASSERT_TRUE(manager.isRtcPresent());
     TEST_ASSERT_FALSE(manager.isRtcValid());
     TEST_ASSERT_TRUE(manager.isRtcLostPower());
+    TEST_ASSERT_TRUE(manager.isRtcTimeUnset());
     TEST_ASSERT_EQUAL_STRING("DS3231", manager.rtcLabel());
 }
 
@@ -449,6 +506,8 @@ int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_time_manager_init_rtc_handles_absent_rtc);
     RUN_TEST(test_time_manager_init_rtc_selects_pcf8523);
+    RUN_TEST(test_time_manager_init_rtc_marks_unset_pcf8523_as_time_unset_not_fault);
+    RUN_TEST(test_time_manager_set_local_time_initializes_unset_rtc);
     RUN_TEST(test_time_manager_init_rtc_selects_ds3231);
     RUN_TEST(test_time_manager_init_rtc_keeps_dirty_ds3231_visible);
     RUN_TEST(test_time_manager_init_rtc_keeps_dirty_ds3231_visible_when_osf_set);

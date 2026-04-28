@@ -27,6 +27,9 @@ const char *rtc_runtime_status_text(const TimeManager &timeManager) {
     if (timeManager.isRtcBatteryLow()) {
         return UiText::RtcDetectionStatusBatteryLow();
     }
+    if (timeManager.isRtcTimeUnset()) {
+        return UiText::RtcDetectionStatusTimeNotSet();
+    }
     if (timeManager.isRtcLostPower()) {
         return UiText::RtcDetectionStatusLostPower();
     }
@@ -40,7 +43,7 @@ lv_color_t rtc_runtime_status_color(const TimeManager &timeManager) {
     if (!timeManager.isRtcPresent()) {
         return lv_color_hex(0xffeb3b);
     }
-    if (timeManager.isRtcBatteryLow() || timeManager.isRtcLostPower()) {
+    if (timeManager.isRtcBatteryLow() || timeManager.isRtcTimeUnset() || timeManager.isRtcLostPower()) {
         return lv_color_hex(0xffeb3b);
     }
     if (!timeManager.isRtcValid()) {
@@ -202,6 +205,9 @@ void UiController::update_datetime_ui() {
     if (objects.label_rtc_status) {
         if (!timeManager.isRtcPresent()) {
             safe_label_set_text(objects.label_rtc_status, UiText::StatusOff());
+            if (objects.chip_rtc_status) set_chip_color(objects.chip_rtc_status, color_yellow());
+        } else if (timeManager.isRtcTimeUnset()) {
+            safe_label_set_text(objects.label_rtc_status, UiText::StatusWarn());
             if (objects.chip_rtc_status) set_chip_color(objects.chip_rtc_status, color_yellow());
         } else if (!timeManager.isRtcValid()) {
             safe_label_set_text(objects.label_rtc_status, UiText::StatusErr());

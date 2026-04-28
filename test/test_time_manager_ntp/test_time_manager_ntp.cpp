@@ -2,11 +2,15 @@
 
 #include "ArduinoMock.h"
 #include "SntpMock.h"
+#include "TimeMock.h"
+#include "core/BootState.h"
 #include "modules/StorageManager.h"
 #include "modules/TimeManager.h"
 
 void setUp() {
     setMillis(0);
+    setNowEpoch(0);
+    boot_reset_reason = ESP_RST_POWERON;
     SntpMock::reset();
 }
 
@@ -80,14 +84,14 @@ void test_time_manager_prefers_timezone_name_over_legacy_index() {
 void test_time_manager_migrates_legacy_timezone_index_to_name() {
     StorageManager storage;
     storage.begin();
-    storage.config().tz_index = TimeManager::findTimezoneIndex("Asia/Tokyo");
+    storage.config().tz_index = 14;  // Europe/Paris in the pre-Berlin numeric list.
 
     TimeManager manager;
     manager.begin(storage);
 
-    TEST_ASSERT_EQUAL_STRING("Asia/Tokyo", manager.getTimezone().name);
-    TEST_ASSERT_EQUAL_INT(TimeManager::findTimezoneIndex("Asia/Tokyo"), storage.config().tz_index);
-    TEST_ASSERT_EQUAL_STRING("Asia/Tokyo", storage.config().tz_name.c_str());
+    TEST_ASSERT_EQUAL_STRING("Europe/Paris", manager.getTimezone().name);
+    TEST_ASSERT_EQUAL_INT(TimeManager::findTimezoneIndex("Europe/Paris"), storage.config().tz_index);
+    TEST_ASSERT_EQUAL_STRING("Europe/Paris", storage.config().tz_name.c_str());
 }
 
 void test_time_manager_set_timezone_index_persists_name_and_index() {
@@ -119,6 +123,37 @@ void test_time_manager_supports_brisbane_without_dst() {
     TEST_ASSERT_EQUAL_STRING("AEST-10", SntpMock::lastTimezone());
 }
 
+void test_time_manager_supports_berlin_with_dst_rules() {
+    StorageManager storage;
+    storage.begin();
+    storage.config().tz_name = "Europe/Berlin";
+
+    TimeManager manager;
+    manager.begin(storage);
+
+    TEST_ASSERT_EQUAL_STRING("Europe/Berlin", manager.getTimezone().name);
+    TEST_ASSERT_EQUAL_INT(60, manager.getTimezone().offset_min);
+    TEST_ASSERT_EQUAL_STRING("Europe/Berlin", storage.config().tz_name.c_str());
+
+    TEST_ASSERT_TRUE(manager.updateWifiState(true, true));
+    TEST_ASSERT_EQUAL_STRING("CET-1CEST,M3.5.0,M10.5.0/3", SntpMock::lastTimezone());
+}
+
+void test_time_manager_berlin_reports_current_dst_offset() {
+    StorageManager storage;
+    storage.begin();
+    storage.config().tz_name = "Europe/Berlin";
+
+    TimeManager manager;
+    manager.begin(storage);
+
+    setNowEpoch(1768478400);  // 2026-01-15 12:00:00 UTC
+    TEST_ASSERT_EQUAL_INT(60, manager.currentUtcOffsetMinutes());
+
+    setNowEpoch(1777377600);  // 2026-04-28 12:00:00 UTC
+    TEST_ASSERT_EQUAL_INT(120, manager.currentUtcOffsetMinutes());
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_time_manager_ntp_uses_default_public_servers_when_custom_server_is_empty);
@@ -128,5 +163,7 @@ int main(int, char **) {
     RUN_TEST(test_time_manager_migrates_legacy_timezone_index_to_name);
     RUN_TEST(test_time_manager_set_timezone_index_persists_name_and_index);
     RUN_TEST(test_time_manager_supports_brisbane_without_dst);
+    RUN_TEST(test_time_manager_supports_berlin_with_dst_rules);
+    RUN_TEST(test_time_manager_berlin_reports_current_dst_offset);
     return UNITY_END();
 }

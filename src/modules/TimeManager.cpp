@@ -77,6 +77,58 @@ bool localtimeInto(const time_t &epoch, tm &out) {
 #endif
 }
 
+bool rtcTimeLooksUnset(bool time_valid, bool osc_stop, time_t epoch) {
+    return osc_stop && (!time_valid || epoch <= Config::TIME_VALID_EPOCH);
+}
+
+// Preserve configs that only have the pre-name numeric timezone index.
+const char *legacyTimezoneNameFromIndex(int index) {
+    static const char *const kLegacyTimeZoneNames[] = {
+        "Etc/GMT+12",
+        "Pacific/Midway",
+        "Pacific/Honolulu",
+        "America/Anchorage",
+        "America/Los_Angeles",
+        "America/Denver",
+        "America/Chicago",
+        "America/New_York",
+        "America/Santiago",
+        "America/St_Johns",
+        "America/Sao_Paulo",
+        "Atlantic/South_Georgia",
+        "Atlantic/Azores",
+        "Europe/London",
+        "Europe/Paris",
+        "Europe/Kiev",
+        "Africa/Cairo",
+        "Europe/Moscow",
+        "Asia/Tehran",
+        "Asia/Dubai",
+        "Asia/Kabul",
+        "Asia/Karachi",
+        "Asia/Kolkata",
+        "Asia/Kathmandu",
+        "Asia/Dhaka",
+        "Asia/Yangon",
+        "Asia/Bangkok",
+        "Asia/Shanghai",
+        "Asia/Singapore",
+        "Asia/Tokyo",
+        "Australia/Adelaide",
+        "Australia/Brisbane",
+        "Australia/Sydney",
+        "Pacific/Noumea",
+        "Pacific/Auckland",
+        "Pacific/Chatham",
+        "Pacific/Tongatapu",
+        "Pacific/Kiritimati",
+    };
+    if (index < 0 || index >= static_cast<int>(sizeof(kLegacyTimeZoneNames) / sizeof(kLegacyTimeZoneNames[0]))) {
+        return nullptr;
+    }
+    return kLegacyTimeZoneNames[index];
+}
+
 bool setSystemEpoch(time_t epoch) {
 #ifdef UNIT_TEST
     setNowEpoch(epoch);
@@ -177,6 +229,17 @@ void TimeManager::begin(StorageManager &storage) {
     }
     if (resolved_tz_index < 0 &&
         cfg.tz_index >= 0 &&
+        cfg.tz_name.length() == 0) {
+        const char *legacy_name = legacyTimezoneNameFromIndex(cfg.tz_index);
+        const int legacy_named_index = legacy_name ? findTimezoneIndex(legacy_name) : -1;
+        if (legacy_named_index >= 0 &&
+            legacy_named_index < static_cast<int>(TIME_ZONE_COUNT) &&
+            strcmp(kTimeZones[legacy_named_index].name, legacy_name) == 0) {
+            resolved_tz_index = legacy_named_index;
+        }
+    }
+    if (resolved_tz_index < 0 &&
+        cfg.tz_index >= 0 &&
         cfg.tz_index < static_cast<int>(TIME_ZONE_COUNT)) {
         resolved_tz_index = cfg.tz_index;
     }
@@ -196,6 +259,7 @@ bool TimeManager::initRtc() {
     rtc_present_ = false;
     rtc_valid_ = false;
     rtc_lost_power_ = false;
+    rtc_time_unset_ = false;
     rtc_battery_low_ = false;
     rtc_probe_needs_pcf_verification_ = false;
     last_rtc_status_poll_ms_ = 0;
@@ -233,9 +297,19 @@ bool TimeManager::initRtc() {
     last_rtc_status_poll_ms_ = millis();
     if (!time_valid) {
         rtc_valid_ = false;
+        rtc_time_unset_ = rtcTimeLooksUnset(time_valid, osc_stop, static_cast<time_t>(-1));
+        if (rtc_time_unset_) {
+            LOGI("RTC", "%s time not set; waiting for NTP or manual time", rtcLabel());
+        }
         return false;
     }
     time_t epoch = makeUtcEpoch(utc_tm);
+    rtc_time_unset_ = rtcTimeLooksUnset(time_valid, osc_stop, epoch);
+    if (rtc_time_unset_) {
+        rtc_valid_ = false;
+        LOGI("RTC", "%s time not set; waiting for NTP or manual time", rtcLabel());
+        return false;
+    }
     if (epoch > Config::TIME_VALID_EPOCH) {
         if (osc_stop) {
             if (rtcClearLostPower()) {
@@ -498,10 +572,11 @@ bool TimeManager::getLocalTime(tm &out) {
             if (rtcReadTime(utc_tm, osc_stop, time_valid)) {
                 noteRtcReadSuccess(false);
                 rtc_lost_power_ = osc_stop;
-                rtc_valid_ = time_valid && !osc_stop;
+                const time_t epoch = time_valid ? makeUtcEpoch(utc_tm) : static_cast<time_t>(-1);
+                rtc_time_unset_ = rtcTimeLooksUnset(time_valid, osc_stop, epoch);
+                rtc_valid_ = time_valid && !osc_stop && !rtc_time_unset_;
                 if (rtc_valid_) {
-                    time_t epoch = makeUtcEpoch(utc_tm);
-                    if (epoch > Config::TIME_VALID_EPOCH && setSystemTime(epoch)) {
+                    if (setSystemTime(epoch)) {
                         now = epoch;
                     }
                 }
@@ -611,6 +686,7 @@ bool TimeManager::rtcWriteFromEpoch(time_t epoch) {
     }
     rtc_valid_ = true;
     rtc_lost_power_ = false;
+    rtc_time_unset_ = false;
     return true;
 }
 
@@ -748,16 +824,17 @@ TimeManager::PollResult TimeManager::pollRtcStatus(uint32_t now_ms) {
     bool time_valid = false;
     if (rtcReadTime(utc_tm, osc_stop, time_valid)) {
         noteRtcReadSuccess(true);
-        bool rtc_valid = false;
-        if (time_valid) {
-            const time_t epoch = makeUtcEpoch(utc_tm);
-            rtc_valid = !osc_stop && epoch > Config::TIME_VALID_EPOCH;
-        }
-        if (rtc_lost_power_ != osc_stop || rtc_valid_ != rtc_valid) {
+        const time_t epoch = time_valid ? makeUtcEpoch(utc_tm) : static_cast<time_t>(-1);
+        const bool rtc_time_unset = rtcTimeLooksUnset(time_valid, osc_stop, epoch);
+        const bool rtc_valid = time_valid && !osc_stop && !rtc_time_unset;
+        if (rtc_lost_power_ != osc_stop ||
+            rtc_valid_ != rtc_valid ||
+            rtc_time_unset_ != rtc_time_unset) {
             result.state_changed = true;
         }
         rtc_lost_power_ = osc_stop;
         rtc_valid_ = rtc_valid;
+        rtc_time_unset_ = rtc_time_unset;
         rtc_present_ = true;
     } else if (noteRtcReadFailure(true)) {
         result.state_changed = true;
@@ -798,8 +875,9 @@ bool TimeManager::noteRtcReadFailure(bool log_transition) {
         LOGW("RTC", "%s read failed repeatedly", rtcLabel());
     }
 
-    const bool state_changed = rtc_valid_;
+    const bool state_changed = rtc_valid_ || rtc_time_unset_;
     rtc_valid_ = false;
+    rtc_time_unset_ = false;
     rtc_present_ = true;
     return state_changed;
 }

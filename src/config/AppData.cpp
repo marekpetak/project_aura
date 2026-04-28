@@ -21,6 +21,7 @@ const TimeZoneEntry kTimeZones[] = {
     { "Atlantic/South_Georgia", -2 * 60, nullptr },
     { "Atlantic/Azores", -1 * 60, "AZOT1AZOST,M3.5.0/1,M10.5.0/2" },
     { "Europe/London", 0, "GMT0BST,M3.5.0/1,M10.5.0" },
+    { "Europe/Berlin", 1 * 60, "CET-1CEST,M3.5.0,M10.5.0/3" },
     { "Europe/Paris", 1 * 60, "CET-1CEST,M3.5.0,M10.5.0/3" },
     { "Europe/Kiev", 2 * 60, "EET-2EEST,M3.5.0/3,M10.5.0/4" },
     { "Africa/Cairo", 2 * 60, "EET-2EEST,M4.5.5/0,M10.5.4/24" },
