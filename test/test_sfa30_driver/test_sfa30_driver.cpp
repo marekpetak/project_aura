@@ -4,12 +4,11 @@
 #include "ArduinoMock.h"
 #include "I2cMock.h"
 #include "config/AppConfig.h"
+#include "core/BootState.h"
 #include "core/I2CHelper.h"
 #include "core/Logger.h"
 #include "drivers/Sfa30.h"
 #include "esp_system.h"
-
-esp_reset_reason_t boot_reset_reason = ESP_RST_POWERON;
 
 namespace {
 

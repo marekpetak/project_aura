@@ -18,8 +18,6 @@ void assert_contains(const String &text, const char *needle) {
 
 } // namespace
 
-esp_reset_reason_t boot_reset_reason = ESP_RST_POWERON;
-
 void setUp() {}
 void tearDown() {}
 

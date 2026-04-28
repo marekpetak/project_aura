@@ -2,10 +2,9 @@
 
 #include "ArduinoMock.h"
 #include "I2cMock.h"
+#include "core/BootState.h"
 #include "core/Logger.h"
 #include "esp_system.h"
-
-esp_reset_reason_t boot_reset_reason = ESP_RST_POWERON;
 
 #define private public
 #define Sen66 RealSen66

@@ -18,8 +18,6 @@
 #include "drivers/Sfa30.h"
 #include "drivers/Sfa40.h"
 
-esp_reset_reason_t boot_reset_reason = ESP_RST_POWERON;
-
 static void resetDriverStates() {
     Bmp3xx::state() = Bmp3xxTestState();
     Bmp3xx::variant_state() = Bmp3xx::Variant::BMP390;
