@@ -36,6 +36,9 @@ bool DfrMultiGasSensor::begin() {
     fail_cooldown_started_ms_ = 0;
     cooldown_recover_fail_count_ = 0;
     start_attempts_ = 0;
+    absent_retry_count_ = 0;
+    absent_retry_active_ = false;
+    absent_retry_exhausted_ = false;
     start_retry_exhausted_logged_ = false;
     last_read_failure_reason_ = FailureReason::None;
     last_passive_failure_reason_ = FailureReason::None;
@@ -50,9 +53,27 @@ bool DfrMultiGasSensor::start() {
         }
         if (!start_retry_exhausted_logged_ &&
             start_attempts_ >= Config::DFR_GAS_MAX_START_ATTEMPTS) {
-            LOGI(config_.log_tag, "not installed after %u attempts, background retry in %lu ms",
-                 static_cast<unsigned>(Config::DFR_GAS_MAX_START_ATTEMPTS),
-                 static_cast<unsigned long>(Config::DFR_GAS_ABSENT_RETRY_MS));
+            if (absent_retry_active_) {
+                absent_retry_active_ = false;
+                if (absent_retry_count_ < UINT8_MAX) {
+                    ++absent_retry_count_;
+                }
+            }
+            if (absent_retry_count_ >= Config::DFR_GAS_MAX_ABSENT_RETRIES) {
+                LOGI(config_.log_tag, "not installed after %u background retries, stop probing until reboot",
+                     static_cast<unsigned>(Config::DFR_GAS_MAX_ABSENT_RETRIES));
+                absent_retry_exhausted_ = true;
+            } else if (absent_retry_count_ > 0) {
+                LOGI(config_.log_tag,
+                     "background retry %u/%u failed, next retry in %lu ms",
+                     static_cast<unsigned>(absent_retry_count_),
+                     static_cast<unsigned>(Config::DFR_GAS_MAX_ABSENT_RETRIES),
+                     static_cast<unsigned long>(Config::DFR_GAS_ABSENT_RETRY_MS));
+            } else {
+                LOGI(config_.log_tag, "not installed after %u attempts, background retry in %lu ms",
+                     static_cast<unsigned>(Config::DFR_GAS_MAX_START_ATTEMPTS),
+                     static_cast<unsigned long>(Config::DFR_GAS_ABSENT_RETRY_MS));
+            }
             start_retry_exhausted_logged_ = true;
         }
         present_ = false;
@@ -72,6 +93,9 @@ bool DfrMultiGasSensor::start() {
     }
 
     start_attempts_ = 0;
+    absent_retry_count_ = 0;
+    absent_retry_active_ = false;
+    absent_retry_exhausted_ = false;
     start_retry_exhausted_logged_ = false;
     const bool was_present = present_;
     present_ = true;
@@ -104,11 +128,15 @@ void DfrMultiGasSensor::poll() {
     const uint32_t now = millis();
 
     if (!present_) {
+        if (absent_retry_exhausted_) {
+            return;
+        }
         if (start_attempts_ >= Config::DFR_GAS_MAX_START_ATTEMPTS) {
             if (now - last_retry_ms_ < Config::DFR_GAS_ABSENT_RETRY_MS) {
                 return;
             }
             start_attempts_ = 0;
+            absent_retry_active_ = true;
             start_retry_exhausted_logged_ = false;
         }
         if (now - last_retry_ms_ >= Config::DFR_GAS_RETRY_MS) {

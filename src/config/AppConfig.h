@@ -286,6 +286,7 @@ namespace Config {
     constexpr uint32_t DFR_GAS_STALE_MS = 18000;
     constexpr uint32_t DFR_GAS_RETRY_MS = 5000;
     constexpr uint32_t DFR_GAS_ABSENT_RETRY_MS = 5UL * 60UL * 1000UL;
+    constexpr uint8_t DFR_GAS_MAX_ABSENT_RETRIES = 3;
     constexpr uint8_t DFR_GAS_MAX_START_ATTEMPTS = 3;
     constexpr uint32_t DFR_GAS_I2C_TIMEOUT_MS = 50;
     constexpr uint32_t DFR_GAS_FAIL_COOLDOWN_MS = 30UL * 1000UL;

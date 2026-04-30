@@ -100,6 +100,9 @@ private:
     uint32_t fail_cooldown_started_ms_ = 0;
     uint8_t cooldown_recover_fail_count_ = 0;
     uint8_t start_attempts_ = 0;
+    uint8_t absent_retry_count_ = 0;
+    bool absent_retry_active_ = false;
+    bool absent_retry_exhausted_ = false;
     bool start_retry_exhausted_logged_ = false;
     FailureReason last_read_failure_reason_ = FailureReason::None;
     FailureReason last_passive_failure_reason_ = FailureReason::None;

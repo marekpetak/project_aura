@@ -300,6 +300,32 @@ void test_optional_gas_retries_after_absent_start_lockout() {
     TEST_ASSERT_TRUE(sensor.isPresent());
 }
 
+void test_optional_gas_stops_absent_retry_after_limit() {
+    I2cMock::setDevicePresent(Config::DFR_OPTIONAL_GAS_ADDR, false);
+
+    DfrOptionalGasSensor sensor;
+    TEST_ASSERT_TRUE(sensor.begin());
+    for (uint8_t i = 0; i < Config::DFR_GAS_MAX_START_ATTEMPTS; ++i) {
+        TEST_ASSERT_FALSE(sensor.start());
+    }
+
+    for (uint8_t retry = 0; retry < Config::DFR_GAS_MAX_ABSENT_RETRIES; ++retry) {
+        advanceMillis(Config::DFR_GAS_ABSENT_RETRY_MS);
+        for (uint8_t attempt = 0; attempt < Config::DFR_GAS_MAX_START_ATTEMPTS; ++attempt) {
+            sensor.poll();
+            TEST_ASSERT_FALSE(sensor.isPresent());
+            advanceMillis(Config::DFR_GAS_RETRY_MS);
+        }
+    }
+
+    I2cMock::setDevicePresent(Config::DFR_OPTIONAL_GAS_ADDR, true);
+    setPassiveModeAck();
+    advanceMillis(Config::DFR_GAS_ABSENT_RETRY_MS);
+    sensor.poll();
+
+    TEST_ASSERT_FALSE(sensor.isPresent());
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_optional_gas_detects_nh3_after_warmup);
@@ -312,5 +338,6 @@ int main(int, char **) {
     RUN_TEST(test_optional_gas_keeps_known_type_when_recovery_fails_but_address_acks);
     RUN_TEST(test_optional_gas_marks_absent_when_recovery_fails_after_startup_grace_and_no_ack);
     RUN_TEST(test_optional_gas_retries_after_absent_start_lockout);
+    RUN_TEST(test_optional_gas_stops_absent_retry_after_limit);
     return UNITY_END();
 }
