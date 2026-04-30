@@ -177,6 +177,129 @@ void test_optional_gas_rejects_unsupported_gas_type() {
                       static_cast<int>(sensor.optionalGasType()));
 }
 
+void test_optional_gas_clamps_detected_type_range() {
+    I2cMock::setDevicePresent(Config::DFR_OPTIONAL_GAS_ADDR, true);
+    setPassiveModeAck();
+
+    DfrOptionalGasSensor sensor;
+    TEST_ASSERT_TRUE(sensor.begin());
+    TEST_ASSERT_TRUE(sensor.start());
+
+    setReadGasResponse(999, Config::DFR_GAS_TYPE_O3, 1);
+    setMillis(Config::DFR_GAS_WARMUP_MS + Config::DFR_GAS_POLL_MS);
+    sensor.poll();
+    TEST_ASSERT_TRUE(sensor.isDataValid());
+    TEST_ASSERT_EQUAL(static_cast<int>(DfrOptionalGasSensor::OptionalGasType::O3),
+                      static_cast<int>(sensor.optionalGasType()));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, Config::SEN0472_O3_MAX_PPM, sensor.ppm());
+
+    setReadGasResponse(500, Config::DFR_GAS_TYPE_SO2, 1);
+    advanceMillis(Config::DFR_GAS_POLL_MS);
+    sensor.poll();
+    TEST_ASSERT_TRUE(sensor.isDataValid());
+    TEST_ASSERT_EQUAL(static_cast<int>(DfrOptionalGasSensor::OptionalGasType::SO2),
+                      static_cast<int>(sensor.optionalGasType()));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, Config::SEN0470_SO2_MAX_PPM, sensor.ppm());
+
+    setReadGasResponse(500, Config::DFR_GAS_TYPE_NO2, 1);
+    advanceMillis(Config::DFR_GAS_POLL_MS);
+    sensor.poll();
+    TEST_ASSERT_TRUE(sensor.isDataValid());
+    TEST_ASSERT_EQUAL(static_cast<int>(DfrOptionalGasSensor::OptionalGasType::NO2),
+                      static_cast<int>(sensor.optionalGasType()));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, Config::SEN0471_NO2_MAX_PPM, sensor.ppm());
+}
+
+void test_optional_gas_keeps_known_type_when_recovery_fails_but_address_acks() {
+    setMillis(1000);
+    I2cMock::setDevicePresent(Config::DFR_OPTIONAL_GAS_ADDR, true);
+    setPassiveModeAck();
+
+    DfrOptionalGasSensor sensor;
+    TEST_ASSERT_TRUE(sensor.begin());
+    TEST_ASSERT_TRUE(sensor.start());
+
+    setReadGasResponse(123, Config::DFR_GAS_TYPE_NH3, 1);
+    setMillis(1000 + Config::DFR_GAS_WARMUP_MS + Config::DFR_GAS_POLL_MS);
+    sensor.poll();
+    TEST_ASSERT_TRUE(sensor.isPresent());
+    TEST_ASSERT_TRUE(sensor.isDataValid());
+    TEST_ASSERT_EQUAL(static_cast<int>(DfrOptionalGasSensor::OptionalGasType::NH3),
+                      static_cast<int>(sensor.optionalGasType()));
+
+    I2cMock::setWriteFailure(Config::DFR_OPTIONAL_GAS_ADDR, 0x00, true);
+    for (uint8_t i = 0; i < Config::DFR_GAS_MAX_FAILS; ++i) {
+        advanceMillis(Config::DFR_GAS_POLL_MS);
+        sensor.poll();
+    }
+    TEST_ASSERT_TRUE(sensor.isPresent());
+    TEST_ASSERT_FALSE(sensor.isDataValid());
+    TEST_ASSERT_EQUAL(static_cast<int>(DfrOptionalGasSensor::OptionalGasType::NH3),
+                      static_cast<int>(sensor.optionalGasType()));
+
+    for (uint8_t i = 0; i < Config::DFR_GAS_MAX_COOLDOWN_RECOVERY_FAILS; ++i) {
+        advanceMillis(Config::DFR_GAS_FAIL_COOLDOWN_MS);
+        sensor.poll();
+    }
+    TEST_ASSERT_TRUE(sensor.isPresent());
+    TEST_ASSERT_EQUAL(static_cast<int>(DfrOptionalGasSensor::OptionalGasType::NH3),
+                      static_cast<int>(sensor.optionalGasType()));
+}
+
+void test_optional_gas_marks_absent_when_recovery_fails_after_startup_grace_and_no_ack() {
+    setMillis(1000);
+    I2cMock::setDevicePresent(Config::DFR_OPTIONAL_GAS_ADDR, true);
+    setPassiveModeAck();
+
+    DfrOptionalGasSensor sensor;
+    TEST_ASSERT_TRUE(sensor.begin());
+    TEST_ASSERT_TRUE(sensor.start());
+
+    setReadGasResponse(123, Config::DFR_GAS_TYPE_NH3, 1);
+    setMillis(1000 + Config::DFR_GAS_WARMUP_MS + Config::DFR_GAS_POLL_MS);
+    sensor.poll();
+    TEST_ASSERT_TRUE(sensor.isPresent());
+    TEST_ASSERT_EQUAL(static_cast<int>(DfrOptionalGasSensor::OptionalGasType::NH3),
+                      static_cast<int>(sensor.optionalGasType()));
+
+    setMillis(1000 + Config::DFR_GAS_STARTUP_FAULT_GRACE_MS + Config::DFR_GAS_POLL_MS);
+    I2cMock::setDevicePresent(Config::DFR_OPTIONAL_GAS_ADDR, false);
+    for (uint8_t i = 0; i < Config::DFR_GAS_MAX_FAILS; ++i) {
+        advanceMillis(Config::DFR_GAS_POLL_MS);
+        sensor.poll();
+    }
+    TEST_ASSERT_TRUE(sensor.isPresent());
+
+    for (uint8_t i = 0; i < Config::DFR_GAS_MAX_COOLDOWN_RECOVERY_FAILS; ++i) {
+        advanceMillis(Config::DFR_GAS_FAIL_COOLDOWN_MS);
+        sensor.poll();
+    }
+    TEST_ASSERT_FALSE(sensor.isPresent());
+    TEST_ASSERT_EQUAL(static_cast<int>(DfrOptionalGasSensor::OptionalGasType::None),
+                      static_cast<int>(sensor.optionalGasType()));
+}
+
+void test_optional_gas_retries_after_absent_start_lockout() {
+    I2cMock::setDevicePresent(Config::DFR_OPTIONAL_GAS_ADDR, false);
+
+    DfrOptionalGasSensor sensor;
+    TEST_ASSERT_TRUE(sensor.begin());
+    for (uint8_t i = 0; i < Config::DFR_GAS_MAX_START_ATTEMPTS; ++i) {
+        TEST_ASSERT_FALSE(sensor.start());
+    }
+
+    I2cMock::setDevicePresent(Config::DFR_OPTIONAL_GAS_ADDR, true);
+    setPassiveModeAck();
+
+    advanceMillis(Config::DFR_GAS_RETRY_MS);
+    sensor.poll();
+    TEST_ASSERT_FALSE(sensor.isPresent());
+
+    advanceMillis(Config::DFR_GAS_ABSENT_RETRY_MS);
+    sensor.poll();
+    TEST_ASSERT_TRUE(sensor.isPresent());
+}
+
 int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_optional_gas_detects_nh3_after_warmup);
@@ -185,5 +308,9 @@ int main(int, char **) {
     RUN_TEST(test_optional_gas_detects_h2s_after_warmup);
     RUN_TEST(test_optional_gas_detects_no2_after_warmup);
     RUN_TEST(test_optional_gas_rejects_unsupported_gas_type);
+    RUN_TEST(test_optional_gas_clamps_detected_type_range);
+    RUN_TEST(test_optional_gas_keeps_known_type_when_recovery_fails_but_address_acks);
+    RUN_TEST(test_optional_gas_marks_absent_when_recovery_fails_after_startup_grace_and_no_ack);
+    RUN_TEST(test_optional_gas_retries_after_absent_start_lockout);
     return UNITY_END();
 }

@@ -21,6 +21,8 @@ public:
 
     DfrOptionalGasSensor();
 
+    void poll();
+
     OptionalGasType optionalGasType() const;
     const char *optionalGasLabel() const;
 

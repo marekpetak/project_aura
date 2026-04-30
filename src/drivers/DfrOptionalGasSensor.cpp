@@ -27,10 +27,20 @@ DfrOptionalGasSensor::DfrOptionalGasSensor()
           Config::DFR_OPTIONAL_GAS_ADDR,
           0,
           0.0f,
-          Config::SEN0469_NH3_MAX_PPM,
+          0.0f,
           kOptionalGasTypes,
           sizeof(kOptionalGasTypes) / sizeof(kOptionalGasTypes[0]),
       }) {}
+
+void DfrOptionalGasSensor::poll() {
+    DfrMultiGasSensor::poll();
+
+    const OptionalGasType type = optionalGasType();
+    if (type == OptionalGasType::None) {
+        return;
+    }
+    clampPpm(minPpmForType(type), maxPpmForType(type));
+}
 
 DfrOptionalGasSensor::OptionalGasType DfrOptionalGasSensor::optionalGasType() const {
     switch (gasType()) {
@@ -83,7 +93,9 @@ float DfrOptionalGasSensor::minPpmForType(OptionalGasType type) {
         case OptionalGasType::O3:
             return Config::SEN0472_O3_MIN_PPM;
         case OptionalGasType::SO2:
+            return Config::SEN0470_SO2_MIN_PPM;
         case OptionalGasType::NO2:
+            return Config::SEN0471_NO2_MIN_PPM;
         case OptionalGasType::None:
         default:
             return 0.0f;
@@ -99,8 +111,9 @@ float DfrOptionalGasSensor::maxPpmForType(OptionalGasType type) {
         case OptionalGasType::O3:
             return Config::SEN0472_O3_MAX_PPM;
         case OptionalGasType::SO2:
+            return Config::SEN0470_SO2_MAX_PPM;
         case OptionalGasType::NO2:
-            return 20.0f;
+            return Config::SEN0471_NO2_MAX_PPM;
         case OptionalGasType::None:
         default:
             return 0.0f;

@@ -53,13 +53,26 @@ public:
 
 protected:
     static GasType mapGasType(uint8_t gas_type_raw);
+    void clampPpm(float min_ppm, float max_ppm);
 
 private:
+    enum class FailureReason : uint8_t {
+        None = 0,
+        I2cWrite,
+        I2cRead,
+        BadHeader,
+        BadChecksum,
+        BadDecimals,
+        CommandRejected,
+    };
+
     bool isGasTypeAccepted(uint8_t gas_type_raw) const;
     bool pingAddress();
-    bool setPassiveMode();
-    bool readGasConcentration(float &ppm, uint8_t &gas_type);
-    bool transact(const uint8_t *tx_frame, uint8_t *rx_frame);
+    bool setPassiveMode(FailureReason *failure_reason = nullptr);
+    bool readGasConcentration(float &ppm, uint8_t &gas_type, FailureReason &failure_reason);
+    bool transact(const uint8_t *tx_frame, uint8_t *rx_frame, FailureReason *failure_reason = nullptr);
+    bool isInStartupFaultGrace(uint32_t now_ms) const;
+    static const char *failureReasonLabel(FailureReason reason);
     static uint8_t checksum7(const uint8_t *frame);
     static uint8_t checksum6(const uint8_t *frame);
     static void buildFrame(uint8_t command,
@@ -78,6 +91,7 @@ private:
     GasType gas_type_ = GasType::None;
     uint8_t raw_gas_type_ = 0;
     uint8_t fail_count_ = 0;
+    bool warmup_started_ = false;
     uint32_t warmup_started_ms_ = 0;
     uint32_t last_poll_ms_ = 0;
     uint32_t last_data_ms_ = 0;
@@ -87,4 +101,6 @@ private:
     uint8_t cooldown_recover_fail_count_ = 0;
     uint8_t start_attempts_ = 0;
     bool start_retry_exhausted_logged_ = false;
+    FailureReason last_read_failure_reason_ = FailureReason::None;
+    FailureReason last_passive_failure_reason_ = FailureReason::None;
 };

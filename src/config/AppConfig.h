@@ -281,15 +281,17 @@ namespace Config {
     constexpr uint32_t SFA40_POLL_MS = 700;
     constexpr uint32_t SFA3X_STALE_MS = 10000;
     constexpr uint32_t SFA40_FIRST_READ_DELAY_MS = 700;
-    constexpr uint32_t DFR_GAS_CMD_DELAY_MS = 10;
+    constexpr uint32_t DFR_GAS_CMD_DELAY_MS = 20;
     constexpr uint32_t DFR_GAS_POLL_MS = 3000;
     constexpr uint32_t DFR_GAS_STALE_MS = 18000;
     constexpr uint32_t DFR_GAS_RETRY_MS = 5000;
+    constexpr uint32_t DFR_GAS_ABSENT_RETRY_MS = 5UL * 60UL * 1000UL;
     constexpr uint8_t DFR_GAS_MAX_START_ATTEMPTS = 3;
-    constexpr uint32_t DFR_GAS_I2C_TIMEOUT_MS = 15;
+    constexpr uint32_t DFR_GAS_I2C_TIMEOUT_MS = 50;
     constexpr uint32_t DFR_GAS_FAIL_COOLDOWN_MS = 30UL * 1000UL;
     constexpr uint8_t DFR_GAS_MAX_COOLDOWN_RECOVERY_FAILS = 3;
     constexpr uint32_t DFR_GAS_WARMUP_MS = 300UL * 1000UL;
+    constexpr uint32_t DFR_GAS_STARTUP_FAULT_GRACE_MS = 10UL * 60UL * 1000UL;
     constexpr uint8_t DFR_GAS_MAX_FAILS = 3;
     // Sensor sanity filter ranges (hard limits from datasheets).
     constexpr float SEN66_TEMP_MIN_C = -10.0f;
@@ -326,6 +328,10 @@ namespace Config {
     constexpr float SEN0469_NH3_MAX_PPM = 100.0f;
     constexpr float SEN0472_O3_MIN_PPM = 0.0f;
     constexpr float SEN0472_O3_MAX_PPM = 10.0f;
+    constexpr float SEN0470_SO2_MIN_PPM = 0.0f;
+    constexpr float SEN0470_SO2_MAX_PPM = 20.0f;
+    constexpr float SEN0471_NO2_MIN_PPM = 0.0f;
+    constexpr float SEN0471_NO2_MAX_PPM = 20.0f;
 
     // Shared air-quality thresholds used by auto-demand logic and UI diagnostics.
     constexpr float AQ_CO2_GREEN_MAX_PPM = 800.0f;
