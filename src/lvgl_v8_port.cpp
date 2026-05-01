@@ -27,6 +27,8 @@ static std::atomic<bool> lvgl_port_paused{false};
 static std::atomic<bool> lvgl_pause_requested{false};
 static volatile bool lvgl_vsync_notify_enabled = true;
 static LCD *lvgl_port_lcd = nullptr;
+static bool lvgl_port_screen_flip_180 = false;
+static void *lvgl_port_rotated_fb = nullptr;
 static void *lvgl_buf[LVGL_PORT_BUFFER_NUM_MAX] = {};
 static uint32_t lvgl_touch_read_block_until_ms = 0;
 static bool lvgl_touch_wait_release_after_block = false;
@@ -118,6 +120,63 @@ static inline void lvgl_port_wake_task()
 static inline bool is_before_deadline(uint32_t now_ms, uint32_t deadline_ms)
 {
     return static_cast<int32_t>(deadline_ms - now_ms) > 0;
+}
+
+static void lvgl_port_copy_frame_180(const lv_color_t *src, lv_color_t *dst, uint32_t width, uint32_t height)
+{
+    if (src == nullptr || dst == nullptr) {
+        return;
+    }
+
+    const uint32_t pixel_count = width * height;
+    const lv_color_t *from = src;
+    lv_color_t *to = dst + pixel_count - 1;
+    for (uint32_t i = 0; i < pixel_count; ++i) {
+        *to-- = *from++;
+    }
+}
+
+static void lvgl_port_apply_screen_flip_to_touch_point(TouchPoint &point)
+{
+    if (!lvgl_port_screen_flip_180) {
+        return;
+    }
+
+    lv_disp_t *disp = lv_disp_get_default();
+    const int hor_res = disp != nullptr ? lv_disp_get_hor_res(disp) : LV_HOR_RES;
+    const int ver_res = disp != nullptr ? lv_disp_get_ver_res(disp) : LV_VER_RES;
+    if (hor_res <= 0 || ver_res <= 0 || point.x < 0 || point.y < 0) {
+        return;
+    }
+
+    if (point.x >= hor_res) {
+        point.x = hor_res - 1;
+    }
+    if (point.y >= ver_res) {
+        point.y = ver_res - 1;
+    }
+    point.x = (hor_res - 1) - point.x;
+    point.y = (ver_res - 1) - point.y;
+}
+
+static bool lvgl_port_apply_screen_flip_180(bool enabled)
+{
+    if (lvgl_port_lcd == nullptr) {
+        return false;
+    }
+#if LVGL_PORT_AVOID_TEAR && LVGL_PORT_DIRECT_MODE && (LVGL_PORT_ROTATION_DEGREE == 0)
+    if (enabled && lvgl_port_rotated_fb == nullptr) {
+        return false;
+    }
+#endif
+
+    lvgl_port_screen_flip_180 = enabled;
+    lvgl_touch_cached_state = LV_INDEV_STATE_RELEASED;
+    lvgl_touch_wait_release_after_block = true;
+    lvgl_touch_read_block_until_ms = get_monotonic_ms() + 250;
+    lv_obj_invalidate(lv_scr_act());
+    ESP_LOGI("LVGL", "screen 180 flip %s", enabled ? "enabled" : "disabled");
+    return true;
 }
 
 static inline uint32_t lvgl_touch_boot_quiet_window_ms()
@@ -634,8 +693,15 @@ static void flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t
 
     /* Action after last area refresh */
     if (lv_disp_flush_is_last(drv)) {
-        /* Switch the current LCD frame buffer to `color_map` */
-        lcd->switchFrameBufferTo(color_map);
+        if (lvgl_port_screen_flip_180 && lvgl_port_rotated_fb != nullptr) {
+            lvgl_port_copy_frame_180(
+                color_map, static_cast<lv_color_t *>(lvgl_port_rotated_fb), drv->hor_res, drv->ver_res
+            );
+            lcd->switchFrameBufferTo(lvgl_port_rotated_fb);
+        } else {
+            /* Switch the current LCD frame buffer to `color_map` */
+            lcd->switchFrameBufferTo(color_map);
+        }
 
         /* Waiting for the last frame buffer to complete transmission */
         ulTaskNotifyValueClear(NULL, ULONG_MAX);
@@ -858,6 +924,9 @@ static lv_disp_t *display_init(LCD *lcd)
     for (int i = 0; (i < LVGL_PORT_DISP_BUFFER_NUM) && (i < LVGL_PORT_BUFFER_NUM_MAX); i++) {
         lvgl_buf[i] = lcd->getFrameBufferByIndex(i);
     }
+#if LVGL_PORT_DIRECT_MODE && (LVGL_PORT_ROTATION_DEGREE == 0) && (LVGL_PORT_DISP_BUFFER_NUM >= 3)
+    lvgl_port_rotated_fb = lcd->getFrameBufferByIndex(2);
+#endif
 
 #endif
 #endif /* LVGL_PORT_AVOID_TEAR */
@@ -986,6 +1055,7 @@ static void touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
     int read_touch_result = lvgl_touch_read_points_with_retry(tp, &point);
     if (read_touch_result > 0) {
         lvgl_touch_note_success();
+        lvgl_port_apply_screen_flip_to_touch_point(point);
         lvgl_touch_cached_point = point;
         lvgl_touch_cached_state = LV_INDEV_STATE_PRESSED;
     } else {
@@ -1133,6 +1203,7 @@ bool lvgl_port_init(LCD *lcd, Touch *tp)
     lvgl_touch_recover_successes = 0;
     lvgl_touch_recover_fail_streak = 0;
     lvgl_touch_offline = false;
+    lvgl_port_rotated_fb = nullptr;
     lvgl_touch_boot_quiet_until_ms = get_monotonic_ms() + lvgl_touch_boot_quiet_window_ms();
     lvgl_touch_read_block_until_ms = lvgl_touch_boot_quiet_until_ms;
 
@@ -1191,6 +1262,8 @@ bool lvgl_port_init(LCD *lcd, Touch *tp)
 #endif
     }
 
+    lvgl_port_screen_flip_180 = false;
+
     ESP_UTILS_LOGD("Create mutex for LVGL");
     lvgl_mux = xSemaphoreCreateRecursiveMutex();
     ESP_UTILS_CHECK_NULL_RETURN(lvgl_mux, false, "Create LVGL mutex failed");
@@ -1230,6 +1303,19 @@ bool lvgl_port_unlock(void)
     xSemaphoreGiveRecursive(lvgl_mux);
 
     return true;
+}
+
+bool lvgl_port_set_screen_flip_180(bool enabled)
+{
+    ESP_UTILS_CHECK_FALSE_RETURN(lvgl_port_lock(-1), false, "Lock LVGL failed");
+    const bool ok = lvgl_port_apply_screen_flip_180(enabled);
+    ESP_UTILS_CHECK_FALSE_RETURN(lvgl_port_unlock(), false, "Unlock LVGL failed");
+    return ok;
+}
+
+bool lvgl_port_get_screen_flip_180(void)
+{
+    return lvgl_port_screen_flip_180;
 }
 
 bool lvgl_port_block_touch_read(uint32_t duration_ms)

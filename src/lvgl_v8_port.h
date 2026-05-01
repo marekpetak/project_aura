@@ -111,7 +111,7 @@
     #define LVGL_PORT_DISP_BUFFER_NUM           (3)
     #define LVGL_PORT_FULL_REFRESH              (1)
 #elif LVGL_PORT_AVOID_TEARING_MODE == 3
-    #define LVGL_PORT_DISP_BUFFER_NUM           (2)
+    #define LVGL_PORT_DISP_BUFFER_NUM           (3)
     #define LVGL_PORT_DIRECT_MODE               (1)
 #else
     #error "Invalid avoid tearing mode, please set macro `LVGL_PORT_AVOID_TEARING_MODE` to one of `LVGL_PORT_AVOID_TEARING_MODE_*`"
@@ -216,6 +216,26 @@ bool lvgl_port_lock(int timeout_ms);
  * @return true if success, otherwise false
  */
 bool lvgl_port_unlock(void);
+
+/**
+ * @brief Rotate the visible screen and touch coordinates by 180 degrees.
+ *
+ * In RGB direct-mode this uses a dedicated rotated framebuffer instead of
+ * panel mirroring because RGB panels keep scanning the framebuffer in the
+ * original order.
+ *
+ * @param enabled True for 180-degree flipped mounting.
+ *
+ * @return true if the display port accepted the setting.
+ */
+bool lvgl_port_set_screen_flip_180(bool enabled);
+
+/**
+ * @brief Return the active 180-degree screen flip setting.
+ *
+ * @return true when screen flip is enabled.
+ */
+bool lvgl_port_get_screen_flip_180(void);
 
 /**
  * @brief Temporarily suppress touch reads in LVGL input callback.

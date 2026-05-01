@@ -222,6 +222,8 @@ bool AppInit::initLvglAndUi(Context &ctx, esp_panel::board::Board *board) {
     bool lvgl_ready = lvgl_port_init(board->getLCD(), board->getTouch());
     if (!lvgl_ready) {
         LOGE("Main", "LVGL init failed");
+    } else if (!lvgl_port_set_screen_flip_180(ctx.storage.config().screen_flip_180)) {
+        LOGW("Main", "Failed to apply saved screen rotation");
     }
 
     LOGI("Main", "Creating UI");

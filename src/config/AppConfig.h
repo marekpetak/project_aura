@@ -489,6 +489,7 @@ namespace Config {
         bool header_status_enabled = true;
         bool led_indicators = true;
         bool alert_blink = true;
+        bool screen_flip_180 = false;
         bool asc_enabled = true;
         bool pressure_altitude_set = false;
         int16_t pressure_altitude_m = 0;

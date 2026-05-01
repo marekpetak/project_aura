@@ -251,6 +251,7 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_diag_back, UiController::on_diag_back_event_cb, LV_EVENT_CLICKED},
         {objects.btn_theme_color, UiController::on_theme_color_event_cb, LV_EVENT_CLICKED},
         {objects.btn_theme_back, UiController::on_theme_back_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_180_flip, UiController::on_screen_flip_180_event_cb, LV_EVENT_CLICKED},
         {objects.btn_diag_continue, UiController::on_boot_diag_continue_cb, LV_EVENT_CLICKED},
         {objects.btn_diag_errors, UiController::on_boot_diag_errors_cb, LV_EVENT_CLICKED},
         {objects.btn_dac_settings, UiController::on_dac_settings_event_cb, LV_EVENT_CLICKED},
@@ -409,6 +410,7 @@ void UiEventBinder::applyToggleStylesForAvailableObjects(UiController &owner, in
         objects.btn_ntp_toggle,
         objects.btn_backlight_schedule_toggle,
         objects.btn_backlight_alarm_wake,
+        objects.btn_180_flip,
         objects.btn_backlight_always_on,
         objects.btn_backlight_30s,
         objects.btn_backlight_1m,
@@ -520,6 +522,7 @@ void UiEventBinder::applyCheckedStatesForAvailableObjects(UiController &owner, i
     set_checked(objects.btn_1224_toggle, owner.time_format_24h_);
     set_checked(objects.btn_led_indicators, owner.led_indicators_enabled);
     set_checked(objects.btn_alert_blink, owner.alert_blink_enabled);
+    set_checked(objects.btn_180_flip, owner.storage.config().screen_flip_180);
     set_checked(objects.btn_co2_calib_asc, owner.co2_asc_enabled);
     set_checked(objects.btn_rh_info, owner.info_sensor == UiController::INFO_RH);
     set_checked(objects.btn_ah_info, owner.info_sensor == UiController::INFO_AH);

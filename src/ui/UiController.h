@@ -499,6 +499,7 @@ private:
     void on_theme_back_event(lv_event_t *e);
     void on_theme_tab_event(lv_event_t *e);
     void on_theme_swatch_event(lv_event_t *e);
+    void on_screen_flip_180_event(lv_event_t *e);
     void on_wifi_toggle_event(lv_event_t *e);
     void on_mqtt_toggle_event(lv_event_t *e);
     void on_mqtt_reconnect_event(lv_event_t *e);
@@ -670,6 +671,7 @@ private:
     static void on_theme_back_event_cb(lv_event_t *e);
     static void on_theme_tab_event_cb(lv_event_t *e);
     static void on_theme_swatch_event_cb(lv_event_t *e);
+    static void on_screen_flip_180_event_cb(lv_event_t *e);
     static void on_wifi_toggle_event_cb(lv_event_t *e);
     static void on_mqtt_toggle_event_cb(lv_event_t *e);
     static void on_mqtt_reconnect_event_cb(lv_event_t *e);

@@ -341,6 +341,8 @@ typedef struct _objects_t {
     lv_obj_t *label_btn_theme_custom;
     lv_obj_t *btn_theme_presets;
     lv_obj_t *label_btn_theme_presets;
+    lv_obj_t *btn_180_flip;
+    lv_obj_t *label_btn_180_flip;
     lv_obj_t *container_theme_preview;
     lv_obj_t *container_theme_preview_background;
     lv_obj_t *label_theme_preview_title;

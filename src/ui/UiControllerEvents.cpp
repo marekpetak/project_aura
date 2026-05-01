@@ -88,6 +88,7 @@ void UiController::on_theme_color_event_cb(lv_event_t *e) { if (instance_) insta
 void UiController::on_theme_back_event_cb(lv_event_t *e) { if (instance_) instance_->on_theme_back_event(e); }
 void UiController::on_theme_tab_event_cb(lv_event_t *e) { if (instance_) instance_->on_theme_tab_event(e); }
 void UiController::on_theme_swatch_event_cb(lv_event_t *e) { if (instance_) instance_->on_theme_swatch_event(e); }
+void UiController::on_screen_flip_180_event_cb(lv_event_t *e) { if (instance_) instance_->on_screen_flip_180_event(e); }
 void UiController::on_wifi_toggle_event_cb(lv_event_t *e) { if (instance_) instance_->on_wifi_toggle_event(e); }
 void UiController::on_mqtt_toggle_event_cb(lv_event_t *e) { if (instance_) instance_->on_mqtt_toggle_event(e); }
 void UiController::on_mqtt_reconnect_event_cb(lv_event_t *e) { if (instance_) instance_->on_mqtt_reconnect_event(e); }
@@ -504,6 +505,33 @@ void UiController::on_theme_swatch_event(lv_event_t *e) {
         return;
     }
     themeManager.applyPreviewFromSwatch(*swatch);
+}
+
+void UiController::on_screen_flip_180_event(lv_event_t *e) {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+        return;
+    }
+
+    auto &cfg = storage.config();
+    const bool previous = cfg.screen_flip_180;
+    const bool enabled = !previous;
+    if (!lvgl_port_set_screen_flip_180(enabled)) {
+        if (objects.btn_180_flip) {
+            if (previous) lv_obj_add_state(objects.btn_180_flip, LV_STATE_CHECKED);
+            else lv_obj_clear_state(objects.btn_180_flip, LV_STATE_CHECKED);
+        }
+        LOGE("UI", "failed to apply screen 180 flip");
+        return;
+    }
+
+    cfg.screen_flip_180 = enabled;
+    if (!persist_ui_config(storage, "screen rotation")) {
+        LOGW("UI", "screen rotation queued for save");
+    }
+    if (objects.btn_180_flip) {
+        if (enabled) lv_obj_add_state(objects.btn_180_flip, LV_STATE_CHECKED);
+        else lv_obj_clear_state(objects.btn_180_flip, LV_STATE_CHECKED);
+    }
 }
 
 void UiController::on_wifi_toggle_event(lv_event_t *e) {
