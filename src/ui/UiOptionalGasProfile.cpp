@@ -18,6 +18,7 @@ constexpr Profile kFallbackProfile{
     "Gas",
     "Optional gas",
     1,
+    1,
     1.0f,
     2.0f,
     3.0f,
@@ -27,11 +28,11 @@ constexpr Profile kFallbackProfile{
 };
 
 constexpr Profile kProfiles[] = {
-    {OptionalGasType::NH3, "NH3", "Ammonia (NH3)", 1, 5.0f, 25.0f, 35.0f, 5.0f, 10.0f, 100.0f},
-    {OptionalGasType::SO2, "SO2", "Sulfur dioxide (SO2)", 2, 0.05f, 0.10f, 2.0f, 0.05f, 0.5f, 100.0f},
-    {OptionalGasType::NO2, "NO2", "Nitrogen dioxide (NO2)", 2, 0.05f, 0.10f, 1.0f, 0.05f, 0.3f, 100.0f},
-    {OptionalGasType::H2S, "H2S", "Hydrogen sulfide (H2S)", 1, 0.5f, 1.0f, 10.0f, 0.5f, 2.0f, 100.0f},
-    {OptionalGasType::O3, "O3", "Ozone (O3)", 2, 0.05f, 0.10f, 0.50f, 0.05f, 0.2f, 100.0f},
+    {OptionalGasType::NH3, "NH3", "Ammonia (NH3)", 0, 0, 5.0f, 25.0f, 35.0f, 5.0f, 10.0f, 100.0f},
+    {OptionalGasType::SO2, "SO2", "Sulfur dioxide (SO2)", 1, 2, 0.05f, 0.10f, 2.0f, 0.05f, 0.5f, 100.0f},
+    {OptionalGasType::NO2, "NO2", "Nitrogen dioxide (NO2)", 1, 2, 0.05f, 0.10f, 1.0f, 0.05f, 0.3f, 100.0f},
+    {OptionalGasType::H2S, "H2S", "Hydrogen sulfide (H2S)", 0, 1, 0.5f, 1.0f, 10.0f, 0.5f, 2.0f, 100.0f},
+    {OptionalGasType::O3, "O3", "Ozone (O3)", 1, 2, 0.05f, 0.10f, 0.50f, 0.05f, 0.2f, 100.0f},
 };
 
 void trim_decimal(char *buf) {
@@ -95,7 +96,7 @@ void formatValue(const Profile &profile, float ppm, char *buf, size_t buf_size) 
 }
 
 void formatThreshold(const Profile &profile, float ppm, char *buf, size_t buf_size) {
-    format_number(ppm, profile.value_decimals, buf, buf_size);
+    format_number(ppm, profile.threshold_decimals, buf, buf_size);
 }
 
 void formatBandLabel(const Profile &profile, uint8_t band, char *buf, size_t buf_size) {

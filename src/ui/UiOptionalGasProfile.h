@@ -20,6 +20,7 @@ struct Profile {
     const char *label = "Gas";
     const char *title = "Optional gas";
     uint8_t value_decimals = 1;
+    uint8_t threshold_decimals = 1;
     float green_max_ppm = 0.0f;
     float yellow_max_ppm = 0.0f;
     float orange_max_ppm = 0.0f;

@@ -1288,7 +1288,7 @@ const CHART_LAYOUTS = {
     { title:'VOC Index', unit:'idx', lines:[{ key:'voc', name:'VOC', color:'#ef4444', digits:0, unit:'idx' }] },
     { title:'NOx Index', unit:'idx', lines:[{ key:'nox', name:'NOx', color:'#f43f5e', digits:0, unit:'idx' }] },
     { title:'Formaldehyde (HCHO)', unit:'ppb', lines:[{ key:'hcho', name:'HCHO', color:'#d946ef', digits:0, unit:'ppb' }] },
-    { title:'Optional DFRobot Gas', unit:'ppm', lines:[{ key:'optional_gas', name:'Optional Gas', color:'#22c55e', digits:2, unit:'ppm' }] },
+    { title:'Optional DFRobot Gas', unit:'ppm', lines:[{ key:'optional_gas', name:'Optional Gas', color:'#22c55e', digits:1, unit:'ppm' }] },
   ],
   pm: [
     { title:'PM0.5', unit:'#/cm\u00B3', lines:[{ key:'pm05', name:'PM0.5', color:'#14b8a6', digits:0, unit:'#/cm\u00B3' }] },
@@ -1309,6 +1309,14 @@ function mapSeriesKeyToSensorKey(key) {
   if (key === 'temperature') return 'temp';
   if (key === 'humidity') return 'rh';
   return key;
+}
+
+function shouldShowChartCard(card) {
+  if (!card || !Array.isArray(card.lines)) return false;
+  const optionalGasCard = card.lines.some(line => line && line.key === 'optional_gas');
+  if (!optionalGasCard) return true;
+  const sensors = stateCache && stateCache.sensors ? stateCache.sensors : {};
+  return sensors.optional_gas_sensor_present === true;
 }
 
 function bindChartPointTooltips(root) {
@@ -1421,7 +1429,7 @@ function renderCharts(payload) {
     return row;
   });
 
-  const layout = CHART_LAYOUTS[chartGroup] || CHART_LAYOUTS.core;
+  const layout = (CHART_LAYOUTS[chartGroup] || CHART_LAYOUTS.core).filter(shouldShowChartCard);
   el.innerHTML = layout.map(card => {
     const pressureCard = card.lines.some(line => line.key === 'pressure');
     const cardTitle = pressureCard ? pressureLabelText() : card.title;

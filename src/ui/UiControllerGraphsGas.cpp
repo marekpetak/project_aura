@@ -19,6 +19,13 @@
 
 #include "ui/UiControllerGraphsShared.h"
 
+namespace {
+
+constexpr float kGraphZoneLowerSentinel = -1000.0f;
+constexpr float kGraphZoneUpperSentinel = 100000.0f;
+
+} // namespace
+
 void UiController::ensure_voc_graph_overlays() {
     ensure_graph_stat_overlays(
         objects.chart_voc_info,
@@ -129,11 +136,11 @@ void UiController::update_voc_zone_overlay(float y_min_display, float y_max_disp
     }
 
     static const float kVocZoneBounds[] = {
-        -1000.0f,
+        kGraphZoneLowerSentinel,
         static_cast<float>(Config::AQ_VOC_GREEN_MAX_INDEX),
         static_cast<float>(Config::AQ_VOC_YELLOW_MAX_INDEX),
         static_cast<float>(Config::AQ_VOC_ORANGE_MAX_INDEX),
-        100000.0f};
+        kGraphZoneUpperSentinel};
     static const GraphZoneTone kVocZoneTones[] = {
         GRAPH_ZONE_GREEN,
         GRAPH_ZONE_YELLOW,
@@ -408,11 +415,11 @@ void UiController::update_nox_zone_overlay(float y_min_display, float y_max_disp
     }
 
     static const float kNoxZoneBounds[] = {
-        -1000.0f,
+        kGraphZoneLowerSentinel,
         static_cast<float>(Config::AQ_NOX_GREEN_MAX_INDEX),
         static_cast<float>(Config::AQ_NOX_YELLOW_MAX_INDEX),
         static_cast<float>(Config::AQ_NOX_ORANGE_MAX_INDEX),
-        100000.0f};
+        kGraphZoneUpperSentinel};
     static const GraphZoneTone kNoxZoneTones[] = {
         GRAPH_ZONE_GREEN,
         GRAPH_ZONE_YELLOW,
@@ -706,11 +713,11 @@ void UiController::update_optional_gas_zone_overlay(float y_min_display, float y
     const OptionalGasType type = static_cast<OptionalGasType>(currentData.optional_gas_type);
     const UiOptionalGasProfile::Profile &profile = UiOptionalGasProfile::forType(type);
     const float zone_bounds[] = {
-        -1000.0f,
+        kGraphZoneLowerSentinel,
         profile.green_max_ppm,
         profile.yellow_max_ppm,
         profile.orange_max_ppm,
-        100000.0f,
+        kGraphZoneUpperSentinel,
     };
     const GraphZoneTone zone_tones[] = {
         GRAPH_ZONE_GREEN,
@@ -1001,11 +1008,11 @@ void UiController::update_hcho_zone_overlay(float y_min_display, float y_max_dis
     }
 
     static const float kHchoZoneBounds[] = {
-        -1000.0f,
+        kGraphZoneLowerSentinel,
         Config::AQ_HCHO_GREEN_MAX_PPB,
         Config::AQ_HCHO_YELLOW_MAX_PPB,
         Config::AQ_HCHO_ORANGE_MAX_PPB,
-        100000.0f};
+        kGraphZoneUpperSentinel};
     static const GraphZoneTone kHchoZoneTones[] = {
         GRAPH_ZONE_GREEN,
         GRAPH_ZONE_YELLOW,
@@ -1283,11 +1290,11 @@ void UiController::update_co2_zone_overlay(float y_min_display, float y_max_disp
     }
 
     static const float kCo2ZoneBounds[] = {
-        -1000.0f,
+        kGraphZoneLowerSentinel,
         Config::AQ_CO2_GREEN_MAX_PPM,
         Config::AQ_CO2_YELLOW_MAX_PPM,
         Config::AQ_CO2_ORANGE_MAX_PPM,
-        100000.0f};
+        kGraphZoneUpperSentinel};
     static const GraphZoneTone kCo2ZoneTones[] = {
         GRAPH_ZONE_GREEN,
         GRAPH_ZONE_YELLOW,
@@ -1562,11 +1569,11 @@ void UiController::update_co_zone_overlay(float y_min_display, float y_max_displ
     }
 
     static const float kCoZoneBounds[] = {
-        -1000.0f,
+        kGraphZoneLowerSentinel,
         Config::AQ_CO_GREEN_MAX_PPM,
         Config::AQ_CO_YELLOW_MAX_PPM,
         Config::AQ_CO_ORANGE_MAX_PPM,
-        100000.0f,
+        kGraphZoneUpperSentinel,
     };
     static const GraphZoneTone kCoZoneTones[] = {
         GRAPH_ZONE_GREEN,
