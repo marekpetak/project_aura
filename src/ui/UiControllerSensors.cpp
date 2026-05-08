@@ -291,8 +291,7 @@ void UiController::update_sensor_cards(const AirQuality &aq, bool gas_warmup, bo
     set_visible(objects.card_voc_pro, !show_voc_nox_combo);
     set_visible(objects.card_voc_nox, show_voc_nox_combo);
     if (objects.card_nox_pro) {
-        show_voc_nox_combo ? lv_obj_clear_flag(objects.card_nox_pro, LV_OBJ_FLAG_CLICKABLE)
-                           : lv_obj_add_flag(objects.card_nox_pro, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_flag(objects.card_nox_pro, LV_OBJ_FLAG_CLICKABLE);
     }
 
     if (currentData.voc_valid) {
