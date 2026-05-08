@@ -41,6 +41,7 @@
 #include "ui/BacklightManager.h"
 #include "ui/NightModeManager.h"
 #include "ui/UiEventBinder.h"
+#include "ui/UiOptionalGasProfile.h"
 
 using namespace Config;
 
@@ -1567,19 +1568,14 @@ lv_color_t UiController::getNOxColor(int nox) {
 lv_color_t UiController::getOptionalGasColor(DfrOptionalGasSensor::OptionalGasType type,
                                              float ppm,
                                              bool valid) {
-    // Temporary UI-only thresholds until per-gas product limits are finalized.
     if (!valid || !isfinite(ppm) || ppm < 0.0f) return color_inactive();
 
-    const float max_ppm = DfrOptionalGasSensor::maxPpmForType(type);
-    if (max_ppm <= 0.0f) return color_inactive();
+    const UiOptionalGasProfile::Profile &profile = UiOptionalGasProfile::forType(type);
+    if (!UiOptionalGasProfile::isKnown(type)) return color_inactive();
 
-    const float green_max = max_ppm * 0.25f;
-    const float yellow_max = max_ppm * 0.50f;
-    const float orange_max = max_ppm * 0.75f;
-
-    if (ppm <= green_max) return color_green();
-    if (ppm <= yellow_max) return color_yellow();
-    if (ppm <= orange_max) return color_orange();
+    if (ppm <= profile.green_max_ppm) return color_green();
+    if (ppm <= profile.yellow_max_ppm) return color_yellow();
+    if (ppm <= profile.orange_max_ppm) return color_orange();
     return color_red();
 }
 

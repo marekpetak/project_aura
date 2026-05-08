@@ -9,6 +9,7 @@
 #include <math.h>
 
 #include "core/MathUtils.h"
+#include "drivers/DfrOptionalGasSensor.h"
 #include "web/WebApiUtils.h"
 #include "web/WebOtaApiUtils.h"
 #include "web/WebJsonUtils.h"
@@ -113,9 +114,25 @@ void fillJson(ArduinoJson::JsonObject root, const Payload &payload) {
                                    data.nox_index);
     WebJsonUtils::jsonSetFloatOrNull(sensors, "hcho", data.hcho_valid, data.hcho);
     WebJsonUtils::jsonSetFloatOrNull(sensors, "co", data.co_valid && data.co_sensor_present, data.co_ppm);
+    const DfrOptionalGasSensor::OptionalGasType optional_gas_type =
+        static_cast<DfrOptionalGasSensor::OptionalGasType>(data.optional_gas_type);
+    const bool optional_gas_present =
+        data.optional_gas_sensor_present &&
+        optional_gas_type != DfrOptionalGasSensor::OptionalGasType::None;
+    const bool optional_gas_valid =
+        optional_gas_present &&
+        data.optional_gas_valid &&
+        isfinite(data.optional_gas_ppm) &&
+        data.optional_gas_ppm >= 0.0f;
+    WebJsonUtils::jsonSetFloatOrNull(sensors, "optional_gas", optional_gas_valid, data.optional_gas_ppm);
+    sensors["optional_gas_type"] = optional_gas_present
+        ? DfrOptionalGasSensor::optionalGasLabel(optional_gas_type)
+        : nullptr;
     WebJsonUtils::jsonSetFloatOrNull(sensors, "nh3", data.nh3_valid && data.nh3_sensor_present, data.nh3_ppm);
     sensors["co_sensor_present"] = data.co_sensor_present;
     sensors["co_warmup"] = data.co_warmup;
+    sensors["optional_gas_sensor_present"] = optional_gas_present;
+    sensors["optional_gas_warmup"] = optional_gas_present && data.optional_gas_warmup;
     sensors["nh3_sensor_present"] = data.nh3_sensor_present;
     sensors["nh3_warmup"] = data.nh3_warmup;
     sensors["gas_warmup"] = payload.gas_warmup;

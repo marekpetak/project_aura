@@ -1288,6 +1288,7 @@ const CHART_LAYOUTS = {
     { title:'VOC Index', unit:'idx', lines:[{ key:'voc', name:'VOC', color:'#ef4444', digits:0, unit:'idx' }] },
     { title:'NOx Index', unit:'idx', lines:[{ key:'nox', name:'NOx', color:'#f43f5e', digits:0, unit:'idx' }] },
     { title:'Formaldehyde (HCHO)', unit:'ppb', lines:[{ key:'hcho', name:'HCHO', color:'#d946ef', digits:0, unit:'ppb' }] },
+    { title:'Optional DFRobot Gas', unit:'ppm', lines:[{ key:'optional_gas', name:'Optional Gas', color:'#22c55e', digits:2, unit:'ppm' }] },
   ],
   pm: [
     { title:'PM0.5', unit:'#/cm\u00B3', lines:[{ key:'pm05', name:'PM0.5', color:'#14b8a6', digits:0, unit:'#/cm\u00B3' }] },

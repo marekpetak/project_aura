@@ -26,6 +26,7 @@ constexpr ChartMetricSpec kChartGasMetrics[] = {
     {"voc", "idx", ChartsHistory::METRIC_VOC},
     {"nox", "idx", ChartsHistory::METRIC_NOX},
     {"hcho", "ppb", ChartsHistory::METRIC_HCHO},
+    {"optional_gas", "ppm", ChartsHistory::METRIC_OPTIONAL_GAS},
 };
 
 constexpr ChartMetricSpec kChartPmMetrics[] = {

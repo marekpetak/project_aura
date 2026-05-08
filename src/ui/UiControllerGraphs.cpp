@@ -67,6 +67,9 @@ void UiController::release_all_sensor_graph_runtime_objects() {
     release_lvgl_obj(nox_graph_label_min_);
     release_lvgl_obj(nox_graph_label_now_);
     release_lvgl_obj(nox_graph_label_max_);
+    release_lvgl_obj(optional_gas_graph_label_min_);
+    release_lvgl_obj(optional_gas_graph_label_now_);
+    release_lvgl_obj(optional_gas_graph_label_max_);
     release_lvgl_obj(hcho_graph_label_min_);
     release_lvgl_obj(hcho_graph_label_now_);
     release_lvgl_obj(hcho_graph_label_max_);
@@ -93,6 +96,7 @@ void UiController::release_all_sensor_graph_runtime_objects() {
     release_lvgl_obj_array(rh_graph_zone_bands_, kMaxGraphZoneBands);
     release_lvgl_obj_array(voc_graph_zone_bands_, kMaxGraphZoneBands);
     release_lvgl_obj_array(nox_graph_zone_bands_, kMaxGraphZoneBands);
+    release_lvgl_obj_array(optional_gas_graph_zone_bands_, kMaxGraphZoneBands);
     release_lvgl_obj_array(hcho_graph_zone_bands_, kMaxGraphZoneBands);
     release_lvgl_obj_array(co2_graph_zone_bands_, kMaxGraphZoneBands);
     release_lvgl_obj_array(co_graph_zone_bands_, kMaxGraphZoneBands);
@@ -104,6 +108,7 @@ void UiController::release_all_sensor_graph_runtime_objects() {
     release_lvgl_obj(rh_graph_zone_overlay_);
     release_lvgl_obj(voc_graph_zone_overlay_);
     release_lvgl_obj(nox_graph_zone_overlay_);
+    release_lvgl_obj(optional_gas_graph_zone_overlay_);
     release_lvgl_obj(hcho_graph_zone_overlay_);
     release_lvgl_obj(co2_graph_zone_overlay_);
     release_lvgl_obj(co_graph_zone_overlay_);
@@ -115,6 +120,7 @@ void UiController::release_all_sensor_graph_runtime_objects() {
     release_lvgl_obj_array(rh_graph_time_labels_, kGraphTimeTickCount);
     release_lvgl_obj_array(voc_graph_time_labels_, kGraphTimeTickCount);
     release_lvgl_obj_array(nox_graph_time_labels_, kGraphTimeTickCount);
+    release_lvgl_obj_array(optional_gas_graph_time_labels_, kGraphTimeTickCount);
     release_lvgl_obj_array(hcho_graph_time_labels_, kGraphTimeTickCount);
     release_lvgl_obj_array(co2_graph_time_labels_, kGraphTimeTickCount);
     release_lvgl_obj_array(co_graph_time_labels_, kGraphTimeTickCount);
@@ -214,6 +220,10 @@ uint16_t UiController::voc_graph_points() const {
 
 uint16_t UiController::nox_graph_points() const {
     return graph_points_for_range(nox_graph_range_);
+}
+
+uint16_t UiController::optional_gas_graph_points() const {
+    return graph_points_for_range(optional_gas_graph_range_);
 }
 
 uint16_t UiController::hcho_graph_points() const {
@@ -638,6 +648,7 @@ void UiController::sync_info_graph_button_state() {
 
     const bool voc_selected = (info_sensor == INFO_VOC);
     const bool nox_selected = (info_sensor == INFO_NOX);
+    const bool optional_gas_selected = (info_sensor == INFO_OPTIONAL_GAS);
     const bool hcho_selected = (info_sensor == INFO_HCHO);
     const bool co2_selected = (info_sensor == INFO_CO2);
     const bool co_selected = (info_sensor == INFO_CO);
@@ -648,6 +659,7 @@ void UiController::sync_info_graph_button_state() {
     const bool pressure_graph_available = !pressure_selected || pressure_altitude_is_set();
     const bool graph_supported = (info_sensor == INFO_TEMP) || (info_sensor == INFO_RH) ||
                                  voc_selected || nox_selected || hcho_selected || co2_selected ||
+                                 optional_gas_selected ||
                                  pm05_selected ||
                                  pm25_4_selected ||
                                  pm1_10_selected ||
@@ -657,6 +669,7 @@ void UiController::sync_info_graph_button_state() {
         ((info_sensor == INFO_RH) && rh_graph_mode_) ||
         (voc_selected && voc_graph_mode_) ||
         (nox_selected && nox_graph_mode_) ||
+        (optional_gas_selected && optional_gas_graph_mode_) ||
         (hcho_selected && hcho_graph_mode_) ||
         (co2_selected && co2_graph_mode_) ||
         (pm05_selected && pm05_graph_mode_) ||
@@ -700,6 +713,9 @@ bool UiController::should_show_threshold_dots() const {
     }
     if (info_sensor == INFO_NOX) {
         return !nox_graph_mode_;
+    }
+    if (info_sensor == INFO_OPTIONAL_GAS) {
+        return !optional_gas_graph_mode_;
     }
     if (info_sensor == INFO_HCHO) {
         return !hcho_graph_mode_;
@@ -859,6 +875,40 @@ void UiController::set_nox_info_mode(bool graph_mode) {
     set_checked(objects.btn_nox_range_1h, nox_graph_range_ == TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_nox_range_3h, nox_graph_range_ == TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_nox_range_24h, nox_graph_range_ == TEMP_GRAPH_RANGE_24H);
+
+    sync_info_graph_button_state();
+}
+
+void UiController::set_optional_gas_info_mode(bool graph_mode) {
+    const bool mode_changed = (optional_gas_graph_mode_ != graph_mode);
+    optional_gas_graph_mode_ = graph_mode;
+    if (mode_changed) {
+        invalidate_active_graph_refresh_cache();
+    }
+    if (objects.btn_optional_gas_range_1h) {
+        lv_obj_add_flag(objects.btn_optional_gas_range_1h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_optional_gas_range_1h, 12);
+    }
+    if (objects.btn_optional_gas_range_3h) {
+        lv_obj_add_flag(objects.btn_optional_gas_range_3h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_optional_gas_range_3h, 12);
+    }
+    if (objects.btn_optional_gas_range_24h) {
+        lv_obj_add_flag(objects.btn_optional_gas_range_24h, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_ext_click_area(objects.btn_optional_gas_range_24h, 12);
+    }
+    if (objects.btn_info_graph) {
+        lv_obj_move_foreground(objects.btn_info_graph);
+    }
+    if (objects.btn_back_1) {
+        lv_obj_move_foreground(objects.btn_back_1);
+    }
+    set_visible(objects.optional_gas_info_thresholds, !graph_mode);
+    set_visible(objects.optional_gas_info_graph, graph_mode);
+    sync_threshold_dots_visibility();
+    set_checked(objects.btn_optional_gas_range_1h, optional_gas_graph_range_ == TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_optional_gas_range_3h, optional_gas_graph_range_ == TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_optional_gas_range_24h, optional_gas_graph_range_ == TEMP_GRAPH_RANGE_24H);
 
     sync_info_graph_button_state();
 }

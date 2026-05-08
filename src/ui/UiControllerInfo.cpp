@@ -14,6 +14,7 @@
 #include "config/AppConfig.h"
 #include "core/MathUtils.h"
 #include "modules/ChartsHistory.h"
+#include "ui/UiOptionalGasProfile.h"
 #include "ui/UiText.h"
 #include "ui/ui.h"
 
@@ -107,6 +108,54 @@ void UiController::update_sensor_info_ui() {
             if (nox_graph_mode_ &&
                 should_refresh_active_graph(INFO_NOX, nox_graph_range_, nox_graph_points())) {
                 update_nox_info_graph();
+            }
+            break;
+        }
+        case INFO_OPTIONAL_GAS: {
+            using OptionalGasType = DfrOptionalGasSensor::OptionalGasType;
+            const OptionalGasType type = static_cast<OptionalGasType>(currentData.optional_gas_type);
+            const UiOptionalGasProfile::Profile &profile = UiOptionalGasProfile::forType(type);
+            const bool present = currentData.optional_gas_sensor_present &&
+                                 UiOptionalGasProfile::isKnown(type);
+            const bool warmup = present && currentData.optional_gas_warmup;
+            const bool valid = present &&
+                               currentData.optional_gas_valid &&
+                               isfinite(currentData.optional_gas_ppm) &&
+                               currentData.optional_gas_ppm >= 0.0f;
+
+            if (objects.label_sensor_info_title) {
+                safe_label_set_text(objects.label_sensor_info_title, profile.label);
+            }
+            safe_label_set_text(objects.label_sensor_info_unit, present ? "ppm" : "");
+
+            if (valid) {
+                char buf[16];
+                UiOptionalGasProfile::formatValue(profile, currentData.optional_gas_ppm, buf, sizeof(buf));
+                safe_label_set_text(objects.label_sensor_value, buf);
+            } else if (warmup) {
+                safe_label_set_text(objects.label_sensor_value, "---");
+            } else {
+                safe_label_set_text(objects.label_sensor_value, UiText::ValueMissing());
+            }
+
+            char band[96];
+            UiOptionalGasProfile::formatBandLabel(profile, 0, band, sizeof(band));
+            safe_label_set_text(objects.label_optional_gas_excellent, band);
+            UiOptionalGasProfile::formatBandLabel(profile, 1, band, sizeof(band));
+            safe_label_set_text(objects.label_optional_gas_acceptable, band);
+            UiOptionalGasProfile::formatBandLabel(profile, 2, band, sizeof(band));
+            safe_label_set_text(objects.label_optional_gas_uncomfortable, band);
+            UiOptionalGasProfile::formatBandLabel(profile, 3, band, sizeof(band));
+            safe_label_set_text(objects.label_optional_gas_poor, band);
+
+            lv_color_t gas_col = warmup ? color_blue() : getOptionalGasColor(type, currentData.optional_gas_ppm, valid);
+            set_dot_color(objects.dot_sensor_info, alert_color_for_mode(gas_col));
+            set_optional_gas_info_mode(optional_gas_graph_mode_);
+            if (optional_gas_graph_mode_ &&
+                should_refresh_active_graph(INFO_OPTIONAL_GAS,
+                                            optional_gas_graph_range_,
+                                            optional_gas_graph_points())) {
+                update_optional_gas_info_graph();
             }
             break;
         }
@@ -561,6 +610,9 @@ void UiController::restore_sensor_info_selection() {
             update_sensor_info_ui();
             break;
         }
+        case INFO_OPTIONAL_GAS:
+            select_optional_gas_info();
+            break;
         case INFO_HCHO: {
             hide_all_sensor_info_containers();
             set_visible(objects.hcho_info, true);
@@ -741,6 +793,23 @@ void UiController::select_pm_info(InfoSensor sensor) {
     update_sensor_info_ui();
 }
 
+void UiController::select_optional_gas_info() {
+    info_sensor = INFO_OPTIONAL_GAS;
+    hide_all_sensor_info_containers();
+    set_visible(objects.optional_gas_info, true);
+    set_optional_gas_info_mode(optional_gas_graph_mode_);
+
+    using OptionalGasType = DfrOptionalGasSensor::OptionalGasType;
+    const OptionalGasType type = static_cast<OptionalGasType>(currentData.optional_gas_type);
+    const UiOptionalGasProfile::Profile &profile = UiOptionalGasProfile::forType(type);
+    if (objects.label_sensor_info_title) {
+        safe_label_set_text(objects.label_sensor_info_title, profile.label);
+    }
+    safe_label_set_text(objects.label_sensor_info_unit, "ppm");
+
+    update_sensor_info_ui();
+}
+
 void UiController::select_pressure_info(InfoSensor sensor) {
     info_sensor = sensor;
     hide_all_sensor_info_containers();
@@ -790,6 +859,9 @@ void UiController::hide_all_sensor_info_containers() {
     set_visible(objects.nox_info, false);
     set_visible(objects.nox_info_thresholds, false);
     set_visible(objects.nox_info_graph, false);
+    set_visible(objects.optional_gas_info, false);
+    set_visible(objects.optional_gas_info_thresholds, false);
+    set_visible(objects.optional_gas_info_graph, false);
     set_visible(objects.hcho_info, false);
     set_visible(objects.label_hcho_text, false);
     set_visible(objects.hcho_info_thresholds, false);

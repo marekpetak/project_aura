@@ -13,6 +13,7 @@
 
 #include "config/AppConfig.h"
 #include "modules/ChartsHistory.h"
+#include "ui/UiOptionalGasProfile.h"
 #include "ui/UiText.h"
 #include "ui/ui.h"
 
@@ -574,6 +575,320 @@ void UiController::update_nox_info_graph() {
 
     lv_chart_refresh(objects.chart_nox_info);
     mark_active_graph_refreshed(INFO_NOX, nox_graph_range_, points);
+}
+
+void UiController::ensure_optional_gas_graph_overlays() {
+    ensure_graph_stat_overlays(
+        objects.chart_optional_gas_info,
+        optional_gas_graph_label_min_,
+        optional_gas_graph_label_now_,
+        optional_gas_graph_label_max_);
+}
+
+void UiController::update_optional_gas_graph_overlays(bool has_values,
+                                                      float min_ppm,
+                                                      float max_ppm,
+                                                      float latest_ppm) {
+    if (!objects.chart_optional_gas_info) {
+        return;
+    }
+
+    ensure_optional_gas_graph_overlays();
+    if (!optional_gas_graph_label_min_ ||
+        !optional_gas_graph_label_now_ ||
+        !optional_gas_graph_label_max_) {
+        return;
+    }
+
+    style_graph_stat_overlays(objects.chart_optional_gas_info,
+                              optional_gas_graph_label_min_,
+                              optional_gas_graph_label_now_,
+                              optional_gas_graph_label_max_);
+
+    if (!has_values) {
+        safe_label_set_text(optional_gas_graph_label_min_, "MIN --");
+        safe_label_set_text(optional_gas_graph_label_now_, "NOW --");
+        safe_label_set_text(optional_gas_graph_label_max_, "MAX --");
+        return;
+    }
+
+    using OptionalGasType = DfrOptionalGasSensor::OptionalGasType;
+    const OptionalGasType type = static_cast<OptionalGasType>(currentData.optional_gas_type);
+    const UiOptionalGasProfile::Profile &profile = UiOptionalGasProfile::forType(type);
+
+    char min_value[16];
+    char now_value[16];
+    char max_value[16];
+    UiOptionalGasProfile::formatValue(profile, min_ppm, min_value, sizeof(min_value));
+    UiOptionalGasProfile::formatValue(profile, latest_ppm, now_value, sizeof(now_value));
+    UiOptionalGasProfile::formatValue(profile, max_ppm, max_value, sizeof(max_value));
+
+    char min_buf[32];
+    char now_buf[32];
+    char max_buf[32];
+    snprintf(min_buf, sizeof(min_buf), "MIN %s ppm", min_value);
+    snprintf(now_buf, sizeof(now_buf), "NOW %s ppm", now_value);
+    snprintf(max_buf, sizeof(max_buf), "MAX %s ppm", max_value);
+    safe_label_set_text(optional_gas_graph_label_min_, min_buf);
+    safe_label_set_text(optional_gas_graph_label_now_, now_buf);
+    safe_label_set_text(optional_gas_graph_label_max_, max_buf);
+}
+
+void UiController::ensure_optional_gas_zone_overlay() {
+    if (!objects.optional_gas_info_graph || !objects.chart_optional_gas_info) {
+        return;
+    }
+
+    lv_obj_update_layout(objects.optional_gas_info_graph);
+    lv_obj_update_layout(objects.chart_optional_gas_info);
+
+    if (!optional_gas_graph_zone_overlay_ || !lv_obj_is_valid(optional_gas_graph_zone_overlay_) ||
+        lv_obj_get_parent(optional_gas_graph_zone_overlay_) != objects.optional_gas_info_graph) {
+        optional_gas_graph_zone_overlay_ = lv_obj_create(objects.optional_gas_info_graph);
+        lv_obj_clear_flag(optional_gas_graph_zone_overlay_, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_bg_opa(optional_gas_graph_zone_overlay_, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_border_width(optional_gas_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_left(optional_gas_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_right(optional_gas_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_top(optional_gas_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_bottom(optional_gas_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+
+    const lv_coord_t chart_x = lv_obj_get_x(objects.chart_optional_gas_info);
+    const lv_coord_t chart_y = lv_obj_get_y(objects.chart_optional_gas_info);
+    const lv_coord_t chart_w = lv_obj_get_width(objects.chart_optional_gas_info);
+    const lv_coord_t chart_h = lv_obj_get_height(objects.chart_optional_gas_info);
+
+    lv_obj_set_pos(optional_gas_graph_zone_overlay_, chart_x, chart_y);
+    lv_obj_set_size(optional_gas_graph_zone_overlay_, chart_w, chart_h);
+    lv_obj_update_layout(optional_gas_graph_zone_overlay_);
+    lv_obj_set_style_radius(optional_gas_graph_zone_overlay_,
+                            lv_obj_get_style_radius(objects.chart_optional_gas_info, LV_PART_MAIN),
+                            LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
+        lv_obj_t *&band = optional_gas_graph_zone_bands_[i];
+        if (!band || !lv_obj_is_valid(band) || lv_obj_get_parent(band) != optional_gas_graph_zone_overlay_) {
+            band = lv_obj_create(optional_gas_graph_zone_overlay_);
+            lv_obj_clear_flag(band, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_style_border_width(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_radius(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_left(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_right(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_top(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_bottom(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        }
+        lv_obj_move_background(band);
+    }
+
+    lv_obj_move_background(optional_gas_graph_zone_overlay_);
+    lv_obj_move_foreground(objects.chart_optional_gas_info);
+}
+
+void UiController::update_optional_gas_zone_overlay(float y_min_display, float y_max_display) {
+    ensure_optional_gas_zone_overlay();
+    if (!optional_gas_graph_zone_overlay_ || !lv_obj_is_valid(optional_gas_graph_zone_overlay_)) {
+        return;
+    }
+
+    const lv_coord_t width = lv_obj_get_width(optional_gas_graph_zone_overlay_);
+    const lv_coord_t height = lv_obj_get_height(optional_gas_graph_zone_overlay_);
+    if (width <= 0 || height <= 0 || !isfinite(y_min_display) || !isfinite(y_max_display) || y_max_display <= y_min_display) {
+        for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
+            if (optional_gas_graph_zone_bands_[i]) {
+                lv_obj_add_flag(optional_gas_graph_zone_bands_[i], LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+        return;
+    }
+
+    using OptionalGasType = DfrOptionalGasSensor::OptionalGasType;
+    const OptionalGasType type = static_cast<OptionalGasType>(currentData.optional_gas_type);
+    const UiOptionalGasProfile::Profile &profile = UiOptionalGasProfile::forType(type);
+    const float zone_bounds[] = {
+        -1000.0f,
+        profile.green_max_ppm,
+        profile.yellow_max_ppm,
+        profile.orange_max_ppm,
+        100000.0f,
+    };
+    const GraphZoneTone zone_tones[] = {
+        GRAPH_ZONE_GREEN,
+        GRAPH_ZONE_YELLOW,
+        GRAPH_ZONE_ORANGE,
+        GRAPH_ZONE_RED,
+    };
+    constexpr uint8_t kZoneCount = 4;
+
+    const lv_color_t chart_bg = lv_obj_get_style_bg_color(objects.chart_optional_gas_info, LV_PART_MAIN);
+    const float denom = y_max_display - y_min_display;
+
+    for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
+        lv_obj_t *band = optional_gas_graph_zone_bands_[i];
+        if (!band) {
+            continue;
+        }
+        if (i >= kZoneCount) {
+            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+
+        const float zone_low = zone_bounds[i];
+        const float zone_high = zone_bounds[i + 1];
+        if (!isfinite(zone_low) || !isfinite(zone_high) || zone_high <= zone_low) {
+            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+
+        const float visible_low = fmaxf(zone_low, y_min_display);
+        const float visible_high = fminf(zone_high, y_max_display);
+        if (!(visible_high > visible_low)) {
+            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+
+        float top_ratio = (y_max_display - visible_high) / denom;
+        float bottom_ratio = (y_max_display - visible_low) / denom;
+        if (top_ratio < 0.0f) top_ratio = 0.0f;
+        if (top_ratio > 1.0f) top_ratio = 1.0f;
+        if (bottom_ratio < 0.0f) bottom_ratio = 0.0f;
+        if (bottom_ratio > 1.0f) bottom_ratio = 1.0f;
+
+        lv_coord_t top = static_cast<lv_coord_t>(lroundf(top_ratio * static_cast<float>(height)));
+        lv_coord_t bottom = static_cast<lv_coord_t>(lroundf(bottom_ratio * static_cast<float>(height)));
+        if (bottom <= top) {
+            bottom = static_cast<lv_coord_t>(top + 1);
+        }
+        if (top < 0) top = 0;
+        if (bottom > height) bottom = height;
+        if (bottom <= top) {
+            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+
+        lv_obj_set_pos(band, 0, top);
+        lv_obj_set_size(band, width, static_cast<lv_coord_t>(bottom - top));
+        const lv_color_t zone_color = resolve_graph_zone_color(zone_tones[i], chart_bg);
+        lv_obj_set_style_bg_color(band, zone_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(band, LV_OPA_30, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_clear_flag(band, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_background(band);
+    }
+}
+
+void UiController::ensure_optional_gas_time_labels() {
+    ensure_graph_time_labels(
+        objects.optional_gas_info_graph,
+        objects.chart_optional_gas_info,
+        optional_gas_graph_time_labels_,
+        kGraphTimeTickCount);
+}
+
+void UiController::update_optional_gas_time_labels() {
+    update_graph_time_labels(
+        objects.optional_gas_info_graph,
+        objects.chart_optional_gas_info,
+        optional_gas_graph_time_labels_,
+        kGraphTimeTickCount,
+        optional_gas_graph_points());
+}
+
+void UiController::update_optional_gas_info_graph() {
+    if (!objects.chart_optional_gas_info) {
+        return;
+    }
+
+    using OptionalGasType = DfrOptionalGasSensor::OptionalGasType;
+    const OptionalGasType type = static_cast<OptionalGasType>(currentData.optional_gas_type);
+    const UiOptionalGasProfile::Profile &profile = UiOptionalGasProfile::forType(type);
+    const float point_scale = (profile.graph_scale > 0.0f) ? profile.graph_scale : 100.0f;
+
+    const uint8_t vertical_divisions = graph_vertical_divisions_for_range(optional_gas_graph_range_);
+    apply_standard_info_chart_theme(objects.chart_optional_gas_info, 5, vertical_divisions);
+
+    const uint16_t points = optional_gas_graph_points();
+    lv_chart_series_t *series = ensure_info_chart_series(objects.chart_optional_gas_info, points);
+    if (!series) {
+        return;
+    }
+
+    const GraphSeriesStats stats = populate_info_chart_series(objects.chart_optional_gas_info,
+                                                              series,
+                                                              points,
+                                                              static_cast<int>(ChartsHistory::METRIC_OPTIONAL_GAS),
+                                                              point_scale,
+                                                              true);
+    const bool has_values = stats.has_values;
+    float min_ppm = stats.min_value;
+    float max_ppm = stats.max_value;
+    float latest_ppm = stats.latest_value;
+
+    float scale_min = has_values ? min_ppm : 0.0f;
+    float scale_max = has_values ? max_ppm : profile.orange_max_ppm;
+    float scale_span = scale_max - scale_min;
+    if (!isfinite(scale_span) || scale_span < profile.graph_min_span_ppm) {
+        scale_span = profile.graph_min_span_ppm;
+    }
+
+    float step = graph_nice_step(scale_span / 4.0f);
+    if (!isfinite(step) || step <= 0.0f) {
+        step = profile.graph_min_span_ppm / 4.0f;
+    }
+    if (!isfinite(step) || step <= 0.0f) {
+        step = 0.1f;
+    }
+
+    float y_min_f = floorf((scale_min - (step * 0.9f)) / step) * step;
+    float y_max_f = ceilf((scale_max + (step * 0.9f)) / step) * step;
+    if ((y_max_f - y_min_f) < (step * 2.0f)) {
+        y_min_f -= step;
+        y_max_f += step;
+    }
+    if (!isfinite(y_min_f) || !isfinite(y_max_f) || y_max_f <= y_min_f) {
+        const float center = isfinite(latest_ppm) ? latest_ppm : profile.graph_fallback_ppm;
+        y_min_f = center - (profile.graph_min_span_ppm * 0.5f);
+        y_max_f = center + (profile.graph_min_span_ppm * 0.5f);
+    }
+    if (y_min_f < 0.0f) {
+        y_min_f = 0.0f;
+    }
+    if (y_max_f <= y_min_f) {
+        y_max_f = y_min_f + step;
+    }
+
+    lv_coord_t y_min = static_cast<lv_coord_t>(floorf(y_min_f * point_scale));
+    lv_coord_t y_max = static_cast<lv_coord_t>(ceilf(y_max_f * point_scale));
+    if (y_max <= y_min) {
+        y_max = static_cast<lv_coord_t>(y_min + 1);
+    }
+
+    int32_t horizontal_divisions = static_cast<int32_t>(lroundf((y_max_f - y_min_f) / step));
+    if (horizontal_divisions < 3) {
+        horizontal_divisions = 3;
+    }
+    if (horizontal_divisions > 12) {
+        horizontal_divisions = 12;
+    }
+
+    lv_chart_set_div_line_count(objects.chart_optional_gas_info,
+                                static_cast<uint8_t>(horizontal_divisions),
+                                vertical_divisions);
+    lv_chart_set_range(objects.chart_optional_gas_info, LV_CHART_AXIS_PRIMARY_Y, y_min, y_max);
+    update_optional_gas_zone_overlay(y_min_f, y_max_f);
+
+    if (has_values) {
+        if (!isfinite(latest_ppm)) {
+            latest_ppm = max_ppm;
+        }
+        update_optional_gas_graph_overlays(true, min_ppm, max_ppm, latest_ppm);
+    } else {
+        const float fallback = profile.graph_fallback_ppm;
+        update_optional_gas_graph_overlays(false, fallback, fallback, fallback);
+    }
+    update_optional_gas_time_labels();
+
+    lv_chart_refresh(objects.chart_optional_gas_info);
+    mark_active_graph_refreshed(INFO_OPTIONAL_GAS, optional_gas_graph_range_, points);
 }
 
 void UiController::ensure_hcho_graph_overlays() {

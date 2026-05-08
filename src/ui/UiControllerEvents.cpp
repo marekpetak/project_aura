@@ -184,6 +184,9 @@ void UiController::on_voc_range_24h_event_cb(lv_event_t *e) { if (instance_) ins
 void UiController::on_nox_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_nox_range_1h_event(e); }
 void UiController::on_nox_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_nox_range_3h_event(e); }
 void UiController::on_nox_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_nox_range_24h_event(e); }
+void UiController::on_optional_gas_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_optional_gas_range_1h_event(e); }
+void UiController::on_optional_gas_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_optional_gas_range_3h_event(e); }
+void UiController::on_optional_gas_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_optional_gas_range_24h_event(e); }
 void UiController::on_hcho_range_1h_event_cb(lv_event_t *e) { if (instance_) instance_->on_hcho_range_1h_event(e); }
 void UiController::on_hcho_range_3h_event_cb(lv_event_t *e) { if (instance_) instance_->on_hcho_range_3h_event(e); }
 void UiController::on_hcho_range_24h_event_cb(lv_event_t *e) { if (instance_) instance_->on_hcho_range_24h_event(e); }
@@ -870,8 +873,9 @@ void UiController::on_card_nox_event(lv_event_t *e) {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
-    if (currentData.optional_gas_sensor_present) {
-        // Optional DFR gas sensor reuses the NOx card slot, but its dedicated info page is not implemented yet.
+    if (currentData.optional_gas_sensor_present && currentData.optional_gas_type != 0) {
+        select_optional_gas_info();
+        pending_screen_id = SCREEN_ID_PAGE_SENSORS_INFO;
         return;
     }
     info_sensor = INFO_NOX;
@@ -902,8 +906,14 @@ void UiController::on_card_voc_nox_event(lv_event_t *e) {
         }
     }
 
-    info_sensor = next_sensor;
-    restore_sensor_info_selection();
+    if (next_sensor == INFO_NOX &&
+        currentData.optional_gas_sensor_present &&
+        currentData.optional_gas_type != 0) {
+        select_optional_gas_info();
+    } else {
+        info_sensor = next_sensor;
+        restore_sensor_info_selection();
+    }
     pending_screen_id = SCREEN_ID_PAGE_SENSORS_INFO;
 }
 
@@ -982,13 +992,14 @@ void UiController::on_info_graph_event(lv_event_t *e) {
         return;
     }
     LOGD("UI",
-         "info/graph pressed, code=%d info_sensor=%d temp_mode=%d rh_mode=%d voc_mode=%d nox_mode=%d hcho_mode=%d co2_mode=%d pm05_mode=%d pm25_4_mode=%d pm_mode=%d co_mode=%d pressure_mode=%d",
+         "info/graph pressed, code=%d info_sensor=%d temp_mode=%d rh_mode=%d voc_mode=%d nox_mode=%d opt_gas_mode=%d hcho_mode=%d co2_mode=%d pm05_mode=%d pm25_4_mode=%d pm_mode=%d co_mode=%d pressure_mode=%d",
          static_cast<int>(code),
          static_cast<int>(info_sensor),
          temp_graph_mode_ ? 1 : 0,
          rh_graph_mode_ ? 1 : 0,
          voc_graph_mode_ ? 1 : 0,
          nox_graph_mode_ ? 1 : 0,
+         optional_gas_graph_mode_ ? 1 : 0,
          hcho_graph_mode_ ? 1 : 0,
          co2_graph_mode_ ? 1 : 0,
          pm05_graph_mode_ ? 1 : 0,
@@ -1002,6 +1013,7 @@ void UiController::on_info_graph_event(lv_event_t *e) {
         (info_sensor == INFO_RH) ? rh_graph_mode_ :
         (info_sensor == INFO_VOC) ? voc_graph_mode_ :
         (info_sensor == INFO_NOX) ? nox_graph_mode_ :
+        (info_sensor == INFO_OPTIONAL_GAS) ? optional_gas_graph_mode_ :
         (info_sensor == INFO_HCHO) ? hcho_graph_mode_ :
         (info_sensor == INFO_CO2) ? co2_graph_mode_ :
         (info_sensor == INFO_PM05) ? pm05_graph_mode_ :
@@ -1018,6 +1030,8 @@ void UiController::on_info_graph_event(lv_event_t *e) {
         set_voc_info_mode(!voc_graph_mode_);
     } else if (info_sensor == INFO_NOX) {
         set_nox_info_mode(!nox_graph_mode_);
+    } else if (info_sensor == INFO_OPTIONAL_GAS) {
+        set_optional_gas_info_mode(!optional_gas_graph_mode_);
     } else if (info_sensor == INFO_HCHO) {
         set_hcho_info_mode(!hcho_graph_mode_);
     } else if (info_sensor == INFO_CO2) {
@@ -1046,6 +1060,7 @@ void UiController::on_info_graph_event(lv_event_t *e) {
         (info_sensor == INFO_RH) ? rh_graph_mode_ :
         (info_sensor == INFO_VOC) ? voc_graph_mode_ :
         (info_sensor == INFO_NOX) ? nox_graph_mode_ :
+        (info_sensor == INFO_OPTIONAL_GAS) ? optional_gas_graph_mode_ :
         (info_sensor == INFO_HCHO) ? hcho_graph_mode_ :
         (info_sensor == INFO_CO2) ? co2_graph_mode_ :
         (info_sensor == INFO_PM05) ? pm05_graph_mode_ :
@@ -1237,6 +1252,48 @@ void UiController::on_nox_range_24h_event(lv_event_t *e) {
     }
     nox_graph_range_ = TEMP_GRAPH_RANGE_24H;
     set_nox_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_optional_gas_range_1h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "optional gas range 1h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_OPTIONAL_GAS) {
+        select_optional_gas_info();
+    }
+    optional_gas_graph_range_ = TEMP_GRAPH_RANGE_1H;
+    set_optional_gas_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_optional_gas_range_3h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "optional gas range 3h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_OPTIONAL_GAS) {
+        select_optional_gas_info();
+    }
+    optional_gas_graph_range_ = TEMP_GRAPH_RANGE_3H;
+    set_optional_gas_info_mode(true);
+    update_sensor_info_ui();
+}
+
+void UiController::on_optional_gas_range_24h_event(lv_event_t *e) {
+    const lv_event_code_t code = lv_event_get_code(e);
+    if (code != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    LOGD("UI", "optional gas range 24h pressed, code=%d", static_cast<int>(code));
+    if (info_sensor != INFO_OPTIONAL_GAS) {
+        select_optional_gas_info();
+    }
+    optional_gas_graph_range_ = TEMP_GRAPH_RANGE_24H;
+    set_optional_gas_info_mode(true);
     update_sensor_info_ui();
 }
 

@@ -29,6 +29,7 @@ public:
         METRIC_PM25,
         METRIC_PM4,
         METRIC_PM10,
+        METRIC_OPTIONAL_GAS,
         METRIC_COUNT
     };
 
@@ -63,6 +64,8 @@ private:
         uint32_t magic = 0;
         uint16_t version = 0;
         uint16_t reserved = 0;
+        uint8_t optional_gas_type = 0;
+        uint8_t reserved2 = 0;
         uint32_t epoch = 0;
         uint16_t index = 0;
         uint16_t count = 0;
@@ -78,6 +81,9 @@ private:
     static time_t nowEpochRaw();
     bool getNowEpoch(uint32_t &now_epoch) const;
     bool isStale(uint32_t now_epoch) const;
+    uint8_t optionalGasHistoryType(const SensorData &data) const;
+    void syncOptionalGasHistoryType(uint8_t current_type);
+    void clearOptionalGasMetric();
     void reset(StorageManager &storage, bool clear_storage);
     void saveIfDue(StorageManager &storage, uint32_t now_ms);
     Sample makeSample(const SensorData &data) const;

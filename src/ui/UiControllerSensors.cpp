@@ -5,6 +5,7 @@
 // Purchase a Commercial License: see COMMERCIAL_LICENSE_SUMMARY.md
 
 #include "ui/UiController.h"
+#include "ui/UiOptionalGasProfile.h"
 #include "ui/UiText.h"
 #include "ui/ui.h"
 #include "ui/fonts.h"
@@ -51,21 +52,17 @@ float get_optional_gas_ppm_value(const SensorData &data) {
 }
 
 const char *get_optional_gas_label(const SensorData &data) {
-    return DfrOptionalGasSensor::optionalGasLabel(get_optional_gas_type(data));
+    const OptionalGasType type = get_optional_gas_type(data);
+    const UiOptionalGasProfile::Profile &profile = UiOptionalGasProfile::forType(type);
+    return UiOptionalGasProfile::isKnown(type)
+        ? profile.label
+        : DfrOptionalGasSensor::optionalGasLabel(type);
 }
 
 void format_optional_gas_value(const SensorData &data, char *buf, size_t buf_size) {
-    const float ppm = get_optional_gas_ppm_value(data);
-    if (get_optional_gas_type(data) == OptionalGasType::NH3 ||
-        get_optional_gas_type(data) == OptionalGasType::H2S) {
-        snprintf(buf, buf_size, "%.0f", ppm);
-        return;
-    }
-    if (ppm < 10.0f) {
-        snprintf(buf, buf_size, "%.1f", ppm);
-        return;
-    }
-    snprintf(buf, buf_size, "%.0f", ppm);
+    const OptionalGasType type = get_optional_gas_type(data);
+    const UiOptionalGasProfile::Profile &profile = UiOptionalGasProfile::forType(type);
+    UiOptionalGasProfile::formatValue(profile, get_optional_gas_ppm_value(data), buf, buf_size);
 }
 
 float get_co_ppm_value(const SensorData &data) {

@@ -31,9 +31,10 @@ void test_web_charts_utils_chart_group_metrics_returns_expected_series() {
 
     WebChartsUtils::chartGroupMetrics(" gas ", group_name, metrics, metric_count);
     TEST_ASSERT_EQUAL_STRING("gases", group_name);
-    TEST_ASSERT_EQUAL_UINT32(4, static_cast<uint32_t>(metric_count));
+    TEST_ASSERT_EQUAL_UINT32(5, static_cast<uint32_t>(metric_count));
     TEST_ASSERT_EQUAL_STRING("co", metrics[0].key);
     TEST_ASSERT_EQUAL_STRING("hcho", metrics[3].key);
+    TEST_ASSERT_EQUAL_STRING("optional_gas", metrics[4].key);
 
     WebChartsUtils::chartGroupMetrics("pm", group_name, metrics, metric_count);
     TEST_ASSERT_EQUAL_STRING("pm", group_name);

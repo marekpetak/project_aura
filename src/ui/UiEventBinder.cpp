@@ -123,6 +123,9 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_nox_range_1h, UiController::on_nox_range_1h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_nox_range_3h, UiController::on_nox_range_3h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_nox_range_24h, UiController::on_nox_range_24h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_optional_gas_range_1h, UiController::on_optional_gas_range_1h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_optional_gas_range_3h, UiController::on_optional_gas_range_3h_event_cb, LV_EVENT_CLICKED},
+        {objects.btn_optional_gas_range_24h, UiController::on_optional_gas_range_24h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_hcho_range_1h, UiController::on_hcho_range_1h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_hcho_range_3h, UiController::on_hcho_range_3h_event_cb, LV_EVENT_CLICKED},
         {objects.btn_hcho_range_24h, UiController::on_hcho_range_24h_event_cb, LV_EVENT_CLICKED},
@@ -157,6 +160,9 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_nox_range_1h, UiController::on_nox_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_nox_range_3h, UiController::on_nox_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_nox_range_24h, UiController::on_nox_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_optional_gas_range_1h, UiController::on_optional_gas_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_optional_gas_range_3h, UiController::on_optional_gas_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
+        {objects.btn_optional_gas_range_24h, UiController::on_optional_gas_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_hcho_range_1h, UiController::on_hcho_range_1h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_hcho_range_3h, UiController::on_hcho_range_3h_event_cb, LV_EVENT_SHORT_CLICKED},
         {objects.btn_hcho_range_24h, UiController::on_hcho_range_24h_event_cb, LV_EVENT_SHORT_CLICKED},
@@ -294,6 +300,9 @@ void UiEventBinder::bindAvailableEvents(UiController &owner, int screen_id) {
         {objects.btn_nox_range_1h, UiController::on_nox_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_nox_range_3h, UiController::on_nox_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_nox_range_24h, UiController::on_nox_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_optional_gas_range_1h, UiController::on_optional_gas_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_optional_gas_range_3h, UiController::on_optional_gas_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
+        {objects.btn_optional_gas_range_24h, UiController::on_optional_gas_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_hcho_range_1h, UiController::on_hcho_range_1h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_hcho_range_3h, UiController::on_hcho_range_3h_event_cb, LV_EVENT_VALUE_CHANGED},
         {objects.btn_hcho_range_24h, UiController::on_hcho_range_24h_event_cb, LV_EVENT_VALUE_CHANGED},
@@ -430,6 +439,9 @@ void UiEventBinder::applyToggleStylesForAvailableObjects(UiController &owner, in
         objects.btn_nox_range_1h,
         objects.btn_nox_range_3h,
         objects.btn_nox_range_24h,
+        objects.btn_optional_gas_range_1h,
+        objects.btn_optional_gas_range_3h,
+        objects.btn_optional_gas_range_24h,
         objects.btn_hcho_range_1h,
         objects.btn_hcho_range_3h,
         objects.btn_hcho_range_24h,
@@ -536,6 +548,7 @@ void UiEventBinder::applyCheckedStatesForAvailableObjects(UiController &owner, i
         ((owner.info_sensor == UiController::INFO_RH) && owner.rh_graph_mode_) ||
         ((owner.info_sensor == UiController::INFO_VOC) && owner.voc_graph_mode_) ||
         ((owner.info_sensor == UiController::INFO_NOX) && owner.nox_graph_mode_) ||
+        ((owner.info_sensor == UiController::INFO_OPTIONAL_GAS) && owner.optional_gas_graph_mode_) ||
         ((owner.info_sensor == UiController::INFO_HCHO) && owner.hcho_graph_mode_) ||
         ((owner.info_sensor == UiController::INFO_CO2) && owner.co2_graph_mode_) ||
         ((owner.info_sensor == UiController::INFO_PM05) && owner.pm05_graph_mode_) ||
@@ -556,6 +569,9 @@ void UiEventBinder::applyCheckedStatesForAvailableObjects(UiController &owner, i
     set_checked(objects.btn_nox_range_1h, owner.nox_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_nox_range_3h, owner.nox_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_nox_range_24h, owner.nox_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
+    set_checked(objects.btn_optional_gas_range_1h, owner.optional_gas_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
+    set_checked(objects.btn_optional_gas_range_3h, owner.optional_gas_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
+    set_checked(objects.btn_optional_gas_range_24h, owner.optional_gas_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);
     set_checked(objects.btn_hcho_range_1h, owner.hcho_graph_range_ == UiController::TEMP_GRAPH_RANGE_1H);
     set_checked(objects.btn_hcho_range_3h, owner.hcho_graph_range_ == UiController::TEMP_GRAPH_RANGE_3H);
     set_checked(objects.btn_hcho_range_24h, owner.hcho_graph_range_ == UiController::TEMP_GRAPH_RANGE_24H);

@@ -14,7 +14,7 @@
 namespace {
 
 constexpr uint32_t kChartsHistoryMagic = 0x43524849; // "CRHI"
-constexpr uint16_t kChartsHistoryVersion = 1;
+constexpr uint16_t kChartsHistoryVersion = 2;
 
 } // namespace
 
@@ -45,6 +45,36 @@ bool ChartsHistory::isStale(uint32_t now_epoch) const {
         return true;
     }
     return (now_epoch - state_.epoch) > Config::CHART_HISTORY_MAX_AGE_S;
+}
+
+uint8_t ChartsHistory::optionalGasHistoryType(const SensorData &data) const {
+    if (!data.optional_gas_sensor_present || data.optional_gas_type == 0) {
+        return 0;
+    }
+    return data.optional_gas_type;
+}
+
+void ChartsHistory::clearOptionalGasMetric() {
+    const uint16_t mask = static_cast<uint16_t>(~metricBit(METRIC_OPTIONAL_GAS));
+    for (int i = 0; i < kCapacity; ++i) {
+        state_.valid_mask[i] &= mask;
+        state_.values[METRIC_OPTIONAL_GAS][i] = 0.0f;
+    }
+}
+
+void ChartsHistory::syncOptionalGasHistoryType(uint8_t current_type) {
+    if (current_type == 0) {
+        return;
+    }
+    if (state_.optional_gas_type != 0 && state_.optional_gas_type != current_type) {
+        Logger::log(Logger::Info,
+                    "ChartsHistory",
+                    "optional gas type changed %u -> %u, clear metric history",
+                    static_cast<unsigned>(state_.optional_gas_type),
+                    static_cast<unsigned>(current_type));
+        clearOptionalGasMetric();
+    }
+    state_.optional_gas_type = current_type;
 }
 
 void ChartsHistory::reset(StorageManager &storage, bool clear_storage) {
@@ -166,6 +196,14 @@ ChartsHistory::Sample ChartsHistory::makeSample(const SensorData &data) const {
         sample.valid_mask |= metricBit(METRIC_PM10);
         sample.values[METRIC_PM10] = data.pm10;
     }
+    if (data.optional_gas_sensor_present &&
+        data.optional_gas_valid &&
+        data.optional_gas_type != 0 &&
+        isfinite(data.optional_gas_ppm) &&
+        data.optional_gas_ppm >= 0.0f) {
+        sample.valid_mask |= metricBit(METRIC_OPTIONAL_GAS);
+        sample.values[METRIC_OPTIONAL_GAS] = data.optional_gas_ppm;
+    }
 
     return sample;
 }
@@ -221,6 +259,7 @@ void ChartsHistory::update(const SensorData &data, StorageManager &storage) {
     const uint32_t now_ms = millis();
     const uint32_t step_ms = Config::CHART_HISTORY_STEP_MS;
     const uint32_t step_s = step_ms / 1000UL;
+    const uint8_t current_optional_gas_type = optionalGasHistoryType(data);
 
     uint32_t now_epoch = 0;
     bool time_valid = getNowEpoch(now_epoch);
@@ -255,6 +294,8 @@ void ChartsHistory::update(const SensorData &data, StorageManager &storage) {
             return;
         }
     }
+
+    syncOptionalGasHistoryType(current_optional_gas_type);
 
     last_sample_ms_ = now_ms;
     appendSample(sample);
