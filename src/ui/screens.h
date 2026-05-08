@@ -59,6 +59,8 @@ typedef struct _objects_t {
     lv_obj_t *label_btn_diag_errors;
     lv_obj_t *lbl_diag_dac_label;
     lv_obj_t *lbl_diag_dac;
+    lv_obj_t *lbl_diag_dfr_gas_label;
+    lv_obj_t *lbl_diag_dfr_gas;
     lv_obj_t *container_diag_errors;
     lv_obj_t *label_diag_errors_text;
     lv_obj_t *background_pro;

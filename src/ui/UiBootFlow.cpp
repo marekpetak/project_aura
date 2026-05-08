@@ -15,6 +15,7 @@
 #include "core/BootState.h"
 #include "core/AppVersion.h"
 #include "core/Logger.h"
+#include "drivers/DfrOptionalGasSensor.h"
 #include "modules/FanControl.h"
 #include "modules/StorageManager.h"
 #include "ui/BootDiagPolicy.h"
@@ -117,6 +118,8 @@ void UiBootFlow::clearBootObjectRefs(UiController &owner) {
     objects.lbl_diag_co = nullptr;
     objects.lbl_diag_dac_label = nullptr;
     objects.lbl_diag_dac = nullptr;
+    objects.lbl_diag_dfr_gas_label = nullptr;
+    objects.lbl_diag_dfr_gas = nullptr;
     objects.lbl_diag_error = nullptr;
     objects.btn_diag_errors = nullptr;
     objects.label_btn_diag_errors = nullptr;
@@ -341,6 +344,43 @@ void UiBootFlow::updateBootDiag(UiController &owner, uint32_t now_ms) {
         !owner.sensorManager.isCoWarmupActive() &&
         !owner.sensorManager.isCoValid()) {
         append_error_line(error_lines, sizeof(error_lines), error_len, "SEN0466 detected but read failed");
+    }
+    {
+        const DfrOptionalGasSensor::OptionalGasType optional_type = owner.sensorManager.optionalGasType();
+        const bool optional_type_known = optional_type != DfrOptionalGasSensor::OptionalGasType::None;
+        const bool optional_present = owner.sensorManager.isOptionalGasPresent();
+        const bool optional_warmup = owner.sensorManager.isOptionalGasWarmupActive();
+        const bool optional_valid = owner.sensorManager.isOptionalGasValid() && optional_type_known;
+
+        if (objects.lbl_diag_dfr_gas_label) {
+            char label[16];
+            snprintf(label,
+                     sizeof(label),
+                     "%s:",
+                     optional_type_known ? DfrOptionalGasSensor::optionalGasLabel(optional_type) : "DFR-GAS");
+            owner.safe_label_set_text(objects.lbl_diag_dfr_gas_label, label);
+        }
+        if (objects.lbl_diag_dfr_gas) {
+            const char *status = UiText::BootDiagNotFound();
+            if (optional_present) {
+                if (optional_warmup) {
+                    status = UiText::BootDiagStarting();
+                } else if (optional_valid) {
+                    status = UiText::StatusOk();
+                } else {
+                    status = UiText::StatusErr();
+                }
+            }
+            owner.safe_label_set_text(objects.lbl_diag_dfr_gas, status);
+        }
+        if (optional_present && !optional_warmup && !optional_valid) {
+            const char *label = optional_type_known
+                ? DfrOptionalGasSensor::optionalGasLabel(optional_type)
+                : "DFR-GAS";
+            char gas_error[56];
+            snprintf(gas_error, sizeof(gas_error), "%s detected but read failed", label);
+            append_error_line(error_lines, sizeof(error_lines), error_len, gas_error);
+        }
     }
     if (objects.lbl_diag_dac) {
         const char *status = UiText::BootDiagNotFound();

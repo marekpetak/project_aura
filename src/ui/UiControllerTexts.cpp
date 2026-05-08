@@ -281,6 +281,8 @@ void UiController::update_boot_diag_texts() {
         snprintf(hcho_label, sizeof(hcho_label), "%s:", sensorManager.hchoSensorLabel());
         safe_label_set_text(objects.lbl_diag_sfa_label, hcho_label);
     }
+    if (objects.lbl_diag_dfr_gas_label) safe_label_set_text(objects.lbl_diag_dfr_gas_label, "DFR-GAS:");
+    if (objects.lbl_diag_dfr_gas) safe_label_set_text(objects.lbl_diag_dfr_gas, UiText::BootDiagNotFound());
     if (objects.lbl_diag_rtc_label) {
         char rtc_label[16];
         snprintf(rtc_label, sizeof(rtc_label), "%s:", timeManager.rtcLabel());
