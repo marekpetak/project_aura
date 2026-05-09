@@ -159,6 +159,14 @@ private:
         float max_value = 0.0f;
         float latest_value = 0.0f;
     };
+    struct GraphAxisRange {
+        float y_min_display = 0.0f;
+        float y_max_display = 0.0f;
+        float step = 1.0f;
+        lv_coord_t y_min = 0;
+        lv_coord_t y_max = 1;
+        uint8_t horizontal_divisions = 3;
+    };
     void update_temp_offset_label();
     void update_hum_offset_label();
     void update_wifi_ui();
@@ -215,6 +223,15 @@ private:
                                                 float point_scale,
                                                 bool require_non_negative,
                                                 bool convert_temperature_to_display = false);
+    GraphAxisRange compute_standard_graph_axis(float scale_min,
+                                               float scale_max,
+                                               float latest_value,
+                                               float fallback_center,
+                                               float min_span,
+                                               float fallback_step,
+                                               float point_scale,
+                                               bool clamp_min_zero,
+                                               lv_coord_t min_coord_span = 10) const;
     uint16_t humidity_graph_points() const;
     uint16_t voc_graph_points() const;
     uint16_t nox_graph_points() const;
@@ -260,6 +277,31 @@ private:
                                   bool move_foreground_after_position = true);
     void ensure_graph_stat_overlays(lv_obj_t *chart, lv_obj_t *&label_min, lv_obj_t *&label_now, lv_obj_t *&label_max);
     void style_graph_stat_overlays(lv_obj_t *chart, lv_obj_t *label_min, lv_obj_t *label_now, lv_obj_t *label_max);
+    void update_graph_stat_overlay_labels(lv_obj_t *chart,
+                                          lv_obj_t *&label_min,
+                                          lv_obj_t *&label_now,
+                                          lv_obj_t *&label_max,
+                                          bool has_values,
+                                          float min_value,
+                                          float max_value,
+                                          float latest_value,
+                                          const char *min_format,
+                                          const char *now_format,
+                                          const char *max_format);
+    void ensure_graph_zone_overlay(lv_obj_t *graph_container,
+                                   lv_obj_t *chart,
+                                   lv_obj_t *&overlay,
+                                   lv_obj_t **bands,
+                                   uint8_t band_count);
+    void update_graph_zone_overlay(lv_obj_t *chart,
+                                   lv_obj_t *overlay,
+                                   lv_obj_t **bands,
+                                   uint8_t band_count,
+                                   const float *zone_bounds,
+                                   const GraphZoneTone *zone_tones,
+                                   uint8_t zone_count,
+                                   float y_min_display,
+                                   float y_max_display);
     void ensure_temperature_time_labels();
     void update_temperature_time_labels();
     void ensure_humidity_graph_overlays();

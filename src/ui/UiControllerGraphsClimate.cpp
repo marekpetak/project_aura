@@ -82,140 +82,28 @@ void UiController::update_temperature_graph_overlays(const SensorGraphProfile &p
 }
 
 void UiController::ensure_temperature_zone_overlay() {
-    if (!objects.temperature_info_graph || !objects.chart_temp_info) {
-        return;
-    }
-
-    lv_obj_update_layout(objects.temperature_info_graph);
-    lv_obj_update_layout(objects.chart_temp_info);
-
-    if (!temp_graph_zone_overlay_ || !lv_obj_is_valid(temp_graph_zone_overlay_) ||
-        lv_obj_get_parent(temp_graph_zone_overlay_) != objects.temperature_info_graph) {
-        temp_graph_zone_overlay_ = lv_obj_create(objects.temperature_info_graph);
-        lv_obj_clear_flag(temp_graph_zone_overlay_, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_bg_opa(temp_graph_zone_overlay_, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_border_width(temp_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_left(temp_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_right(temp_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_top(temp_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_bottom(temp_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    }
-
-    const lv_coord_t chart_x = lv_obj_get_x(objects.chart_temp_info);
-    const lv_coord_t chart_y = lv_obj_get_y(objects.chart_temp_info);
-    const lv_coord_t chart_w = lv_obj_get_width(objects.chart_temp_info);
-    const lv_coord_t chart_h = lv_obj_get_height(objects.chart_temp_info);
-
-    lv_obj_set_pos(temp_graph_zone_overlay_, chart_x, chart_y);
-    lv_obj_set_size(temp_graph_zone_overlay_, chart_w, chart_h);
-    lv_obj_update_layout(temp_graph_zone_overlay_);
-    lv_obj_set_style_radius(temp_graph_zone_overlay_,
-                            lv_obj_get_style_radius(objects.chart_temp_info, LV_PART_MAIN),
-                            LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
-        lv_obj_t *&band = temp_graph_zone_bands_[i];
-        if (!band || !lv_obj_is_valid(band) || lv_obj_get_parent(band) != temp_graph_zone_overlay_) {
-            band = lv_obj_create(temp_graph_zone_overlay_);
-            lv_obj_clear_flag(band, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_set_style_border_width(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_radius(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_pad_left(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_pad_right(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_pad_top(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_pad_bottom(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        }
-        lv_obj_move_background(band);
-    }
-
-    lv_obj_move_background(temp_graph_zone_overlay_);
-    lv_obj_move_foreground(objects.chart_temp_info);
+    ensure_graph_zone_overlay(
+        objects.temperature_info_graph,
+        objects.chart_temp_info,
+        temp_graph_zone_overlay_,
+        temp_graph_zone_bands_,
+        kMaxGraphZoneBands);
 }
 
 void UiController::update_temperature_zone_overlay(const SensorGraphProfile &profile,
                                                    float y_min_display,
                                                    float y_max_display) {
     ensure_temperature_zone_overlay();
-    if (!temp_graph_zone_overlay_ || !lv_obj_is_valid(temp_graph_zone_overlay_)) {
-        return;
-    }
 
-    const lv_coord_t width = lv_obj_get_width(temp_graph_zone_overlay_);
-    const lv_coord_t height = lv_obj_get_height(temp_graph_zone_overlay_);
-    if (width <= 0 || height <= 0 || !isfinite(y_min_display) || !isfinite(y_max_display) || y_max_display <= y_min_display) {
-        for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
-            if (temp_graph_zone_bands_[i]) {
-                lv_obj_add_flag(temp_graph_zone_bands_[i], LV_OBJ_FLAG_HIDDEN);
-            }
-        }
-        return;
-    }
-
-    const lv_color_t chart_bg = lv_obj_get_style_bg_color(objects.chart_temp_info, LV_PART_MAIN);
-    uint8_t zone_count = profile.zone_count;
-    if (zone_count > kMaxGraphZoneBands) {
-        zone_count = kMaxGraphZoneBands;
-    }
-    if (zone_count == 0) {
-        for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
-            if (temp_graph_zone_bands_[i]) {
-                lv_obj_add_flag(temp_graph_zone_bands_[i], LV_OBJ_FLAG_HIDDEN);
-            }
-        }
-        return;
-    }
-
-    const float denom = y_max_display - y_min_display;
-    for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
-        lv_obj_t *band = temp_graph_zone_bands_[i];
-        if (!band) {
-            continue;
-        }
-        if (i >= zone_count) {
-            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
-            continue;
-        }
-
-        const float zone_low = profile.zone_bounds[i];
-        const float zone_high = profile.zone_bounds[i + 1];
-        if (!isfinite(zone_low) || !isfinite(zone_high) || zone_high <= zone_low) {
-            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
-            continue;
-        }
-        const float visible_low = fmaxf(zone_low, y_min_display);
-        const float visible_high = fminf(zone_high, y_max_display);
-        if (!(visible_high > visible_low)) {
-            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
-            continue;
-        }
-
-        float top_ratio = (y_max_display - visible_high) / denom;
-        float bottom_ratio = (y_max_display - visible_low) / denom;
-        if (top_ratio < 0.0f) top_ratio = 0.0f;
-        if (top_ratio > 1.0f) top_ratio = 1.0f;
-        if (bottom_ratio < 0.0f) bottom_ratio = 0.0f;
-        if (bottom_ratio > 1.0f) bottom_ratio = 1.0f;
-
-        lv_coord_t top = static_cast<lv_coord_t>(lroundf(top_ratio * static_cast<float>(height)));
-        lv_coord_t bottom = static_cast<lv_coord_t>(lroundf(bottom_ratio * static_cast<float>(height)));
-        if (bottom <= top) {
-            bottom = static_cast<lv_coord_t>(top + 1);
-        }
-        if (top < 0) top = 0;
-        if (bottom > height) bottom = height;
-        if (bottom <= top) {
-            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
-            continue;
-        }
-
-        lv_obj_set_pos(band, 0, top);
-        lv_obj_set_size(band, width, static_cast<lv_coord_t>(bottom - top));
-        lv_color_t zone_color = resolve_graph_zone_color(profile.zone_tones[i], chart_bg);
-        lv_obj_set_style_bg_color(band, zone_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_opa(band, LV_OPA_30, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_clear_flag(band, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_background(band);
-    }
+    update_graph_zone_overlay(objects.chart_temp_info,
+                              temp_graph_zone_overlay_,
+                              temp_graph_zone_bands_,
+                              kMaxGraphZoneBands,
+                              profile.zone_bounds,
+                              profile.zone_tones,
+                              profile.zone_count,
+                              y_min_display,
+                              y_max_display);
 }
 
 void UiController::ensure_temperature_time_labels() {
@@ -247,106 +135,30 @@ void UiController::update_humidity_graph_overlays(bool has_values,
                                                   float min_humidity,
                                                   float max_humidity,
                                                   float latest_humidity) {
-    if (!objects.chart_rh_info) {
-        return;
-    }
-
-    ensure_humidity_graph_overlays();
-    if (!rh_graph_label_min_ || !rh_graph_label_now_ || !rh_graph_label_max_) {
-        return;
-    }
-
-    style_graph_stat_overlays(
-        objects.chart_rh_info,
-        rh_graph_label_min_,
-        rh_graph_label_now_,
-        rh_graph_label_max_);
-
-    if (!has_values) {
-        safe_label_set_text(rh_graph_label_min_, "MIN --");
-        safe_label_set_text(rh_graph_label_now_, "NOW --");
-        safe_label_set_text(rh_graph_label_max_, "MAX --");
-        return;
-    }
-
-    char min_buf[32];
-    char now_buf[32];
-    char max_buf[32];
-    snprintf(min_buf, sizeof(min_buf), "MIN %.0f%%", min_humidity);
-    snprintf(now_buf, sizeof(now_buf), "NOW %.0f%%", latest_humidity);
-    snprintf(max_buf, sizeof(max_buf), "MAX %.0f%%", max_humidity);
-    safe_label_set_text(rh_graph_label_min_, min_buf);
-    safe_label_set_text(rh_graph_label_now_, now_buf);
-    safe_label_set_text(rh_graph_label_max_, max_buf);
+    update_graph_stat_overlay_labels(objects.chart_rh_info,
+                                     rh_graph_label_min_,
+                                     rh_graph_label_now_,
+                                     rh_graph_label_max_,
+                                     has_values,
+                                     min_humidity,
+                                     max_humidity,
+                                     latest_humidity,
+                                     "MIN %.0f%%",
+                                     "NOW %.0f%%",
+                                     "MAX %.0f%%");
 }
 
 void UiController::ensure_humidity_zone_overlay() {
-    if (!objects.rh_info_graph || !objects.chart_rh_info) {
-        return;
-    }
-
-    lv_obj_update_layout(objects.rh_info_graph);
-    lv_obj_update_layout(objects.chart_rh_info);
-
-    if (!rh_graph_zone_overlay_ || !lv_obj_is_valid(rh_graph_zone_overlay_) ||
-        lv_obj_get_parent(rh_graph_zone_overlay_) != objects.rh_info_graph) {
-        rh_graph_zone_overlay_ = lv_obj_create(objects.rh_info_graph);
-        lv_obj_clear_flag(rh_graph_zone_overlay_, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_bg_opa(rh_graph_zone_overlay_, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_border_width(rh_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_left(rh_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_right(rh_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_top(rh_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_pad_bottom(rh_graph_zone_overlay_, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    }
-
-    const lv_coord_t chart_x = lv_obj_get_x(objects.chart_rh_info);
-    const lv_coord_t chart_y = lv_obj_get_y(objects.chart_rh_info);
-    const lv_coord_t chart_w = lv_obj_get_width(objects.chart_rh_info);
-    const lv_coord_t chart_h = lv_obj_get_height(objects.chart_rh_info);
-
-    lv_obj_set_pos(rh_graph_zone_overlay_, chart_x, chart_y);
-    lv_obj_set_size(rh_graph_zone_overlay_, chart_w, chart_h);
-    lv_obj_update_layout(rh_graph_zone_overlay_);
-    lv_obj_set_style_radius(rh_graph_zone_overlay_,
-                            lv_obj_get_style_radius(objects.chart_rh_info, LV_PART_MAIN),
-                            LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
-        lv_obj_t *&band = rh_graph_zone_bands_[i];
-        if (!band || !lv_obj_is_valid(band) || lv_obj_get_parent(band) != rh_graph_zone_overlay_) {
-            band = lv_obj_create(rh_graph_zone_overlay_);
-            lv_obj_clear_flag(band, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_set_style_border_width(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_radius(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_pad_left(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_pad_right(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_pad_top(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_pad_bottom(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        }
-        lv_obj_move_background(band);
-    }
-
-    lv_obj_move_background(rh_graph_zone_overlay_);
-    lv_obj_move_foreground(objects.chart_rh_info);
+    ensure_graph_zone_overlay(
+        objects.rh_info_graph,
+        objects.chart_rh_info,
+        rh_graph_zone_overlay_,
+        rh_graph_zone_bands_,
+        kMaxGraphZoneBands);
 }
 
 void UiController::update_humidity_zone_overlay(float y_min_display, float y_max_display) {
     ensure_humidity_zone_overlay();
-    if (!rh_graph_zone_overlay_ || !lv_obj_is_valid(rh_graph_zone_overlay_)) {
-        return;
-    }
-
-    const lv_coord_t width = lv_obj_get_width(rh_graph_zone_overlay_);
-    const lv_coord_t height = lv_obj_get_height(rh_graph_zone_overlay_);
-    if (width <= 0 || height <= 0 || !isfinite(y_min_display) || !isfinite(y_max_display) || y_max_display <= y_min_display) {
-        for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
-            if (rh_graph_zone_bands_[i]) {
-                lv_obj_add_flag(rh_graph_zone_bands_[i], LV_OBJ_FLAG_HIDDEN);
-            }
-        }
-        return;
-    }
 
     static const float kRhZoneBounds[kMaxGraphZoneBounds] = {-1000.0f, 20.0f, 30.0f, 40.0f, 60.0f, 65.0f, 70.0f, 1000.0f};
     static const GraphZoneTone kRhZoneTones[kMaxGraphZoneBands] = {
@@ -359,55 +171,15 @@ void UiController::update_humidity_zone_overlay(float y_min_display, float y_max
         GRAPH_ZONE_RED,
     };
 
-    const float denom = y_max_display - y_min_display;
-    const lv_color_t chart_bg = lv_obj_get_style_bg_color(objects.chart_rh_info, LV_PART_MAIN);
-
-    for (uint8_t i = 0; i < kMaxGraphZoneBands; ++i) {
-        lv_obj_t *band = rh_graph_zone_bands_[i];
-        if (!band) {
-            continue;
-        }
-
-        const float zone_low = kRhZoneBounds[i];
-        const float zone_high = kRhZoneBounds[i + 1];
-        if (!isfinite(zone_low) || !isfinite(zone_high) || zone_high <= zone_low) {
-            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
-            continue;
-        }
-        const float visible_low = fmaxf(zone_low, y_min_display);
-        const float visible_high = fminf(zone_high, y_max_display);
-        if (!(visible_high > visible_low)) {
-            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
-            continue;
-        }
-
-        float top_ratio = (y_max_display - visible_high) / denom;
-        float bottom_ratio = (y_max_display - visible_low) / denom;
-        if (top_ratio < 0.0f) top_ratio = 0.0f;
-        if (top_ratio > 1.0f) top_ratio = 1.0f;
-        if (bottom_ratio < 0.0f) bottom_ratio = 0.0f;
-        if (bottom_ratio > 1.0f) bottom_ratio = 1.0f;
-
-        lv_coord_t top = static_cast<lv_coord_t>(lroundf(top_ratio * static_cast<float>(height)));
-        lv_coord_t bottom = static_cast<lv_coord_t>(lroundf(bottom_ratio * static_cast<float>(height)));
-        if (bottom <= top) {
-            bottom = static_cast<lv_coord_t>(top + 1);
-        }
-        if (top < 0) top = 0;
-        if (bottom > height) bottom = height;
-        if (bottom <= top) {
-            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
-            continue;
-        }
-
-        lv_obj_set_pos(band, 0, top);
-        lv_obj_set_size(band, width, static_cast<lv_coord_t>(bottom - top));
-        lv_color_t zone_color = resolve_graph_zone_color(kRhZoneTones[i], chart_bg);
-        lv_obj_set_style_bg_color(band, zone_color, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_set_style_bg_opa(band, LV_OPA_30, LV_PART_MAIN | LV_STATE_DEFAULT);
-        lv_obj_clear_flag(band, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_background(band);
-    }
+    update_graph_zone_overlay(objects.chart_rh_info,
+                              rh_graph_zone_overlay_,
+                              rh_graph_zone_bands_,
+                              kMaxGraphZoneBands,
+                              kRhZoneBounds,
+                              kRhZoneTones,
+                              kMaxGraphZoneBands,
+                              y_min_display,
+                              y_max_display);
 }
 
 void UiController::ensure_humidity_time_labels() {

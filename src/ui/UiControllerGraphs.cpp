@@ -52,6 +52,17 @@ void set_checked(lv_obj_t *btn, bool checked) {
 uint32_t graph_color_token(lv_color_t color) {
     return static_cast<uint32_t>(color.full);
 }
+
+void hide_graph_zone_bands(lv_obj_t **bands, uint8_t band_count) {
+    if (!bands) {
+        return;
+    }
+    for (uint8_t i = 0; i < band_count; ++i) {
+        if (bands[i]) {
+            lv_obj_add_flag(bands[i], LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
 } // namespace
 
 void UiController::release_all_sensor_graph_runtime_objects() {
@@ -377,6 +388,70 @@ UiController::GraphSeriesStats UiController::populate_info_chart_series(lv_obj_t
     return stats;
 }
 
+UiController::GraphAxisRange UiController::compute_standard_graph_axis(float scale_min,
+                                                                       float scale_max,
+                                                                       float latest_value,
+                                                                       float fallback_center,
+                                                                       float min_span,
+                                                                       float fallback_step,
+                                                                       float point_scale,
+                                                                       bool clamp_min_zero,
+                                                                       lv_coord_t min_coord_span) const {
+    GraphAxisRange range{};
+
+    float scale_span = scale_max - scale_min;
+    if (!isfinite(scale_span) || scale_span < min_span) {
+        scale_span = min_span;
+    }
+
+    float step = graph_nice_step(scale_span / 4.0f);
+    if (!isfinite(step) || step <= 0.0f) {
+        step = fallback_step;
+    }
+    if (!isfinite(step) || step <= 0.0f) {
+        step = 1.0f;
+    }
+
+    float y_min_f = floorf((scale_min - (step * 0.9f)) / step) * step;
+    float y_max_f = ceilf((scale_max + (step * 0.9f)) / step) * step;
+    if ((y_max_f - y_min_f) < (step * 2.0f)) {
+        y_min_f -= step;
+        y_max_f += step;
+    }
+    if (!isfinite(y_min_f) || !isfinite(y_max_f) || y_max_f <= y_min_f) {
+        const float center = isfinite(latest_value) ? latest_value : fallback_center;
+        y_min_f = center - min_span;
+        y_max_f = center + min_span;
+    }
+    if (clamp_min_zero && y_min_f < 0.0f) {
+        y_min_f = 0.0f;
+    }
+
+    const float coord_scale = (isfinite(point_scale) && point_scale > 0.0f) ? point_scale : 1.0f;
+    lv_coord_t y_min = static_cast<lv_coord_t>(floorf(y_min_f * coord_scale));
+    lv_coord_t y_max = static_cast<lv_coord_t>(ceilf(y_max_f * coord_scale));
+    if (y_max <= y_min) {
+        const lv_coord_t span = (min_coord_span > 0) ? min_coord_span : 1;
+        y_max = static_cast<lv_coord_t>(y_min + span);
+    }
+
+    int32_t horizontal_divisions = static_cast<int32_t>(lroundf((y_max_f - y_min_f) / step));
+    if (horizontal_divisions < 3) {
+        horizontal_divisions = 3;
+    }
+    if (horizontal_divisions > 12) {
+        horizontal_divisions = 12;
+    }
+
+    range.y_min_display = y_min_f;
+    range.y_max_display = y_max_f;
+    range.step = step;
+    range.y_min = y_min;
+    range.y_max = y_max;
+    range.horizontal_divisions = static_cast<uint8_t>(horizontal_divisions);
+    return range;
+}
+
 UiController::SensorGraphProfile UiController::build_temperature_graph_profile() const {
     SensorGraphProfile profile{};
     profile.min_span = temp_units_c ? 2.0f : 3.5f;
@@ -638,6 +713,185 @@ void UiController::style_graph_stat_overlays(lv_obj_t *chart,
         lv_obj_set_style_text_color(label, text, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_bg_color(label, badge_bg, LV_PART_MAIN | LV_STATE_DEFAULT);
         lv_obj_set_style_border_color(label, border, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+}
+
+void UiController::update_graph_stat_overlay_labels(lv_obj_t *chart,
+                                                    lv_obj_t *&label_min,
+                                                    lv_obj_t *&label_now,
+                                                    lv_obj_t *&label_max,
+                                                    bool has_values,
+                                                    float min_value,
+                                                    float max_value,
+                                                    float latest_value,
+                                                    const char *min_format,
+                                                    const char *now_format,
+                                                    const char *max_format) {
+    if (!chart) {
+        return;
+    }
+
+    ensure_graph_stat_overlays(chart, label_min, label_now, label_max);
+    if (!label_min || !label_now || !label_max) {
+        return;
+    }
+
+    style_graph_stat_overlays(chart, label_min, label_now, label_max);
+
+    if (!has_values) {
+        safe_label_set_text(label_min, "MIN --");
+        safe_label_set_text(label_now, "NOW --");
+        safe_label_set_text(label_max, "MAX --");
+        return;
+    }
+
+    char min_buf[48];
+    char now_buf[48];
+    char max_buf[48];
+    snprintf(min_buf, sizeof(min_buf), min_format ? min_format : "MIN %.1f", min_value);
+    snprintf(now_buf, sizeof(now_buf), now_format ? now_format : "NOW %.1f", latest_value);
+    snprintf(max_buf, sizeof(max_buf), max_format ? max_format : "MAX %.1f", max_value);
+    safe_label_set_text(label_min, min_buf);
+    safe_label_set_text(label_now, now_buf);
+    safe_label_set_text(label_max, max_buf);
+}
+
+void UiController::ensure_graph_zone_overlay(lv_obj_t *graph_container,
+                                             lv_obj_t *chart,
+                                             lv_obj_t *&overlay,
+                                             lv_obj_t **bands,
+                                             uint8_t band_count) {
+    if (!graph_container || !chart || !bands || band_count == 0) {
+        return;
+    }
+
+    lv_obj_update_layout(graph_container);
+    lv_obj_update_layout(chart);
+
+    if (!overlay || !lv_obj_is_valid(overlay) || lv_obj_get_parent(overlay) != graph_container) {
+        overlay = lv_obj_create(graph_container);
+        lv_obj_clear_flag(overlay, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_bg_opa(overlay, LV_OPA_TRANSP, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_border_width(overlay, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_left(overlay, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_right(overlay, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_top(overlay, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_pad_bottom(overlay, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    }
+
+    const lv_coord_t chart_x = lv_obj_get_x(chart);
+    const lv_coord_t chart_y = lv_obj_get_y(chart);
+    const lv_coord_t chart_w = lv_obj_get_width(chart);
+    const lv_coord_t chart_h = lv_obj_get_height(chart);
+
+    lv_obj_set_pos(overlay, chart_x, chart_y);
+    lv_obj_set_size(overlay, chart_w, chart_h);
+    lv_obj_update_layout(overlay);
+    lv_obj_set_style_radius(overlay,
+                            lv_obj_get_style_radius(chart, LV_PART_MAIN),
+                            LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    for (uint8_t i = 0; i < band_count; ++i) {
+        lv_obj_t *&band = bands[i];
+        if (!band || !lv_obj_is_valid(band) || lv_obj_get_parent(band) != overlay) {
+            band = lv_obj_create(overlay);
+            lv_obj_clear_flag(band, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_style_border_width(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_radius(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_left(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_right(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_top(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_bottom(band, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+        }
+        lv_obj_move_background(band);
+    }
+
+    lv_obj_move_background(overlay);
+    lv_obj_move_foreground(chart);
+}
+
+void UiController::update_graph_zone_overlay(lv_obj_t *chart,
+                                             lv_obj_t *overlay,
+                                             lv_obj_t **bands,
+                                             uint8_t band_count,
+                                             const float *zone_bounds,
+                                             const GraphZoneTone *zone_tones,
+                                             uint8_t zone_count,
+                                             float y_min_display,
+                                             float y_max_display) {
+    if (!chart || !overlay || !lv_obj_is_valid(overlay) || !bands || band_count == 0) {
+        return;
+    }
+
+    const lv_coord_t width = lv_obj_get_width(overlay);
+    const lv_coord_t height = lv_obj_get_height(overlay);
+    if (width <= 0 || height <= 0 || !isfinite(y_min_display) || !isfinite(y_max_display) || y_max_display <= y_min_display ||
+        !zone_bounds || !zone_tones) {
+        hide_graph_zone_bands(bands, band_count);
+        return;
+    }
+
+    if (zone_count > band_count) {
+        zone_count = band_count;
+    }
+    if (zone_count == 0) {
+        hide_graph_zone_bands(bands, band_count);
+        return;
+    }
+
+    const lv_color_t chart_bg = lv_obj_get_style_bg_color(chart, LV_PART_MAIN);
+    const float denom = y_max_display - y_min_display;
+
+    for (uint8_t i = 0; i < band_count; ++i) {
+        lv_obj_t *band = bands[i];
+        if (!band) {
+            continue;
+        }
+        if (i >= zone_count) {
+            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+
+        const float zone_low = zone_bounds[i];
+        const float zone_high = zone_bounds[i + 1];
+        if (!isfinite(zone_low) || !isfinite(zone_high) || zone_high <= zone_low) {
+            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+
+        const float visible_low = fmaxf(zone_low, y_min_display);
+        const float visible_high = fminf(zone_high, y_max_display);
+        if (!(visible_high > visible_low)) {
+            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+
+        float top_ratio = (y_max_display - visible_high) / denom;
+        float bottom_ratio = (y_max_display - visible_low) / denom;
+        if (top_ratio < 0.0f) top_ratio = 0.0f;
+        if (top_ratio > 1.0f) top_ratio = 1.0f;
+        if (bottom_ratio < 0.0f) bottom_ratio = 0.0f;
+        if (bottom_ratio > 1.0f) bottom_ratio = 1.0f;
+
+        lv_coord_t top = static_cast<lv_coord_t>(lroundf(top_ratio * static_cast<float>(height)));
+        lv_coord_t bottom = static_cast<lv_coord_t>(lroundf(bottom_ratio * static_cast<float>(height)));
+        if (bottom <= top) {
+            bottom = static_cast<lv_coord_t>(top + 1);
+        }
+        if (top < 0) top = 0;
+        if (bottom > height) bottom = height;
+        if (bottom <= top) {
+            lv_obj_add_flag(band, LV_OBJ_FLAG_HIDDEN);
+            continue;
+        }
+
+        lv_obj_set_pos(band, 0, top);
+        lv_obj_set_size(band, width, static_cast<lv_coord_t>(bottom - top));
+        const lv_color_t zone_color = resolve_graph_zone_color(zone_tones[i], chart_bg);
+        lv_obj_set_style_bg_color(band, zone_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_set_style_bg_opa(band, LV_OPA_30, LV_PART_MAIN | LV_STATE_DEFAULT);
+        lv_obj_clear_flag(band, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_background(band);
     }
 }
 
