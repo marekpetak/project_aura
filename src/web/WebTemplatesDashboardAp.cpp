@@ -235,7 +235,7 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
     /* ── GasMetricCard grid ── */
     .gas-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 14px; }
     @media (min-width: 640px) { .gas-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (min-width: 1280px) { .gas-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (min-width: 1024px) { .gas-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
     .gas-card { padding: 12px 14px; }
     .gas-head { display: flex; align-items: center; justify-content: space-between; }
     .gas-name { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #d1d5db; font-weight: 600; }
@@ -1206,17 +1206,56 @@ function renderClimateOverview(sensors, derived) {
 // Render: Gas grid
 // ─────────────────────────────────────────────
 const GAS_METRICS = [
-  { key:'co',   label:'CO',   unit:'ppm', max:thresholds.co.bad,   thr:thresholds.co,   digits:1 },
   { key:'voc',  label:'VOC',  unit:'idx', max:thresholds.voc.bad,  thr:thresholds.voc,  digits:0 },
   { key:'nox',  label:'NOx',  unit:'idx', max:thresholds.nox.bad,  thr:thresholds.nox,  digits:0 },
   { key:'hcho', label:'HCHO', unit:'ppb', max:thresholds.hcho.bad, thr:thresholds.hcho, digits:0 },
+  { key:'co',   label:'CO',   unit:'ppm', max:thresholds.co.bad,   thr:thresholds.co,   digits:1 },
 ];
+
+const OPTIONAL_GAS_PROFILES = {
+  NH3: { label:'NH3', unit:'ppm', max:35.0, thr:{ good:5.0, moderate:25.0, bad:35.0 }, digits:0 },
+  SO2: { label:'SO2', unit:'ppm', max:2.0,  thr:{ good:0.05, moderate:0.10, bad:2.0 }, digits:1 },
+  NO2: { label:'NO2', unit:'ppm', max:1.0,  thr:{ good:0.05, moderate:0.10, bad:1.0 }, digits:1 },
+  H2S: { label:'H2S', unit:'ppm', max:10.0, thr:{ good:0.5, moderate:1.0, bad:10.0 }, digits:0 },
+  O3:  { label:'O3',  unit:'ppm', max:0.5,  thr:{ good:0.05, moderate:0.10, bad:0.5 }, digits:1 },
+};
+
+function buildGasMetrics(sensors) {
+  const s = sensors || {};
+  const metrics = GAS_METRICS.filter(m => {
+    if (m.key === 'co') return s.co_sensor_present === true;
+    if (m.key === 'hcho') return isNum(s.hcho);
+    return true;
+  });
+
+  if (s.optional_gas_sensor_present === true) {
+    const type = typeof s.optional_gas_type === 'string' ? s.optional_gas_type : '';
+    const profile = OPTIONAL_GAS_PROFILES[type] || {
+      label: type || 'Gas',
+      unit: 'ppm',
+      max: 3.0,
+      thr: { good: 1.0, moderate: 2.0, bad: 3.0 },
+      digits: 1,
+    };
+    metrics.push({
+      key: 'optional_gas',
+      label: profile.label,
+      unit: profile.unit,
+      max: profile.max,
+      thr: profile.thr,
+      digits: profile.digits,
+    });
+  }
+
+  return metrics;
+}
 
 function renderGasGrid(sensors) {
   const s = sensors || {};
+  const metrics = buildGasMetrics(s);
   document.getElementById('gasGrid').innerHTML =
     `<div class="gas-grid">` +
-    GAS_METRICS.map(m => {
+    metrics.map(m => {
       const v = isNum(s[m.key]) ? s[m.key] : null;
       const status = v !== null ? getStatus(v, m.thr) : null;
       const color = statusColorOf(status);
@@ -1284,10 +1323,10 @@ const CHART_LAYOUTS = {
     { title:'Pressure', unit:'hPa', lines:[{ key:'pressure', name:'Pressure', color:'#0ea5e9', digits:1, unit:'hPa' }] },
   ],
   gases: [
-    { title:'Carbon Monoxide (CO)', unit:'ppm', lines:[{ key:'co', name:'CO', color:'#f97316', digits:1, unit:'ppm' }] },
     { title:'VOC Index', unit:'idx', lines:[{ key:'voc', name:'VOC', color:'#ef4444', digits:0, unit:'idx' }] },
     { title:'NOx Index', unit:'idx', lines:[{ key:'nox', name:'NOx', color:'#f43f5e', digits:0, unit:'idx' }] },
     { title:'Formaldehyde (HCHO)', unit:'ppb', lines:[{ key:'hcho', name:'HCHO', color:'#d946ef', digits:0, unit:'ppb' }] },
+    { title:'Carbon Monoxide (CO)', unit:'ppm', lines:[{ key:'co', name:'CO', color:'#f97316', digits:1, unit:'ppm' }] },
     { title:'Optional DFRobot Gas', unit:'ppm', lines:[{ key:'optional_gas', name:'Optional Gas', color:'#22c55e', digits:1, unit:'ppm' }] },
   ],
   pm: [
@@ -1313,10 +1352,40 @@ function mapSeriesKeyToSensorKey(key) {
 
 function shouldShowChartCard(card) {
   if (!card || !Array.isArray(card.lines)) return false;
-  const optionalGasCard = card.lines.some(line => line && line.key === 'optional_gas');
-  if (!optionalGasCard) return true;
   const sensors = stateCache && stateCache.sensors ? stateCache.sensors : {};
-  return sensors.optional_gas_sensor_present === true;
+  const keys = card.lines.map(line => line && line.key).filter(Boolean);
+  if (keys.includes('co')) return sensors.co_sensor_present === true;
+  if (keys.includes('hcho')) return isNum(sensors.hcho);
+  if (keys.includes('optional_gas')) return sensors.optional_gas_sensor_present === true;
+  return true;
+}
+
+function chartCardForState(card) {
+  if (!card || !Array.isArray(card.lines)) return card;
+  const optionalGasCard = card.lines.some(line => line && line.key === 'optional_gas');
+  if (!optionalGasCard) return card;
+
+  const sensors = stateCache && stateCache.sensors ? stateCache.sensors : {};
+  const type = typeof sensors.optional_gas_type === 'string' ? sensors.optional_gas_type : '';
+  const profile = OPTIONAL_GAS_PROFILES[type] || {
+    label: type || 'Optional Gas',
+    unit: 'ppm',
+    digits: 1,
+  };
+  return {
+    ...card,
+    title: profile.label + ' Concentration',
+    unit: profile.unit || card.unit || 'ppm',
+    lines: card.lines.map(line => {
+      if (!line || line.key !== 'optional_gas') return line;
+      return {
+        ...line,
+        name: profile.label,
+        unit: profile.unit || line.unit || 'ppm',
+        digits: Number.isInteger(profile.digits) ? profile.digits : line.digits,
+      };
+    }),
+  };
 }
 
 function bindChartPointTooltips(root) {
@@ -1429,7 +1498,9 @@ function renderCharts(payload) {
     return row;
   });
 
-  const layout = (CHART_LAYOUTS[chartGroup] || CHART_LAYOUTS.core).filter(shouldShowChartCard);
+  const layout = (CHART_LAYOUTS[chartGroup] || CHART_LAYOUTS.core)
+    .filter(shouldShowChartCard)
+    .map(chartCardForState);
   el.innerHTML = layout.map(card => {
     const pressureCard = card.lines.some(line => line.key === 'pressure');
     const cardTitle = pressureCard ? pressureLabelText() : card.title;
