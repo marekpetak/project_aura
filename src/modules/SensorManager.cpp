@@ -698,9 +698,19 @@ SensorManager::PollResult SensorManager::poll(SensorData &data,
     }
     const bool sfa_warmup_now = currentHchoWarmupActive();
     const SfaStatus sfa_status_now = currentHchoStatus();
+    const bool hcho_sensor_present_now = (sfa_status_now != SfaStatus::Absent);
+    const bool hcho_warmup_now = hcho_sensor_present_now && sfa_warmup_now;
     if (sfa_warmup_now != sfa_warmup_active_last_ || sfa_status_now != sfa_status_last_) {
         sfa_warmup_active_last_ = sfa_warmup_now;
         sfa_status_last_ = sfa_status_now;
+        result.data_changed = true;
+    }
+    if (data.hcho_sensor_present != hcho_sensor_present_now) {
+        data.hcho_sensor_present = hcho_sensor_present_now;
+        result.data_changed = true;
+    }
+    if (data.hcho_warmup != hcho_warmup_now) {
+        data.hcho_warmup = hcho_warmup_now;
         result.data_changed = true;
     }
     if (sfa_status_now == SfaStatus::Fault && data.hcho_valid) {

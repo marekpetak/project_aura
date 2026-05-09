@@ -33,6 +33,8 @@ struct SensorData {
     bool voc_valid = false;
     bool nox_valid = false;
     bool hcho_valid = false;
+    bool hcho_sensor_present = false;
+    bool hcho_warmup = false;
     bool co_valid = false;
     bool optional_gas_valid = false;
     bool nh3_valid = false;

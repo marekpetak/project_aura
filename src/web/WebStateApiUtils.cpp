@@ -131,6 +131,8 @@ void fillJson(ArduinoJson::JsonObject root, const Payload &payload) {
     WebJsonUtils::jsonSetFloatOrNull(sensors, "nh3", data.nh3_valid && data.nh3_sensor_present, data.nh3_ppm);
     sensors["co_sensor_present"] = data.co_sensor_present;
     sensors["co_warmup"] = data.co_warmup;
+    sensors["hcho_sensor_present"] = data.hcho_sensor_present;
+    sensors["hcho_warmup"] = data.hcho_sensor_present && data.hcho_warmup;
     sensors["optional_gas_sensor_present"] = optional_gas_present;
     sensors["optional_gas_warmup"] = optional_gas_present && data.optional_gas_warmup;
     sensors["nh3_sensor_present"] = data.nh3_sensor_present;

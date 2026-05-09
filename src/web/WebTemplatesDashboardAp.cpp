@@ -1224,7 +1224,7 @@ function buildGasMetrics(sensors) {
   const s = sensors || {};
   const metrics = GAS_METRICS.filter(m => {
     if (m.key === 'co') return s.co_sensor_present === true;
-    if (m.key === 'hcho') return isNum(s.hcho);
+    if (m.key === 'hcho') return s.hcho_sensor_present === true;
     return true;
   });
 
@@ -1355,7 +1355,7 @@ function shouldShowChartCard(card) {
   const sensors = stateCache && stateCache.sensors ? stateCache.sensors : {};
   const keys = card.lines.map(line => line && line.key).filter(Boolean);
   if (keys.includes('co')) return sensors.co_sensor_present === true;
-  if (keys.includes('hcho')) return isNum(sensors.hcho);
+  if (keys.includes('hcho')) return sensors.hcho_sensor_present === true;
   if (keys.includes('optional_gas')) return sensors.optional_gas_sensor_present === true;
   return true;
 }

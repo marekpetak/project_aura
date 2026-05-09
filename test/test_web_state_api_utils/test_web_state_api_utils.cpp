@@ -21,6 +21,9 @@ void test_web_state_api_utils_fill_json_populates_sensor_network_and_settings_fi
     payload.data.pressure = 1013.2f;
     payload.data.pressure_delta_3h_valid = true;
     payload.data.pressure_delta_3h = 1.2f;
+    payload.data.hcho_sensor_present = true;
+    payload.data.hcho_valid = true;
+    payload.data.hcho = 24.0f;
     payload.data.co_sensor_present = true;
     payload.data.co_valid = true;
     payload.data.co_ppm = 4.5f;
@@ -76,6 +79,9 @@ void test_web_state_api_utils_fill_json_populates_sensor_network_and_settings_fi
     TEST_ASSERT_TRUE(doc["success"].as<bool>());
     TEST_ASSERT_TRUE(doc["ota_busy"].as<bool>());
     TEST_ASSERT_EQUAL_FLOAT(22.5f, doc["sensors"]["temp"].as<float>());
+    TEST_ASSERT_EQUAL_FLOAT(24.0f, doc["sensors"]["hcho"].as<float>());
+    TEST_ASSERT_TRUE(doc["sensors"]["hcho_sensor_present"].as<bool>());
+    TEST_ASSERT_FALSE(doc["sensors"]["hcho_warmup"].as<bool>());
     TEST_ASSERT_EQUAL_FLOAT(4.5f, doc["sensors"]["co"].as<float>());
     TEST_ASSERT_TRUE(doc["sensors"]["co_sensor_present"].as<bool>());
     TEST_ASSERT_FALSE(doc["derived"]["dew_point"].isNull());
@@ -111,6 +117,8 @@ void test_web_state_api_utils_fill_json_sets_nulls_when_values_are_unavailable()
 
     TEST_ASSERT_TRUE(doc["time_epoch_s"].isNull());
     TEST_ASSERT_TRUE(doc["sensors"]["temp"].isNull());
+    TEST_ASSERT_FALSE(doc["sensors"]["hcho_sensor_present"].as<bool>());
+    TEST_ASSERT_FALSE(doc["sensors"]["hcho_warmup"].as<bool>());
     TEST_ASSERT_TRUE(doc["derived"]["mold"].isNull());
     TEST_ASSERT_TRUE(doc["network"]["rssi"].isNull());
     TEST_ASSERT_EQUAL_STRING("idle", doc["ota"]["status"].as<const char *>());
@@ -143,6 +151,8 @@ void test_web_state_api_utils_hides_reactive_gas_metrics_during_warmup() {
 
 void test_web_state_api_utils_hides_hcho_when_only_raw_sample_exists_from_sfa40_warmup_model() {
     WebStateApiUtils::Payload payload{};
+    payload.data.hcho_sensor_present = true;
+    payload.data.hcho_warmup = true;
     payload.data.hcho_valid = false;
     payload.data.hcho = 27.4f;
 
@@ -150,6 +160,8 @@ void test_web_state_api_utils_hides_hcho_when_only_raw_sample_exists_from_sfa40_
     WebStateApiUtils::fillJson(doc.to<ArduinoJson::JsonObject>(), payload);
 
     TEST_ASSERT_TRUE(doc["sensors"]["hcho"].isNull());
+    TEST_ASSERT_TRUE(doc["sensors"]["hcho_sensor_present"].as<bool>());
+    TEST_ASSERT_TRUE(doc["sensors"]["hcho_warmup"].as<bool>());
 }
 
 void test_web_state_api_utils_reports_failed_ota_with_device_error_code() {

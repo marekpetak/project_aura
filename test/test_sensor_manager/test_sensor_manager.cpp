@@ -96,6 +96,8 @@ void test_sensor_manager_poll_updates_data() {
         manager.poll(data, storage, history, true);
 
     TEST_ASSERT_TRUE(result.data_changed);
+    TEST_ASSERT_TRUE(data.hcho_sensor_present);
+    TEST_ASSERT_FALSE(data.hcho_warmup);
     TEST_ASSERT_TRUE(data.hcho_valid);
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.3f, data.hcho);
     TEST_ASSERT_TRUE(data.pressure_valid);
@@ -527,6 +529,8 @@ void test_sensor_manager_sfa30_warmup_keeps_new_hcho_data_invalid() {
 
     TEST_ASSERT_TRUE(manager.isSfaWarmupActive());
     TEST_ASSERT_TRUE(result.data_changed);
+    TEST_ASSERT_TRUE(data.hcho_sensor_present);
+    TEST_ASSERT_TRUE(data.hcho_warmup);
     TEST_ASSERT_FALSE(data.hcho_valid);
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.0f, data.hcho);
 }
@@ -561,18 +565,24 @@ void test_sensor_manager_sfa_state_change_marks_data_changed() {
 
     SensorManager::PollResult first =
         manager.poll(data, storage, history, true);
-    TEST_ASSERT_FALSE(first.data_changed);
+    TEST_ASSERT_TRUE(first.data_changed);
+    TEST_ASSERT_TRUE(data.hcho_sensor_present);
+    TEST_ASSERT_FALSE(data.hcho_warmup);
 
     sfa.warmup_active = true;
     SensorManager::PollResult second =
         manager.poll(data, storage, history, true);
     TEST_ASSERT_TRUE(second.data_changed);
+    TEST_ASSERT_TRUE(data.hcho_sensor_present);
+    TEST_ASSERT_TRUE(data.hcho_warmup);
 
     sfa.warmup_active = false;
     sfa.status = Sfa40::Status::Fault;
     SensorManager::PollResult third =
         manager.poll(data, storage, history, true);
     TEST_ASSERT_TRUE(third.data_changed);
+    TEST_ASSERT_TRUE(data.hcho_sensor_present);
+    TEST_ASSERT_FALSE(data.hcho_warmup);
 }
 
 void test_sensor_manager_sfa_fault_invalidates_previous_hcho_value() {
