@@ -167,6 +167,17 @@ private:
         lv_coord_t y_max = 1;
         uint8_t horizontal_divisions = 3;
     };
+    struct GraphAxisConfig {
+        float fallback_center = 0.0f;
+        float min_span = 1.0f;
+        float fallback_half_span = 0.0f;
+        float fallback_step = 1.0f;
+        float last_resort_step = 1.0f;
+        float point_scale = 1.0f;
+        lv_coord_t min_coord_span = 10;
+        bool clamp_min_zero = false;
+        bool ensure_display_span_after_clamp = false;
+    };
     void update_temp_offset_label();
     void update_hum_offset_label();
     void update_wifi_ui();
@@ -226,12 +237,7 @@ private:
     GraphAxisRange compute_standard_graph_axis(float scale_min,
                                                float scale_max,
                                                float latest_value,
-                                               float fallback_center,
-                                               float min_span,
-                                               float fallback_step,
-                                               float point_scale,
-                                               bool clamp_min_zero,
-                                               lv_coord_t min_coord_span = 10) const;
+                                               const GraphAxisConfig &config) const;
     uint16_t humidity_graph_points() const;
     uint16_t voc_graph_points() const;
     uint16_t nox_graph_points() const;

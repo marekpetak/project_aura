@@ -130,7 +130,14 @@ void UiController::update_pm05_info_graph() {
 
     float scale_min = has_values ? min_value : 0.0f;
     float scale_max = has_values ? max_value : kFallbackValue;
-    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_value, kFallbackValue, kMinSpan, 100.0f, 1.0f, true);
+    GraphAxisConfig axis_config{};
+    axis_config.fallback_center = kFallbackValue;
+    axis_config.min_span = kMinSpan;
+    axis_config.fallback_half_span = kMinSpan;
+    axis_config.fallback_step = 100.0f;
+    axis_config.point_scale = 1.0f;
+    axis_config.clamp_min_zero = true;
+    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_value, axis_config);
 
     lv_chart_set_div_line_count(objects.chart_pm05_info,
                                 axis.horizontal_divisions,
@@ -273,7 +280,14 @@ void UiController::update_pm25_4_info_graph() {
 
     float scale_min = has_values ? min_value : 0.0f;
     float scale_max = has_values ? max_value : fallback_value;
-    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_value, fallback_value, min_span, 5.0f, 10.0f, true);
+    GraphAxisConfig axis_config{};
+    axis_config.fallback_center = fallback_value;
+    axis_config.min_span = min_span;
+    axis_config.fallback_half_span = min_span;
+    axis_config.fallback_step = 5.0f;
+    axis_config.point_scale = 10.0f;
+    axis_config.clamp_min_zero = true;
+    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_value, axis_config);
 
     lv_chart_set_div_line_count(objects.chart_pm25_4_graph,
                                 axis.horizontal_divisions,
@@ -415,7 +429,14 @@ void UiController::update_pm1_10_info_graph() {
     float scale_min = has_values ? min_value : 0.0f;
     float scale_max = has_values ? max_value : fallback_value;
     const float fallback_step = pm10_selected ? 10.0f : 2.0f;
-    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_value, fallback_value, min_span, fallback_step, 10.0f, true);
+    GraphAxisConfig axis_config{};
+    axis_config.fallback_center = fallback_value;
+    axis_config.min_span = min_span;
+    axis_config.fallback_half_span = min_span;
+    axis_config.fallback_step = fallback_step;
+    axis_config.point_scale = 10.0f;
+    axis_config.clamp_min_zero = true;
+    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_value, axis_config);
 
     lv_chart_set_div_line_count(objects.chart_pm1_10_info,
                                 axis.horizontal_divisions,

@@ -1212,6 +1212,7 @@ const GAS_METRICS = [
   { key:'co',   label:'CO',   unit:'ppm', max:thresholds.co.bad,   thr:thresholds.co,   digits:1 },
 ];
 
+// Keep in sync with UiOptionalGasProfile.cpp until these values are served by firmware state/API.
 const OPTIONAL_GAS_PROFILES = {
   NH3: { label:'NH3', unit:'ppm', max:35.0, thr:{ good:5.0, moderate:25.0, bad:35.0 }, digits:0 },
   SO2: { label:'SO2', unit:'ppm', max:2.0,  thr:{ good:0.05, moderate:0.10, bad:2.0 }, digits:1 },

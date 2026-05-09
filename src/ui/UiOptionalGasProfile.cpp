@@ -27,6 +27,7 @@ constexpr Profile kFallbackProfile{
     100.0f,
 };
 
+// Keep in sync with dashboard OPTIONAL_GAS_PROFILES until these values are served by firmware state/API.
 constexpr Profile kProfiles[] = {
     {OptionalGasType::NH3, "NH3", "Ammonia (NH3)", 0, 0, 5.0f, 25.0f, 35.0f, 5.0f, 10.0f, 100.0f},
     {OptionalGasType::SO2, "SO2", "Sulfur dioxide (SO2)", 1, 2, 0.05f, 0.10f, 2.0f, 0.05f, 0.5f, 100.0f},

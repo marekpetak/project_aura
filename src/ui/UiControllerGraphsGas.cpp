@@ -132,7 +132,14 @@ void UiController::update_voc_info_graph() {
 
     float scale_min = has_values ? min_voc : 100.0f;
     float scale_max = has_values ? max_voc : 100.0f;
-    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_voc, 100.0f, 80.0f, 25.0f, 1.0f, false);
+    GraphAxisConfig axis_config{};
+    axis_config.fallback_center = 100.0f;
+    axis_config.min_span = 80.0f;
+    axis_config.fallback_half_span = 80.0f;
+    axis_config.fallback_step = 25.0f;
+    axis_config.point_scale = 1.0f;
+    axis_config.clamp_min_zero = false;
+    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_voc, axis_config);
 
     lv_chart_set_div_line_count(objects.chart_voc_info,
                                 axis.horizontal_divisions,
@@ -260,7 +267,14 @@ void UiController::update_nox_info_graph() {
 
     float scale_min = has_values ? min_nox : 50.0f;
     float scale_max = has_values ? max_nox : 50.0f;
-    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_nox, 50.0f, 60.0f, 20.0f, 1.0f, false);
+    GraphAxisConfig axis_config{};
+    axis_config.fallback_center = 50.0f;
+    axis_config.min_span = 60.0f;
+    axis_config.fallback_half_span = 60.0f;
+    axis_config.fallback_step = 20.0f;
+    axis_config.point_scale = 1.0f;
+    axis_config.clamp_min_zero = false;
+    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_nox, axis_config);
 
     lv_chart_set_div_line_count(objects.chart_nox_info,
                                 axis.horizontal_divisions,
@@ -429,56 +443,23 @@ void UiController::update_optional_gas_info_graph() {
 
     float scale_min = has_values ? min_ppm : 0.0f;
     float scale_max = has_values ? max_ppm : profile.orange_max_ppm;
-    float scale_span = scale_max - scale_min;
-    if (!isfinite(scale_span) || scale_span < profile.graph_min_span_ppm) {
-        scale_span = profile.graph_min_span_ppm;
-    }
-
-    float step = graph_nice_step(scale_span / 4.0f);
-    if (!isfinite(step) || step <= 0.0f) {
-        step = profile.graph_min_span_ppm / 4.0f;
-    }
-    if (!isfinite(step) || step <= 0.0f) {
-        step = 0.1f;
-    }
-
-    float y_min_f = floorf((scale_min - (step * 0.9f)) / step) * step;
-    float y_max_f = ceilf((scale_max + (step * 0.9f)) / step) * step;
-    if ((y_max_f - y_min_f) < (step * 2.0f)) {
-        y_min_f -= step;
-        y_max_f += step;
-    }
-    if (!isfinite(y_min_f) || !isfinite(y_max_f) || y_max_f <= y_min_f) {
-        const float center = isfinite(latest_ppm) ? latest_ppm : profile.graph_fallback_ppm;
-        y_min_f = center - (profile.graph_min_span_ppm * 0.5f);
-        y_max_f = center + (profile.graph_min_span_ppm * 0.5f);
-    }
-    if (y_min_f < 0.0f) {
-        y_min_f = 0.0f;
-    }
-    if (y_max_f <= y_min_f) {
-        y_max_f = y_min_f + step;
-    }
-
-    lv_coord_t y_min = static_cast<lv_coord_t>(floorf(y_min_f * point_scale));
-    lv_coord_t y_max = static_cast<lv_coord_t>(ceilf(y_max_f * point_scale));
-    if (y_max <= y_min) {
-        y_max = static_cast<lv_coord_t>(y_min + 1);
-    }
-
-    int32_t horizontal_divisions = static_cast<int32_t>(lroundf((y_max_f - y_min_f) / step));
-    if (horizontal_divisions < 3) {
-        horizontal_divisions = 3;
-    }
-    if (horizontal_divisions > 12) {
-        horizontal_divisions = 12;
-    }
+    GraphAxisConfig axis_config{};
+    axis_config.fallback_center = profile.graph_fallback_ppm;
+    axis_config.min_span = profile.graph_min_span_ppm;
+    axis_config.fallback_half_span = profile.graph_min_span_ppm * 0.5f;
+    axis_config.fallback_step = profile.graph_min_span_ppm / 4.0f;
+    axis_config.last_resort_step = 0.1f;
+    axis_config.point_scale = point_scale;
+    axis_config.min_coord_span = 1;
+    axis_config.clamp_min_zero = true;
+    axis_config.ensure_display_span_after_clamp = true;
+    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_ppm, axis_config);
 
     lv_chart_set_div_line_count(objects.chart_optional_gas_info,
-                                static_cast<uint8_t>(horizontal_divisions),
+                                axis.horizontal_divisions,
                                 vertical_divisions);
-    lv_chart_set_range(objects.chart_optional_gas_info, LV_CHART_AXIS_PRIMARY_Y, y_min, y_max);
-    update_optional_gas_zone_overlay(y_min_f, y_max_f);
+    lv_chart_set_range(objects.chart_optional_gas_info, LV_CHART_AXIS_PRIMARY_Y, axis.y_min, axis.y_max);
+    update_optional_gas_zone_overlay(axis.y_min_display, axis.y_max_display);
 
     if (has_values) {
         if (!isfinite(latest_ppm)) {
@@ -601,7 +582,14 @@ void UiController::update_hcho_info_graph() {
 
     float scale_min = has_values ? min_hcho : 20.0f;
     float scale_max = has_values ? max_hcho : 20.0f;
-    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_hcho, 20.0f, 40.0f, 10.0f, 1.0f, true);
+    GraphAxisConfig axis_config{};
+    axis_config.fallback_center = 20.0f;
+    axis_config.min_span = 40.0f;
+    axis_config.fallback_half_span = 40.0f;
+    axis_config.fallback_step = 10.0f;
+    axis_config.point_scale = 1.0f;
+    axis_config.clamp_min_zero = true;
+    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_hcho, axis_config);
 
     lv_chart_set_div_line_count(objects.chart_hcho_info,
                                 axis.horizontal_divisions,
@@ -729,7 +717,14 @@ void UiController::update_co2_info_graph() {
 
     float scale_min = has_values ? min_co2 : 700.0f;
     float scale_max = has_values ? max_co2 : 700.0f;
-    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_co2, 700.0f, 150.0f, 50.0f, 1.0f, false);
+    GraphAxisConfig axis_config{};
+    axis_config.fallback_center = 700.0f;
+    axis_config.min_span = 150.0f;
+    axis_config.fallback_half_span = 150.0f;
+    axis_config.fallback_step = 50.0f;
+    axis_config.point_scale = 1.0f;
+    axis_config.clamp_min_zero = false;
+    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_co2, axis_config);
 
     lv_chart_set_div_line_count(objects.chart_co2_info,
                                 axis.horizontal_divisions,
@@ -859,7 +854,14 @@ void UiController::update_co_info_graph() {
     float scale_min = has_values ? min_co : 0.0f;
     float scale_max = has_values ? max_co : Config::AQ_CO_GREEN_MAX_PPM;
     const float fallback = Config::AQ_CO_GREEN_MAX_PPM * 0.5f;
-    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_co, fallback, 5.0f, 1.0f, 10.0f, true);
+    GraphAxisConfig axis_config{};
+    axis_config.fallback_center = fallback;
+    axis_config.min_span = 5.0f;
+    axis_config.fallback_half_span = 5.0f;
+    axis_config.fallback_step = 1.0f;
+    axis_config.point_scale = 10.0f;
+    axis_config.clamp_min_zero = true;
+    const GraphAxisRange axis = compute_standard_graph_axis(scale_min, scale_max, latest_co, axis_config);
 
     lv_chart_set_div_line_count(objects.chart_co_info,
                                 axis.horizontal_divisions,

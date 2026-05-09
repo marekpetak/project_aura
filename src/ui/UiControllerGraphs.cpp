@@ -391,13 +391,12 @@ UiController::GraphSeriesStats UiController::populate_info_chart_series(lv_obj_t
 UiController::GraphAxisRange UiController::compute_standard_graph_axis(float scale_min,
                                                                        float scale_max,
                                                                        float latest_value,
-                                                                       float fallback_center,
-                                                                       float min_span,
-                                                                       float fallback_step,
-                                                                       float point_scale,
-                                                                       bool clamp_min_zero,
-                                                                       lv_coord_t min_coord_span) const {
+                                                                       const GraphAxisConfig &config) const {
     GraphAxisRange range{};
+    const float min_span = (isfinite(config.min_span) && config.min_span > 0.0f) ? config.min_span : 1.0f;
+    const float fallback_half_span = (isfinite(config.fallback_half_span) && config.fallback_half_span > 0.0f)
+        ? config.fallback_half_span
+        : min_span;
 
     float scale_span = scale_max - scale_min;
     if (!isfinite(scale_span) || scale_span < min_span) {
@@ -406,7 +405,10 @@ UiController::GraphAxisRange UiController::compute_standard_graph_axis(float sca
 
     float step = graph_nice_step(scale_span / 4.0f);
     if (!isfinite(step) || step <= 0.0f) {
-        step = fallback_step;
+        step = config.fallback_step;
+    }
+    if (!isfinite(step) || step <= 0.0f) {
+        step = config.last_resort_step;
     }
     if (!isfinite(step) || step <= 0.0f) {
         step = 1.0f;
@@ -419,19 +421,22 @@ UiController::GraphAxisRange UiController::compute_standard_graph_axis(float sca
         y_max_f += step;
     }
     if (!isfinite(y_min_f) || !isfinite(y_max_f) || y_max_f <= y_min_f) {
-        const float center = isfinite(latest_value) ? latest_value : fallback_center;
-        y_min_f = center - min_span;
-        y_max_f = center + min_span;
+        const float center = isfinite(latest_value) ? latest_value : config.fallback_center;
+        y_min_f = center - fallback_half_span;
+        y_max_f = center + fallback_half_span;
     }
-    if (clamp_min_zero && y_min_f < 0.0f) {
+    if (config.clamp_min_zero && y_min_f < 0.0f) {
         y_min_f = 0.0f;
     }
+    if (config.ensure_display_span_after_clamp && y_max_f <= y_min_f) {
+        y_max_f = y_min_f + step;
+    }
 
-    const float coord_scale = (isfinite(point_scale) && point_scale > 0.0f) ? point_scale : 1.0f;
+    const float coord_scale = (isfinite(config.point_scale) && config.point_scale > 0.0f) ? config.point_scale : 1.0f;
     lv_coord_t y_min = static_cast<lv_coord_t>(floorf(y_min_f * coord_scale));
     lv_coord_t y_max = static_cast<lv_coord_t>(ceilf(y_max_f * coord_scale));
     if (y_max <= y_min) {
-        const lv_coord_t span = (min_coord_span > 0) ? min_coord_span : 1;
+        const lv_coord_t span = (config.min_coord_span > 0) ? config.min_coord_span : 1;
         y_max = static_cast<lv_coord_t>(y_min + span);
     }
 
