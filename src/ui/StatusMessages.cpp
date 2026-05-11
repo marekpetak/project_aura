@@ -16,12 +16,41 @@ namespace {
 
 constexpr size_t kMaxMessages = 12;
 
+StatusSeverity severity_from_band(DisplayThresholds::Band band) {
+    switch (band) {
+        case DisplayThresholds::Band::Yellow:
+            return STATUS_YELLOW;
+        case DisplayThresholds::Band::Orange:
+            return STATUS_ORANGE;
+        case DisplayThresholds::Band::Red:
+            return STATUS_RED;
+        case DisplayThresholds::Band::Green:
+        case DisplayThresholds::Band::Invalid:
+        default:
+            return STATUS_NONE;
+    }
+}
+
+StatusSeverity classify_high_severity(float value, const DisplayThresholds::High &thresholds) {
+    return severity_from_band(DisplayThresholds::classifyHigh(value, thresholds));
+}
+
+StatusSeverity classify_range_severity(float value, const DisplayThresholds::Range &thresholds) {
+    return severity_from_band(DisplayThresholds::classifyRange(value, thresholds));
+}
+
+bool is_low_side(float value, const DisplayThresholds::Range &thresholds) {
+    return isfinite(value) && value < thresholds.good_min;
+}
+
 } // namespace
 
 using UiStrings::TextId;
 using UiStrings::text;
 
-StatusMessageResult build_status_messages(const SensorData &data, bool gas_warmup) {
+StatusMessageResult build_status_messages(const SensorData &data,
+                                          bool gas_warmup,
+                                          const DisplayThresholds::Config &thresholds) {
     StatusMessageResult result;
 
     StatusSeverity co2_sev = STATUS_NONE;
@@ -52,14 +81,12 @@ StatusMessageResult build_status_messages(const SensorData &data, bool gas_warmu
 
     if (data.co2_valid && data.co2 > 0) {
         result.has_valid = true;
-        if (data.co2 >= 1500) {
-            co2_sev = STATUS_RED;
+        co2_sev = classify_high_severity(static_cast<float>(data.co2), thresholds.co2);
+        if (co2_sev == STATUS_RED) {
             co2_msg = text(TextId::MsgCo2VeryHigh);
-        } else if (data.co2 >= 1000) {
-            co2_sev = STATUS_ORANGE;
+        } else if (co2_sev == STATUS_ORANGE) {
             co2_msg = text(TextId::MsgCo2High);
-        } else if (data.co2 >= 800) {
-            co2_sev = STATUS_YELLOW;
+        } else if (co2_sev == STATUS_YELLOW) {
             co2_msg = text(TextId::MsgCo2Rising);
         }
     }
@@ -69,14 +96,12 @@ StatusMessageResult build_status_messages(const SensorData &data, bool gas_warmu
         isfinite(data.co_ppm) &&
         data.co_ppm >= 0.0f) {
         result.has_valid = true;
-        if (data.co_ppm > 100.0f) {
-            co_sev = STATUS_RED;
+        co_sev = classify_high_severity(data.co_ppm, thresholds.co);
+        if (co_sev == STATUS_RED) {
             co_msg = text(TextId::MsgCoDanger);
-        } else if (data.co_ppm > 35.0f) {
-            co_sev = STATUS_ORANGE;
+        } else if (co_sev == STATUS_ORANGE) {
             co_msg = text(TextId::MsgCoElevated);
-        } else if (data.co_ppm >= 9.0f) {
-            co_sev = STATUS_YELLOW;
+        } else if (co_sev == STATUS_YELLOW) {
             co_msg = text(TextId::MsgCoDetected);
         }
     }
@@ -132,14 +157,12 @@ StatusMessageResult build_status_messages(const SensorData &data, bool gas_warmu
 
     if (data.hcho_valid && isfinite(data.hcho) && data.hcho >= 0.0f) {
         result.has_valid = true;
-        if (data.hcho >= 100.0f) {
-            hcho_sev = STATUS_RED;
+        hcho_sev = classify_high_severity(data.hcho, thresholds.hcho);
+        if (hcho_sev == STATUS_RED) {
             hcho_msg = text(TextId::MsgHchoVeryHigh);
-        } else if (data.hcho >= 60.0f) {
-            hcho_sev = STATUS_ORANGE;
+        } else if (hcho_sev == STATUS_ORANGE) {
             hcho_msg = text(TextId::MsgHchoHigh);
-        } else if (data.hcho >= 30.0f) {
-            hcho_sev = STATUS_YELLOW;
+        } else if (hcho_sev == STATUS_YELLOW) {
             hcho_msg = text(TextId::MsgHchoDetected);
         }
     }
@@ -175,24 +198,14 @@ StatusMessageResult build_status_messages(const SensorData &data, bool gas_warmu
     if (data.temp_valid && isfinite(data.temperature)) {
         result.has_valid = true;
         const float t = data.temperature;
-        if (t < 16.0f) {
-            temp_sev = STATUS_RED;
-            temp_msg = text(TextId::MsgTempTooCold);
-        } else if (t < 18.0f) {
-            temp_sev = STATUS_ORANGE;
-            temp_msg = text(TextId::MsgTempCold);
-        } else if (t < 20.0f) {
-            temp_sev = STATUS_YELLOW;
-            temp_msg = text(TextId::MsgTempSlightlyCool);
-        } else if (t > 28.0f) {
-            temp_sev = STATUS_RED;
-            temp_msg = text(TextId::MsgTempTooHot);
-        } else if (t > 26.0f) {
-            temp_sev = STATUS_ORANGE;
-            temp_msg = text(TextId::MsgTempWarm);
-        } else if (t > 25.0f) {
-            temp_sev = STATUS_YELLOW;
-            temp_msg = text(TextId::MsgTempSlightlyWarm);
+        temp_sev = classify_range_severity(t, thresholds.temp);
+        const bool low = is_low_side(t, thresholds.temp);
+        if (temp_sev == STATUS_RED) {
+            temp_msg = text(low ? TextId::MsgTempTooCold : TextId::MsgTempTooHot);
+        } else if (temp_sev == STATUS_ORANGE) {
+            temp_msg = text(low ? TextId::MsgTempCold : TextId::MsgTempWarm);
+        } else if (temp_sev == STATUS_YELLOW) {
+            temp_msg = text(low ? TextId::MsgTempSlightlyCool : TextId::MsgTempSlightlyWarm);
         }
     }
 
@@ -202,30 +215,19 @@ StatusMessageResult build_status_messages(const SensorData &data, bool gas_warmu
     if (data.temp_valid && data.hum_valid) {
         dew_c = MathUtils::compute_dew_point_c(data.temperature, data.humidity);
         if (isfinite(dew_c)) {
-            if (dew_c < 5.0f) {
-                dp_sev = STATUS_RED;
-                dp_msg = text(TextId::MsgDewPointVeryLow);
-                dp_low = true;
-            } else if (dew_c < 8.0f) {
-                dp_sev = STATUS_ORANGE;
-                dp_msg = text(TextId::MsgDewPointLow);
-                dp_low = true;
-            } else if (dew_c < 10.0f) {
-                dp_sev = STATUS_YELLOW;
-                dp_msg = text(TextId::MsgDewPointLow);
-                dp_low = true;
-            } else if (dew_c > 21.0f) {
-                dp_sev = STATUS_RED;
-                dp_msg = text(TextId::MsgDewPointMuggy);
-                dp_high = true;
-            } else if (dew_c > 18.0f) {
-                dp_sev = STATUS_ORANGE;
-                dp_msg = text(TextId::MsgDewPointVeryHigh);
-                dp_high = true;
-            } else if (dew_c > 16.0f) {
-                dp_sev = STATUS_YELLOW;
-                dp_msg = text(TextId::MsgDewPointHigh);
-                dp_high = true;
+            dp_sev = classify_range_severity(dew_c, thresholds.dew_point);
+            dp_low = dp_sev != STATUS_NONE && is_low_side(dew_c, thresholds.dew_point);
+            dp_high = dp_sev != STATUS_NONE && !dp_low;
+            if (dp_low) {
+                dp_msg = text(dp_sev == STATUS_RED ? TextId::MsgDewPointVeryLow : TextId::MsgDewPointLow);
+            } else if (dp_high) {
+                if (dp_sev == STATUS_RED) {
+                    dp_msg = text(TextId::MsgDewPointMuggy);
+                } else if (dp_sev == STATUS_ORANGE) {
+                    dp_msg = text(TextId::MsgDewPointVeryHigh);
+                } else if (dp_sev == STATUS_YELLOW) {
+                    dp_msg = text(TextId::MsgDewPointHigh);
+                }
             }
         }
     }
@@ -233,24 +235,14 @@ StatusMessageResult build_status_messages(const SensorData &data, bool gas_warmu
     if (data.hum_valid && isfinite(data.humidity)) {
         result.has_valid = true;
         const float h = data.humidity;
-        if (h < 20.0f) {
-            hum_sev = STATUS_RED;
-            hum_msg = text(TextId::MsgHumidityExtremelyLow);
-        } else if (h < 30.0f) {
-            hum_sev = STATUS_ORANGE;
-            hum_msg = text(TextId::MsgHumidityVeryLow);
-        } else if (h < 40.0f) {
-            hum_sev = STATUS_YELLOW;
-            hum_msg = text(TextId::MsgHumidityLow);
-        } else if (h > 70.0f) {
-            hum_sev = STATUS_RED;
-            hum_msg = text(TextId::MsgHumidityExtremelyHigh);
-        } else if (h > 65.0f) {
-            hum_sev = STATUS_ORANGE;
-            hum_msg = text(TextId::MsgHumidityVeryHigh);
-        } else if (h > 60.0f) {
-            hum_sev = STATUS_YELLOW;
-            hum_msg = text(TextId::MsgHumidityHigh);
+        hum_sev = classify_range_severity(h, thresholds.rh);
+        const bool low = is_low_side(h, thresholds.rh);
+        if (hum_sev == STATUS_RED) {
+            hum_msg = text(low ? TextId::MsgHumidityExtremelyLow : TextId::MsgHumidityExtremelyHigh);
+        } else if (hum_sev == STATUS_ORANGE) {
+            hum_msg = text(low ? TextId::MsgHumidityVeryLow : TextId::MsgHumidityVeryHigh);
+        } else if (hum_sev == STATUS_YELLOW) {
+            hum_msg = text(low ? TextId::MsgHumidityLow : TextId::MsgHumidityHigh);
         }
     }
 
@@ -258,33 +250,21 @@ StatusMessageResult build_status_messages(const SensorData &data, bool gas_warmu
         float ah_gm3 = MathUtils::compute_absolute_humidity_gm3(data.temperature, data.humidity);
         if (isfinite(ah_gm3)) {
             result.has_valid = true;
-            if (ah_gm3 < 4.0f) {
-                ah_sev = STATUS_RED;
-                ah_msg = text(TextId::MsgAhVeryLow);
-            } else if (ah_gm3 < 5.0f) {
-                ah_sev = STATUS_ORANGE;
-                ah_msg = text(TextId::MsgAhLow);
-            } else if (ah_gm3 < 7.0f) {
-                ah_sev = STATUS_YELLOW;
-                ah_msg = text(TextId::MsgAhLow);
-            } else if (ah_gm3 > 20.0f) {
-                ah_sev = STATUS_RED;
-                ah_msg = text(TextId::MsgAhVeryHigh);
-            } else if (ah_gm3 > 18.0f) {
-                ah_sev = STATUS_ORANGE;
-                ah_msg = text(TextId::MsgAhHigh);
-            } else if (ah_gm3 > 15.0f) {
-                ah_sev = STATUS_YELLOW;
-                ah_msg = text(TextId::MsgAhHigh);
+            ah_sev = classify_range_severity(ah_gm3, thresholds.ah);
+            const bool low = is_low_side(ah_gm3, thresholds.ah);
+            if (ah_sev == STATUS_RED) {
+                ah_msg = text(low ? TextId::MsgAhVeryLow : TextId::MsgAhVeryHigh);
+            } else if (ah_sev == STATUS_ORANGE || ah_sev == STATUS_YELLOW) {
+                ah_msg = text(low ? TextId::MsgAhLow : TextId::MsgAhHigh);
             }
         }
     }
 
-    if (dp_high && data.hum_valid && data.humidity > 60.0f) {
+    if (dp_high && data.hum_valid && data.humidity > thresholds.rh.good_max) {
         hum_sev = STATUS_NONE;
         hum_msg = nullptr;
     }
-    if (dp_low && data.hum_valid && data.humidity < 40.0f) {
+    if (dp_low && data.hum_valid && data.humidity < thresholds.rh.good_min) {
         dp_sev = STATUS_NONE;
         dp_msg = nullptr;
     }

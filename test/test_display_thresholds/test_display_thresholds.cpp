@@ -22,6 +22,10 @@ void test_display_threshold_defaults_classify_current_visual_bands() {
     TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Green),
                           static_cast<int>(DisplayThresholds::classifyRange(12.0f, cfg.dew_point)));
     TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Green),
+                          static_cast<int>(DisplayThresholds::classifyRange(10.5f, cfg.dew_point)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Yellow),
+                          static_cast<int>(DisplayThresholds::classifyRange(8.5f, cfg.dew_point)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Green),
                           static_cast<int>(DisplayThresholds::classifyRange(10.0f, cfg.ah)));
     TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Green),
                           static_cast<int>(DisplayThresholds::classifyHigh(700.0f, cfg.co2)));

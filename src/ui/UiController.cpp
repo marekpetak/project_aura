@@ -103,8 +103,11 @@ enum class SettingsLogSeverity : uint8_t {
     Error,
 };
 
-bool should_wake_backlight_on_alert(const SensorData &data, bool gas_warmup) {
-    StatusMessages::StatusMessageResult result = StatusMessages::build_status_messages(data, gas_warmup);
+bool should_wake_backlight_on_alert(const SensorData &data,
+                                    bool gas_warmup,
+                                    const DisplayThresholds::Config &thresholds) {
+    StatusMessages::StatusMessageResult result =
+        StatusMessages::build_status_messages(data, gas_warmup, thresholds);
     for (size_t i = 0; i < result.count; ++i) {
         const StatusMessages::StatusMessage &msg = result.messages[i];
         if (msg.sensor == StatusMessages::STATUS_SENSOR_CO &&
@@ -895,8 +898,9 @@ void UiController::begin() {
 }
 
 void UiController::onSensorPoll(const SensorManager::PollResult &poll) {
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
     backlightManager.setAlarmWakeActive(
-        should_wake_backlight_on_alert(currentData, sensorManager.isWarmupActive()));
+        should_wake_backlight_on_alert(currentData, sensorManager.isWarmupActive(), thresholds));
     if (poll.data_changed || poll.warmup_changed) {
         data_dirty = true;
     }
@@ -1151,7 +1155,9 @@ void UiController::poll(uint32_t now) {
         co2_calib_overlay_mode_ == Co2CalibOverlayMode::CalibrationProgress ||
         co2_calib_overlay_mode_ == Co2CalibOverlayMode::AscProgress;
     backlightManager.setAlarmWakeActive(
-        should_wake_backlight_on_alert(currentData, sensorManager.isWarmupActive()));
+        should_wake_backlight_on_alert(currentData,
+                                       sensorManager.isWarmupActive(),
+                                       displayThresholds.snapshot()));
     bool desired = false;
     if (nightModeManager.poll(night_mode, desired)) {
         set_night_mode_state(desired, true);
@@ -2800,8 +2806,9 @@ void UiController::compute_status_summary(bool gas_warmup,
     co_alert_active = false;
     max_severity = static_cast<uint8_t>(StatusMessages::STATUS_NONE);
 
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
     StatusMessages::StatusMessageResult result =
-        StatusMessages::build_status_messages(currentData, gas_warmup);
+        StatusMessages::build_status_messages(currentData, gas_warmup, thresholds);
     for (size_t i = 0; i < result.count; ++i) {
         const StatusMessages::StatusMessage &msg = result.messages[i];
         if (msg.sensor == StatusMessages::STATUS_SENSOR_CO) {
@@ -2815,7 +2822,9 @@ void UiController::compute_status_summary(bool gas_warmup,
 }
 
 void UiController::update_status_message(uint32_t now_ms, bool gas_warmup) {
-    StatusMessages::StatusMessageResult result = StatusMessages::build_status_messages(currentData, gas_warmup);
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
+    StatusMessages::StatusMessageResult result =
+        StatusMessages::build_status_messages(currentData, gas_warmup, thresholds);
     const StatusMessages::StatusMessage *messages = result.messages;
     const size_t count = result.count;
     const bool has_valid = result.has_valid;

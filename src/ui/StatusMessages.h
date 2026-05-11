@@ -10,6 +10,7 @@
 #include <cstdint>
 
 #include "config/AppData.h"
+#include "modules/DisplayThresholds.h"
 
 namespace StatusMessages {
 
@@ -47,6 +48,8 @@ struct StatusMessageResult {
     StatusMessage messages[12] = {};
 };
 
-StatusMessageResult build_status_messages(const SensorData &data, bool gas_warmup);
+StatusMessageResult build_status_messages(const SensorData &data,
+                                          bool gas_warmup,
+                                          const DisplayThresholds::Config &thresholds);
 
 } // namespace StatusMessages

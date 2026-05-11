@@ -753,7 +753,7 @@ const thresholds = {
   co:              { good: 9,    moderate: 35,   bad: 100 },
   temp:            { good: [20, 25], moderate: [18, 26], bad: [16, 28] },
   rh:              { good: [40, 60], moderate: [30, 65], bad: [20, 70] },
-  dewPoint:        { good: [11, 16], moderate: [9, 18],  bad: [5, 21] },
+  dewPoint:        { good: [10, 16], moderate: [8, 18],  bad: [5, 21] },
   ah:              { good: [7, 15],  moderate: [5, 18],  bad: [4, 20] },
   mold:            { good: 2,    moderate: 4,    bad: 7 },
   pressureDelta3h: { good: 1.0,  moderate: 3.0,  bad: 6.0 },

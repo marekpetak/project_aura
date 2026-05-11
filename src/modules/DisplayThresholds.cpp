@@ -196,7 +196,7 @@ Config defaults() {
     cfg.version = kVersion;
     cfg.temp = {16.0f, 18.0f, 20.0f, 25.0f, 26.0f, 28.0f};
     cfg.rh = {20.0f, 30.0f, 40.0f, 60.0f, 65.0f, 70.0f};
-    cfg.dew_point = {5.0f, 9.0f, 11.0f, 16.0f, 18.0f, 21.0f};
+    cfg.dew_point = {5.0f, 8.0f, 10.0f, 16.0f, 18.0f, 21.0f};
     cfg.ah = {4.0f, 5.0f, 7.0f, 15.0f, 18.0f, 20.0f};
     cfg.co2 = {800.0f, 1000.0f, 1500.0f};
     cfg.hcho = {30.0f, 60.0f, 100.0f};
