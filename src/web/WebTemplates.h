@@ -2799,6 +2799,7 @@ function validate(){
       const input=document.querySelector(`input[data-key="${m.key}"][data-field="${field}"]`);
       const v=Number(input.value);
       if(!Number.isFinite(v)){input.classList.add('invalid');ok=false}
+      if(m.type==='high' && v<0){input.classList.add('invalid');ok=false}
       return {input,v};
     });
     for(let i=1;i<vals.length;i++){

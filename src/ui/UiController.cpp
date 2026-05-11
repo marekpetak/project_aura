@@ -1000,6 +1000,7 @@ bool UiController::webSetUnitsC(bool units_c) {
         return false;
     }
     clock_ui_dirty = true;
+    sync_display_threshold_labels();
     data_dirty = true;
     mqttRuntimeState.requestPublish();
     return true;
@@ -1377,71 +1378,139 @@ void UiController::sync_display_threshold_labels() {
     const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
     char buf[192];
 
-    auto format_range = [&](const DisplayThresholds::Range &r,
-                            const char *unit,
-                            bool temp_unit,
-                            uint8_t decimals) {
-        auto cvt = [&](float value) {
-            if (!temp_unit || temp_units_c) {
-                return value;
-            }
-            return (value * 9.0f / 5.0f) + 32.0f;
-        };
-        const char *fmt = decimals == 0
-            ? "Green: %.0f-%.0f%s\nYellow: %.0f-%.0f / %.0f-%.0f%s\nOrange: %.0f-%.0f / %.0f-%.0f%s\nRed: <%.0f / >%.0f%s"
-            : "Green: %.1f-%.1f%s\nYellow: %.1f-%.1f / %.1f-%.1f%s\nOrange: %.1f-%.1f / %.1f-%.1f%s\nRed: <%.1f / >%.1f%s";
-        snprintf(buf,
-                 sizeof(buf),
-                 fmt,
-                 cvt(r.good_min),
-                 cvt(r.good_max),
-                 unit,
-                 cvt(r.yellow_min),
-                 cvt(r.good_min),
-                 cvt(r.good_max),
-                 cvt(r.yellow_max),
-                 unit,
-                 cvt(r.orange_min),
-                 cvt(r.yellow_min),
-                 cvt(r.yellow_max),
-                 cvt(r.orange_max),
-                 unit,
-                 cvt(r.orange_min),
-                 cvt(r.orange_max),
-                 unit);
+    auto cvt_temp = [&](float value, bool temp_unit) {
+        if (!temp_unit || temp_units_c) {
+            return value;
+        }
+        return (value * 9.0f / 5.0f) + 32.0f;
     };
 
-    auto format_high = [&](const DisplayThresholds::High &h, const char *unit, uint8_t decimals) {
-        const char *fmt = decimals == 0
-            ? "Green: <=%.0f%s\nYellow: <=%.0f%s\nOrange: <=%.0f%s\nRed: >%.0f%s"
-            : "Green: <=%.1f%s\nYellow: <=%.1f%s\nOrange: <=%.1f%s\nRed: >%.1f%s";
-        snprintf(buf,
-                 sizeof(buf),
-                 fmt,
-                 h.green,
-                 unit,
-                 h.yellow,
-                 unit,
-                 h.orange,
-                 unit,
-                 h.orange,
-                 unit);
+    auto fmt_number = [](float value, uint8_t decimals, char *out, size_t out_size) {
+        if (decimals == 0) {
+            snprintf(out, out_size, "%.0f", value);
+        } else {
+            snprintf(out, out_size, "%.1f", value);
+        }
     };
 
-    format_range(thresholds.temp, temp_units_c ? " C" : " F", true, 1);
-    safe_label_set_text(objects.temperature_info_thresholds, buf);
+    auto set_range_labels = [&](const DisplayThresholds::Range &r,
+                                const char *unit,
+                                bool temp_unit,
+                                uint8_t decimals,
+                                lv_obj_t *excellent,
+                                lv_obj_t *acceptable,
+                                lv_obj_t *uncomfortable,
+                                lv_obj_t *poor) {
+        char o_min[16], y_min[16], g_min[16], g_max[16], y_max[16], o_max[16];
+        fmt_number(cvt_temp(r.orange_min, temp_unit), decimals, o_min, sizeof(o_min));
+        fmt_number(cvt_temp(r.yellow_min, temp_unit), decimals, y_min, sizeof(y_min));
+        fmt_number(cvt_temp(r.good_min, temp_unit), decimals, g_min, sizeof(g_min));
+        fmt_number(cvt_temp(r.good_max, temp_unit), decimals, g_max, sizeof(g_max));
+        fmt_number(cvt_temp(r.yellow_max, temp_unit), decimals, y_max, sizeof(y_max));
+        fmt_number(cvt_temp(r.orange_max, temp_unit), decimals, o_max, sizeof(o_max));
 
-    format_range(thresholds.rh, "%", false, 0);
-    safe_label_set_text(objects.rh_info_thresholds, buf);
+        snprintf(buf, sizeof(buf), "Excellent: %s-%s%s\nConfigured optimal range", g_min, g_max, unit);
+        safe_label_set_text(excellent, buf);
+        snprintf(buf,
+                 sizeof(buf),
+                 "Acceptable: %s-%s%s or %s-%s%s\nSlightly outside optimal range",
+                 y_min,
+                 g_min,
+                 unit,
+                 g_max,
+                 y_max,
+                 unit);
+        safe_label_set_text(acceptable, buf);
+        snprintf(buf,
+                 sizeof(buf),
+                 "Uncomfortable: %s-%s%s or %s-%s%s\nNoticeable discomfort likely",
+                 o_min,
+                 y_min,
+                 unit,
+                 y_max,
+                 o_max,
+                 unit);
+        safe_label_set_text(uncomfortable, buf);
+        snprintf(buf, sizeof(buf), "Poor: <%s%s or >%s%s\nOutside configured range", o_min, unit, o_max, unit);
+        safe_label_set_text(poor, buf);
+    };
 
-    format_high(thresholds.co2, " ppm", 0);
-    safe_label_set_text(objects.co2_info_thresholds, buf);
+    auto set_high_labels = [&](const DisplayThresholds::High &h,
+                               const char *unit,
+                               uint8_t decimals,
+                               lv_obj_t *excellent,
+                               lv_obj_t *acceptable,
+                               lv_obj_t *uncomfortable,
+                               lv_obj_t *poor) {
+        char green[16], yellow[16], orange[16];
+        fmt_number(h.green, decimals, green, sizeof(green));
+        fmt_number(h.yellow, decimals, yellow, sizeof(yellow));
+        fmt_number(h.orange, decimals, orange, sizeof(orange));
 
-    format_high(thresholds.hcho, " ppb", 0);
-    safe_label_set_text(objects.hcho_info_thresholds, buf);
+        snprintf(buf, sizeof(buf), "Excellent: <=%s%s\nConfigured green zone", green, unit);
+        safe_label_set_text(excellent, buf);
+        snprintf(buf, sizeof(buf), "Acceptable: >%s-%s%s\nConfigured yellow zone", green, yellow, unit);
+        safe_label_set_text(acceptable, buf);
+        snprintf(buf, sizeof(buf), "Uncomfortable: >%s-%s%s\nConfigured orange zone", yellow, orange, unit);
+        safe_label_set_text(uncomfortable, buf);
+        snprintf(buf, sizeof(buf), "Poor: >%s%s\nConfigured red zone", orange, unit);
+        safe_label_set_text(poor, buf);
+    };
 
-    format_high(thresholds.co, " ppm", 1);
-    safe_label_set_text(objects.co_info_thresholds, buf);
+    set_range_labels(thresholds.temp,
+                     temp_units_c ? " C" : " F",
+                     true,
+                     1,
+                     objects.label_temperature_excellent,
+                     objects.label_temperature_acceptable,
+                     objects.label_temperature_uncomfortable,
+                     objects.label_temperature_poor);
+    set_range_labels(thresholds.rh,
+                     "%",
+                     false,
+                     0,
+                     objects.label_rh_excellent,
+                     objects.label_rh_acceptable,
+                     objects.label_rh_uncomfortable,
+                     objects.label_rh_poor);
+    set_range_labels(thresholds.ah,
+                     " g/m3",
+                     false,
+                     1,
+                     objects.label_ah_excellent,
+                     objects.label_ah_acceptable,
+                     objects.label_ah_uncomfortable,
+                     objects.label_ah_poor);
+    set_range_labels(thresholds.dew_point,
+                     temp_units_c ? " C" : " F",
+                     true,
+                     1,
+                     objects.label_dp_excellent_1,
+                     objects.label_dp_acceptable_1,
+                     objects.label_dp_uncomfortable_1,
+                     objects.label_dp_poor_1);
+
+    set_high_labels(thresholds.co2,
+                    " ppm",
+                    0,
+                    objects.label_co2_excellent,
+                    objects.label_co2_acceptable,
+                    objects.label_co2_uncomfortable,
+                    objects.label_co2_poor);
+    set_high_labels(thresholds.hcho,
+                    " ppb",
+                    0,
+                    objects.label_hcho_excellent,
+                    objects.label_hcho_acceptable,
+                    objects.label_hcho_uncomfortable,
+                    objects.label_hcho_poor);
+    set_high_labels(thresholds.co,
+                    " ppm",
+                    1,
+                    objects.label_co_excellent,
+                    objects.label_co_acceptable,
+                    objects.label_co_uncomfortable,
+                    objects.label_co_poor);
 }
 
 bool UiController::settings_has_unsaved_changes() const {

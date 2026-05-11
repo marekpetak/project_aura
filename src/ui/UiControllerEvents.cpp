@@ -788,6 +788,7 @@ void UiController::on_units_c_f_event(lv_event_t *e) {
     storage.config().units_mdy = date_units_mdy;
     persist_ui_config(storage, "unit system");
     clock_ui_dirty = true;
+    sync_display_threshold_labels();
     update_clock_labels();
     update_ui();
 }
@@ -826,6 +827,7 @@ void UiController::on_units_mdy_event(lv_event_t *e) {
     storage.config().units_c = temp_units_c;
     persist_ui_config(storage, "unit system");
     clock_ui_dirty = true;
+    sync_display_threshold_labels();
     update_clock_labels();
     update_ui();
 }
