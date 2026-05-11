@@ -513,11 +513,12 @@ void UiController::ensure_hcho_zone_overlay() {
 void UiController::update_hcho_zone_overlay(float y_min_display, float y_max_display) {
     ensure_hcho_zone_overlay();
 
-    static const float kHchoZoneBounds[] = {
+    const DisplayThresholds::High hcho = displayThresholds.snapshot().hcho;
+    const float kHchoZoneBounds[] = {
         kGraphZoneLowerSentinel,
-        Config::AQ_HCHO_GREEN_MAX_PPB,
-        Config::AQ_HCHO_YELLOW_MAX_PPB,
-        Config::AQ_HCHO_ORANGE_MAX_PPB,
+        hcho.green,
+        hcho.yellow,
+        hcho.orange,
         kGraphZoneUpperSentinel};
     static const GraphZoneTone kHchoZoneTones[] = {
         GRAPH_ZONE_GREEN,
@@ -648,11 +649,12 @@ void UiController::ensure_co2_zone_overlay() {
 void UiController::update_co2_zone_overlay(float y_min_display, float y_max_display) {
     ensure_co2_zone_overlay();
 
-    static const float kCo2ZoneBounds[] = {
+    const DisplayThresholds::High co2 = displayThresholds.snapshot().co2;
+    const float kCo2ZoneBounds[] = {
         kGraphZoneLowerSentinel,
-        Config::AQ_CO2_GREEN_MAX_PPM,
-        Config::AQ_CO2_YELLOW_MAX_PPM,
-        Config::AQ_CO2_ORANGE_MAX_PPM,
+        co2.green,
+        co2.yellow,
+        co2.orange,
         kGraphZoneUpperSentinel};
     static const GraphZoneTone kCo2ZoneTones[] = {
         GRAPH_ZONE_GREEN,
@@ -783,11 +785,12 @@ void UiController::ensure_co_zone_overlay() {
 void UiController::update_co_zone_overlay(float y_min_display, float y_max_display) {
     ensure_co_zone_overlay();
 
-    static const float kCoZoneBounds[] = {
+    const DisplayThresholds::High co = displayThresholds.snapshot().co;
+    const float kCoZoneBounds[] = {
         kGraphZoneLowerSentinel,
-        Config::AQ_CO_GREEN_MAX_PPM,
-        Config::AQ_CO_YELLOW_MAX_PPM,
-        Config::AQ_CO_ORANGE_MAX_PPM,
+        co.green,
+        co.yellow,
+        co.orange,
         kGraphZoneUpperSentinel,
     };
     static const GraphZoneTone kCoZoneTones[] = {

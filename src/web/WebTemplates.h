@@ -2666,5 +2666,175 @@ static const char kDacPageTemplate[] PROGMEM = R"HTML(
 )HTML";
 #endif
 
+static const char kThresholdsPageTemplate[] PROGMEM = R"HTML(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AURA | Display Thresholds</title>
+  <style>
+    :root{color-scheme:dark;--bg:#111827;--panel:#1f2937;--panel2:#172033;--border:#374151;--text:#f9fafb;--muted:#9ca3af;--cyan:#67e8f9;--green:#22c55e;--yellow:#facc15;--orange:#f97316;--red:#ef4444}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+    .wrap{max-width:980px;margin:0 auto}.hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}.brand{font-size:24px;font-weight:800;letter-spacing:.04em}.sub{color:var(--muted);font-size:13px;margin-top:2px}
+    .btn{border:1px solid var(--border);background:rgba(31,41,55,.82);color:var(--text);border-radius:8px;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none}.btn:hover{border-color:#4b5563;background:#263244}.btn.primary{border-color:rgba(6,182,212,.5);background:rgba(6,182,212,.16);color:var(--cyan)}.btn.danger{border-color:rgba(239,68,68,.45);color:#fca5a5;background:rgba(239,68,68,.12)}.btn:disabled{opacity:.45;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}.card{background:var(--panel);border:1px solid rgba(55,65,81,.72);border-radius:12px;padding:14px}.card h2{font-size:16px;margin:0 0 10px}.card p{color:var(--muted);font-size:12px;margin:0 0 12px;line-height:1.4}
+    .row{display:grid;grid-template-columns:1fr 86px;gap:10px;align-items:center;margin:8px 0}.label{font-size:13px;color:#d1d5db}.hint{font-size:11px;color:var(--muted);margin-top:2px}.input{width:100%;background:#111827;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 9px;font-size:14px;text-align:right}.input.invalid{border-color:var(--red);box-shadow:0 0 0 2px rgba(239,68,68,.16)}
+    .tone{display:inline-flex;align-items:center;gap:7px}.dot{width:10px;height:10px;border-radius:999px;display:inline-block}.green{background:var(--green)}.yellow{background:var(--yellow)}.orange{background:var(--orange)}.red{background:var(--red)}
+    .switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid rgba(55,65,81,.55)}.switch{width:42px;height:22px;background:#374151;border-radius:999px;position:relative;cursor:pointer;flex-shrink:0}.switch.on{background:#0891b2}.switch::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .16s}.switch.on::after{left:23px}
+    .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}.status{margin-top:10px;font-size:13px;color:var(--muted)}.status.ok{color:#86efac}.status.err{color:#fca5a5}.banner{border:1px solid rgba(103,232,249,.25);background:rgba(6,182,212,.08);border-radius:10px;padding:10px 12px;color:#cffafe;font-size:13px;margin-bottom:14px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div><div class="brand">AURA</div><div class="sub">Display thresholds</div></div>
+    <a class="btn" href="/dashboard">Back to dashboard</a>
+  </div>
+  <div class="banner">These thresholds control visual colors only. AQI, DAC Auto, MQTT and sensor readings are unchanged.</div>
+  <div class="grid" id="cards"></div>
+  <div class="card" style="margin-top:14px">
+    <h2>Background alerts</h2>
+    <p>Each switch controls only the main-screen background alert for that gas. Dots and dashboard colors still follow thresholds.</p>
+    <div id="backgroundSwitches"></div>
+  </div>
+  <div class="actions">
+    <button class="btn primary" id="saveBtn" disabled>Save</button>
+    <button class="btn danger" id="resetBtn">Reset to defaults</button>
+  </div>
+  <div id="status" class="status">Loading...</div>
+</div>
+<script>
+const RANGE_FIELDS = [
+  ['orange_min','Low red edge','Below this is red'],
+  ['yellow_min','Low orange edge','Below this is orange'],
+  ['good_min','Good min','Green starts here'],
+  ['good_max','Good max','Green ends here'],
+  ['yellow_max','High orange edge','Above this is orange'],
+  ['orange_max','High red edge','Above this is red'],
+];
+const HIGH_FIELDS = [
+  ['green','Green max','At or below this is green'],
+  ['yellow','Yellow max','At or below this is yellow'],
+  ['orange','Orange max','At or below this is orange'],
+];
+const METRICS = [
+  {key:'temp',label:'Temperature',unitC:'C',unitF:'F',type:'range',temp:true,digits:1},
+  {key:'rh',label:'Humidity',unit:'%',type:'range',digits:0},
+  {key:'dew_point',label:'Dew Point',unitC:'C',unitF:'F',type:'range',temp:true,digits:1},
+  {key:'ah',label:'Absolute Humidity',unit:'g/m3',type:'range',digits:1},
+  {key:'co2',label:'CO2',unit:'ppm',type:'high',digits:0},
+  {key:'hcho',label:'HCHO',unit:'ppb',type:'high',digits:0},
+  {key:'co',label:'CO',unit:'ppm',type:'high',digits:1},
+];
+const BG = [
+  ['hcho_enabled','HCHO background alert'],
+  ['co_enabled','CO background alert'],
+  ['co2_enabled','CO2 background alert'],
+];
+let state = null, dirty = false, unitsC = true;
+const $ = id => document.getElementById(id);
+function isNum(v){return typeof v === 'number' && Number.isFinite(v)}
+function toDisplay(v,m){return m.temp && !unitsC ? (v*9/5)+32 : v}
+function fromDisplay(v,m){return m.temp && !unitsC ? (v-32)*5/9 : v}
+function fmt(v,m){return Number(toDisplay(v,m)).toFixed(m.digits)}
+function unit(m){return m.temp ? (unitsC ? m.unitC : m.unitF) : m.unit}
+function setStatus(text,cls){const el=$('status');el.textContent=text;el.className='status '+(cls||'')}
+async function getJson(url){const r=await fetch(url,{cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
+async function postJson(url,payload){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload||{})});const j=await r.json();if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
+function buildCards(){
+  $('cards').innerHTML = METRICS.map(m=>{
+    const fields = m.type === 'range' ? RANGE_FIELDS : HIGH_FIELDS;
+    return `<div class="card" data-metric="${m.key}"><h2>${m.label}</h2><p>Unit: ${unit(m)}</p>${fields.map(f=>`
+      <div class="row"><div><div class="label">${f[1]}</div><div class="hint">${f[2]}</div></div>
+      <input class="input" type="number" step="${m.digits?0.1:1}" data-key="${m.key}" data-field="${f[0]}"></div>`).join('')}</div>`;
+  }).join('');
+  $('backgroundSwitches').innerHTML = BG.map(([key,label])=>`
+    <div class="switch-row"><div><div class="label">${label}</div><div class="hint">Main-screen background only</div></div><div class="switch" data-bg="${key}"></div></div>`).join('');
+  document.querySelectorAll('input[data-key]').forEach(el=>el.addEventListener('input',markDirty));
+  document.querySelectorAll('.switch[data-bg]').forEach(el=>el.addEventListener('click',()=>{el.classList.toggle('on');markDirty()}));
+}
+function fillForm(payload){
+  state = JSON.parse(JSON.stringify(payload));
+  METRICS.forEach(m=>{
+    const cfg = state.metrics[m.key];
+    Object.keys(cfg).forEach(field=>{
+      if(field==='type')return;
+      const input=document.querySelector(`input[data-key="${m.key}"][data-field="${field}"]`);
+      if(input) input.value=fmt(cfg[field],m);
+    });
+  });
+  BG.forEach(([key])=>{
+    const sw=document.querySelector(`.switch[data-bg="${key}"]`);
+    if(sw) sw.classList.toggle('on', state.background_alerts && state.background_alerts[key] !== false);
+  });
+  dirty=false; validate();
+}
+function readForm(){
+  const metrics={};
+  METRICS.forEach(m=>{
+    const src=state.metrics[m.key];
+    const dst={type:m.type};
+    const fields=m.type==='range'?RANGE_FIELDS:HIGH_FIELDS;
+    fields.forEach(([field])=>{
+      const input=document.querySelector(`input[data-key="${m.key}"][data-field="${field}"]`);
+      dst[field]=fromDisplay(Number(input.value),m);
+    });
+    metrics[m.key]=dst;
+  });
+  const background_alerts={};
+  BG.forEach(([key])=>{
+    const sw=document.querySelector(`.switch[data-bg="${key}"]`);
+    background_alerts[key]=!!(sw && sw.classList.contains('on'));
+  });
+  return {version:1,metrics,background_alerts};
+}
+function markDirty(){dirty=true;validate()}
+function validate(){
+  let ok=true;
+  document.querySelectorAll('.input').forEach(i=>i.classList.remove('invalid'));
+  METRICS.forEach(m=>{
+    const fields=m.type==='range'?RANGE_FIELDS:HIGH_FIELDS;
+    const vals=fields.map(([field])=>{
+      const input=document.querySelector(`input[data-key="${m.key}"][data-field="${field}"]`);
+      const v=Number(input.value);
+      if(!Number.isFinite(v)){input.classList.add('invalid');ok=false}
+      return {input,v};
+    });
+    for(let i=1;i<vals.length;i++){
+      if(!(vals[i-1].v < vals[i].v)){vals[i-1].input.classList.add('invalid');vals[i].input.classList.add('invalid');ok=false}
+    }
+  });
+  $('saveBtn').disabled=!dirty||!ok;
+  if(!ok)setStatus('Fix overlapping thresholds before saving.','err');
+  else if(dirty)setStatus('Unsaved changes.','');
+  else setStatus('Ready.','ok');
+  return ok;
+}
+async function load(){
+  buildCards();
+  try{
+    const [thr, live]=await Promise.all([getJson('/api/thresholds'),getJson('/api/state')]);
+    unitsC = !(live && live.settings && live.settings.units_c === false);
+    buildCards();
+    fillForm(thr);
+  }catch(e){setStatus(e.message||'Load failed','err')}
+}
+$('saveBtn').addEventListener('click',async()=>{
+  if(!validate())return;
+  try{const res=await postJson('/api/thresholds',readForm());fillForm(res);setStatus('Saved.','ok')}
+  catch(e){setStatus(e.message||'Save failed','err')}
+});
+$('resetBtn').addEventListener('click',async()=>{
+  if(!confirm('Reset display thresholds to factory defaults?'))return;
+  try{const res=await postJson('/api/thresholds/reset',{});fillForm(res);setStatus('Defaults restored.','ok')}
+  catch(e){setStatus(e.message||'Reset failed','err')}
+});
+load();
+</script>
+</body>
+</html>
+)HTML";
+
 } // namespace WebTemplates
 

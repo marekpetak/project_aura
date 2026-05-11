@@ -110,4 +110,13 @@ void handleDacApp(WebHandlerContext &context,
                                        stream_context);
 }
 
+void handleThresholdsRoot(WebHandlerContext &context,
+                          const WebResponseUtils::StreamContext &stream_context) {
+    if (!context.server || !context.display_thresholds) {
+        return;
+    }
+    String html = FPSTR(WebTemplates::kThresholdsPageTemplate);
+    WebResponseUtils::sendHtmlStream(*context.server, html, stream_context);
+}
+
 }  // namespace WebShellAssetHandlers

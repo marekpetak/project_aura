@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include "config/AppData.h"
+#include "modules/DisplayThresholds.h"
 #include "web/WebNetworkUtils.h"
 #include "web/WebOtaState.h"
 #include "web/WebSettingsUtils.h"
@@ -26,6 +27,7 @@ struct Payload {
     int64_t time_epoch_s = 0;
     WebNetworkUtils::Snapshot network{};
     WebSettingsUtils::SettingsSnapshot settings{};
+    DisplayThresholds::Config thresholds = DisplayThresholds::defaults();
     bool ota_busy = false;
     WebOtaSnapshot ota{};
     bool ntp_active = false;

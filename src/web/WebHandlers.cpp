@@ -15,6 +15,7 @@
 #include "web/WebSettingsApiHandlers.h"
 #include "web/WebShellAssetHandlers.h"
 #include "web/WebSystemApiHandlers.h"
+#include "web/WebThresholdApiHandlers.h"
 #include "web/WebThemeApiHandlers.h"
 #include "web/WebWifiHandlers.h"
 
@@ -214,6 +215,28 @@ void dac_handle_action() {
 void dac_handle_auto() {
     with_ota_busy([](WebHandlerContext &context, bool ota_busy) {
         WebDacApiHandlers::handleAuto(context, ota_busy, WebHandlersSupport::otaBusyJson());
+    });
+}
+
+void thresholds_handle_root() {
+    with_response_context(WebShellAssetHandlers::handleThresholdsRoot);
+}
+
+void thresholds_handle_state() {
+    with_ota_busy([](WebHandlerContext &context, bool ota_busy) {
+        WebThresholdApiHandlers::handleState(context, ota_busy, WebHandlersSupport::otaBusyJson());
+    });
+}
+
+void thresholds_handle_update() {
+    with_ota_busy([](WebHandlerContext &context, bool ota_busy) {
+        WebThresholdApiHandlers::handleUpdate(context, ota_busy, WebHandlersSupport::otaBusyJson());
+    });
+}
+
+void thresholds_handle_reset() {
+    with_ota_busy([](WebHandlerContext &context, bool ota_busy) {
+        WebThresholdApiHandlers::handleReset(context, ota_busy, WebHandlersSupport::otaBusyJson());
     });
 }
 

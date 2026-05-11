@@ -18,6 +18,7 @@ class ChartsRuntimeState;
 class ConnectivityRuntime;
 class WebUiBridge;
 class WebRuntimeState;
+class DisplayThresholdManager;
 
 struct WebHandlerContext {
     WebRequest *server = nullptr;
@@ -55,4 +56,5 @@ struct WebHandlerContext {
     ConnectivityRuntime *connectivity_runtime = nullptr;
     WebRuntimeState *web_runtime = nullptr;
     WebUiBridge *web_ui_bridge = nullptr;
+    DisplayThresholdManager *display_thresholds = nullptr;
 };

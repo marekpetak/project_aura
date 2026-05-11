@@ -12,6 +12,7 @@
 #include "core/ConnectivityRuntime.h"
 #include "core/MqttRuntimeState.h"
 #include "core/NetworkCommandQueue.h"
+#include "modules/DisplayThresholds.h"
 #include "ui/UiCo2Workflow.h"
 #include "ui/UiDeferredUnload.h"
 #include "web/WebUiBridge.h"
@@ -40,6 +41,7 @@ struct UiContext {
     ConnectivityRuntime &connectivityRuntime;
     MqttRuntimeState &mqttRuntimeState;
     WebUiBridge &webUiBridge;
+    DisplayThresholdManager &displayThresholds;
     NetworkCommandQueue &networkCommandQueue;
     SensorManager &sensorManager;
     ChartsHistory &chartsHistory;
@@ -510,6 +512,9 @@ private:
     bool has_poor_gas_background_alert();
     bool has_high_co2_background_alert();
     void update_main_screen_background_alert();
+    void sync_display_threshold_revision();
+    void sync_display_threshold_labels();
+    lv_color_t color_for_display_band(DisplayThresholds::Band band);
     lv_color_t blink_red(lv_color_t color);
     lv_color_t night_alert_color(lv_color_t color);
     lv_color_t alert_color_for_mode(lv_color_t color);
@@ -920,6 +925,7 @@ private:
     ConnectivityRuntime &connectivityRuntime;
     MqttRuntimeState &mqttRuntimeState;
     WebUiBridge &webUiBridge;
+    DisplayThresholdManager &displayThresholds;
     NetworkCommandQueue &networkCommandQueue;
     SensorManager &sensorManager;
     ChartsHistory &chartsHistory;
@@ -1007,6 +1013,7 @@ private:
     bool co_status_alert_active = false;
     bool poor_gas_background_alert_active_ = false;
     bool high_co2_background_alert_active_ = false;
+    uint32_t display_thresholds_revision_ = UINT32_MAX;
     ConnectivityRuntimeSnapshot connectivity_;
     bool wifi_toggle_syncing_ = false;
     bool mqtt_toggle_syncing_ = false;

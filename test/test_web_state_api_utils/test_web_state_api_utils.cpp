@@ -72,6 +72,8 @@ void test_web_state_api_utils_fill_json_populates_sensor_network_and_settings_fi
     payload.firmware = "1.1.1-test";
     payload.build_date = "Mar 19 2026";
     payload.build_time = "12:00:00";
+    payload.thresholds.co2.green = 700.0f;
+    payload.thresholds.background_alerts.co2_enabled = false;
 
     ArduinoJson::JsonDocument doc;
     WebStateApiUtils::fillJson(doc.to<ArduinoJson::JsonObject>(), payload);
@@ -99,6 +101,8 @@ void test_web_state_api_utils_fill_json_populates_sensor_network_and_settings_fi
     TEST_ASSERT_TRUE(doc["settings"]["ntp_enabled"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("router.local", doc["settings"]["ntp_server"].as<const char *>());
     TEST_ASSERT_EQUAL_STRING("Aura", doc["settings"]["display_name"].as<const char *>());
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 700.0f, doc["thresholds"]["metrics"]["co2"]["green"].as<float>());
+    TEST_ASSERT_FALSE(doc["thresholds"]["background_alerts"]["co2_enabled"].as<bool>());
 }
 
 void test_web_state_api_utils_fill_json_sets_nulls_when_values_are_unavailable() {

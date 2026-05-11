@@ -363,6 +363,10 @@ void AuraNetworkManager::attachWebUiBridge(WebUiBridge &webUiBridge) {
     web_ctx_.web_ui_bridge = &webUiBridge;
 }
 
+void AuraNetworkManager::attachDisplayThresholds(DisplayThresholdManager &displayThresholds) {
+    web_ctx_.display_thresholds = &displayThresholds;
+}
+
 void AuraNetworkManager::attachCommandQueue(NetworkCommandQueue &commandQueue) {
     g_network_command_queue = &commandQueue;
 }
@@ -393,6 +397,10 @@ void AuraNetworkManager::registerServerRoutes() {
     server.onGet("/dac/state", dac_handle_state);
     server.onPost("/dac/action", dac_handle_action);
     server.onPost("/dac/auto", dac_handle_auto);
+    server.onGet("/thresholds", thresholds_handle_root);
+    server.onGet("/api/thresholds", thresholds_handle_state);
+    server.onPost("/api/thresholds", thresholds_handle_update);
+    server.onPost("/api/thresholds/reset", thresholds_handle_reset);
     server.onGet("/api/charts", charts_handle_data);
     server.onGet("/api/state", state_handle_data);
     server.onGet("/api/events", events_handle_data);

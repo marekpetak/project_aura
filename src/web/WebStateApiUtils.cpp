@@ -191,6 +191,14 @@ void fillJson(ArduinoJson::JsonObject root, const Payload &payload) {
 
     ArduinoJson::JsonObject settings = root["settings"].to<ArduinoJson::JsonObject>();
     WebSettingsUtils::fillSettingsJson(settings, &payload.settings, nullptr);
+
+    ArduinoJson::JsonObject thresholds = root["thresholds"].to<ArduinoJson::JsonObject>();
+    thresholds["version"] = DisplayThresholds::kVersion;
+    DisplayThresholds::writeMetricsJson(thresholds["metrics"].to<ArduinoJson::JsonObject>(),
+                                        payload.thresholds);
+    DisplayThresholds::writeBackgroundAlertsJson(
+        thresholds["background_alerts"].to<ArduinoJson::JsonObject>(),
+        payload.thresholds.background_alerts);
 }
 
 } // namespace WebStateApiUtils

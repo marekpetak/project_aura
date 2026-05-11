@@ -160,7 +160,16 @@ void UiController::ensure_humidity_zone_overlay() {
 void UiController::update_humidity_zone_overlay(float y_min_display, float y_max_display) {
     ensure_humidity_zone_overlay();
 
-    static const float kRhZoneBounds[kMaxGraphZoneBounds] = {-1000.0f, 20.0f, 30.0f, 40.0f, 60.0f, 65.0f, 70.0f, 1000.0f};
+    const DisplayThresholds::Range rh = displayThresholds.snapshot().rh;
+    const float kRhZoneBounds[kMaxGraphZoneBounds] = {
+        -1000.0f,
+        rh.orange_min,
+        rh.yellow_min,
+        rh.good_min,
+        rh.good_max,
+        rh.yellow_max,
+        rh.orange_max,
+        1000.0f};
     static const GraphZoneTone kRhZoneTones[kMaxGraphZoneBands] = {
         GRAPH_ZONE_RED,
         GRAPH_ZONE_ORANGE,

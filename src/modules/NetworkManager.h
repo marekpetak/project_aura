@@ -21,6 +21,7 @@ class ChartsRuntimeState;
 class ConnectivityRuntime;
 class WebUiBridge;
 class WebRuntimeState;
+class DisplayThresholdManager;
 
 class AuraNetworkManager {
 public:
@@ -46,6 +47,7 @@ public:
     void attachConnectivityRuntime(ConnectivityRuntime &connectivityRuntime);
     void attachWebRuntime(WebRuntimeState &webRuntime);
     void attachWebUiBridge(WebUiBridge &webUiBridge);
+    void attachDisplayThresholds(DisplayThresholdManager &displayThresholds);
     void attachCommandQueue(NetworkCommandQueue &commandQueue);
     void setStateChangeCallback(StateChangeCallback cb, void *ctx);
     void poll();

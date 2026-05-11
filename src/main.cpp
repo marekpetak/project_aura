@@ -24,6 +24,7 @@
 #include "core/Watchdog.h"
 
 #include "modules/StorageManager.h"
+#include "modules/DisplayThresholds.h"
 #include "modules/PressureHistory.h"
 #include "modules/ChartsHistory.h"
 #include "modules/NetworkManager.h"
@@ -58,6 +59,7 @@ ChartsRuntimeState chartsRuntimeState;
 WebRuntimeState webRuntimeState;
 NetworkCommandQueue networkCommandQueue;
 WebUiBridge webUiBridge;
+DisplayThresholdManager displayThresholds;
 SensorManager sensorManager;
 TimeManager timeManager;
 ThemeManager themeManager;
@@ -87,6 +89,7 @@ UiContext ui_context{
     connectivityRuntime,
     mqttRuntimeState,
     webUiBridge,
+    displayThresholds,
     networkCommandQueue,
     sensorManager,
     chartsHistory,
@@ -167,6 +170,7 @@ void setup()
         chartsRuntimeState,
         webRuntimeState,
         webUiBridge,
+        displayThresholds,
         networkCommandQueue,
         sensorManager,
         timeManager,

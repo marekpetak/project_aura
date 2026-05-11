@@ -23,5 +23,7 @@ void handleDacStyles(WebHandlerContext &context,
                      const WebResponseUtils::StreamContext &stream_context);
 void handleDacApp(WebHandlerContext &context,
                   const WebResponseUtils::StreamContext &stream_context);
+void handleThresholdsRoot(WebHandlerContext &context,
+                          const WebResponseUtils::StreamContext &stream_context);
 
 }  // namespace WebShellAssetHandlers

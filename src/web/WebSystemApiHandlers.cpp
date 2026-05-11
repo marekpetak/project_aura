@@ -117,6 +117,9 @@ void handleStateData(WebHandlerContext &context, bool ota_busy, const WebOtaSnap
     const WebUiBridge::Snapshot ui_snapshot =
         context.web_ui_bridge ? context.web_ui_bridge->snapshot() : WebUiBridge::Snapshot{};
     payload.settings = WebUiBridgeAdapters::captureSettingsSnapshot(ui_snapshot);
+    payload.thresholds = context.display_thresholds
+        ? context.display_thresholds->snapshot()
+        : DisplayThresholds::defaults();
     payload.ntp_active = ui_snapshot.ntp_active;
     payload.ntp_syncing = ui_snapshot.ntp_syncing;
     payload.ntp_error = ui_snapshot.ntp_error;

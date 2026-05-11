@@ -677,6 +677,7 @@ const char kDashboardPageTemplateAp[] PROGMEM = R"HTML_DASH_AP(
           <button class="btn btn-danger" type="button" id="rebootBtn">Reboot Device</button>
           <button class="btn" type="button" id="openThemeBtn" disabled>Open Theme Studio</button>
           <button class="btn" type="button" id="openDacBtn" disabled>Open Fan Control Page</button>
+          <a class="btn link-btn" href="/thresholds">Display Thresholds</a>
           <a class="btn link-btn" href="/dashboard" id="networkActionBtn">Open Dashboard</a>
         </div>
       </div>
@@ -758,6 +759,35 @@ const thresholds = {
   pressureDelta3h: { good: 1.0,  moderate: 3.0,  bad: 6.0 },
   pressureDelta24h:{ good: 2.0,  moderate: 6.0,  bad: 10.0 },
 };
+
+function assignHighThreshold(key, source) {
+  const target = thresholds[key];
+  if (!target || !source) return;
+  if (isNum(source.green)) target.good = source.green;
+  if (isNum(source.yellow)) target.moderate = source.yellow;
+  if (isNum(source.orange)) target.bad = source.orange;
+}
+
+function assignRangeThreshold(key, source) {
+  const target = thresholds[key];
+  if (!target || !source) return;
+  if ([source.good_min, source.good_max].every(isNum)) target.good = [source.good_min, source.good_max];
+  if ([source.yellow_min, source.yellow_max].every(isNum)) target.moderate = [source.yellow_min, source.yellow_max];
+  if ([source.orange_min, source.orange_max].every(isNum)) target.bad = [source.orange_min, source.orange_max];
+}
+
+function applyThresholdsFromState(stateThresholds) {
+  const metrics = stateThresholds && stateThresholds.metrics;
+  if (!metrics || typeof metrics !== 'object') return;
+  assignHighThreshold('co2', metrics.co2);
+  assignHighThreshold('hcho', metrics.hcho);
+  assignHighThreshold('co', metrics.co);
+  assignRangeThreshold('temp', metrics.temp);
+  assignRangeThreshold('rh', metrics.rh);
+  assignRangeThreshold('dewPoint', metrics.dew_point);
+  assignRangeThreshold('ah', metrics.ah);
+  refreshGasMetricMaxes();
+}
 
 const statusColors  = { good:'#22c55e', moderate:'#facc15', bad:'#f97316', critical:'#ef4444' };
 const statusLabels  = { good:'Good', moderate:'Moderate', bad:'Poor', critical:'Hazard' };
@@ -1211,6 +1241,14 @@ const GAS_METRICS = [
   { key:'hcho', label:'HCHO', unit:'ppb', max:thresholds.hcho.bad, thr:thresholds.hcho, digits:0 },
   { key:'co',   label:'CO',   unit:'ppm', max:thresholds.co.bad,   thr:thresholds.co,   digits:1 },
 ];
+
+function refreshGasMetricMaxes() {
+  GAS_METRICS.forEach(m => {
+    if (m && thresholds[m.key] && isNum(thresholds[m.key].bad)) {
+      m.max = thresholds[m.key].bad;
+    }
+  });
+}
 
 // Keep in sync with UiOptionalGasProfile.cpp until these values are served by firmware state/API.
 const OPTIONAL_GAS_PROFILES = {
@@ -2037,6 +2075,9 @@ async function prepareOtaUpload(fileSizeBytes) {
 }
 
 function cacheStatePayload(payload) {
+  if (payload && payload.thresholds) {
+    applyThresholdsFromState(payload.thresholds);
+  }
   stateCache = payload;
   lastStateOkAtMs = Date.now();
   lastStateError = '';

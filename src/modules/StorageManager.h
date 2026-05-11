@@ -63,6 +63,7 @@ public:
     static constexpr const char *kPressurePath = "/pressure.bin";
     static constexpr const char *kChartsPath = "/charts.bin";
     static constexpr const char *kDacAutoPath = "/dac_auto.json";
+    static constexpr const char *kDisplayThresholdsPath = "/display_thresholds.json";
 
 private:
     bool loadConfig();

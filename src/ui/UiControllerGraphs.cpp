@@ -484,7 +484,16 @@ UiController::SensorGraphProfile UiController::build_temperature_graph_profile()
     profile.label_max = "MAX";
     profile.zone_count = 7;
 
-    const float bounds_c[kMaxGraphZoneBounds] = {-1000.0f, 16.0f, 18.0f, 20.0f, 25.0f, 26.0f, 28.0f, 1000.0f};
+    const DisplayThresholds::Range temp = displayThresholds.snapshot().temp;
+    const float bounds_c[kMaxGraphZoneBounds] = {
+        -1000.0f,
+        temp.orange_min,
+        temp.yellow_min,
+        temp.good_min,
+        temp.good_max,
+        temp.yellow_max,
+        temp.orange_max,
+        1000.0f};
     for (uint8_t i = 0; i < kMaxGraphZoneBounds; ++i) {
         const bool edge = (i == 0) || (i == (kMaxGraphZoneBounds - 1));
         profile.zone_bounds[i] = edge ? bounds_c[i] : temperature_to_display(bounds_c[i], temp_units_c);

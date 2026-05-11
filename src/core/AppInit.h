@@ -15,6 +15,7 @@
 #include "core/NetworkCommandQueue.h"
 #include "core/WebRuntimeState.h"
 #include "modules/StorageManager.h"
+#include "modules/DisplayThresholds.h"
 #include "modules/NetworkManager.h"
 #include "modules/MqttManager.h"
 #include "modules/SensorManager.h"
@@ -45,6 +46,7 @@ struct Context {
     ChartsRuntimeState &chartsRuntimeState;
     WebRuntimeState &webRuntimeState;
     WebUiBridge &webUiBridge;
+    DisplayThresholdManager &displayThresholds;
     NetworkCommandQueue &networkCommandQueue;
     SensorManager &sensorManager;
     TimeManager &timeManager;

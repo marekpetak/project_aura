@@ -202,6 +202,7 @@ void StorageManager::clearAll() {
     LittleFS.remove(kPressurePath);
     LittleFS.remove(kChartsPath);
     LittleFS.remove(kDacAutoPath);
+    LittleFS.remove(kDisplayThresholdsPath);
 #else
     g_blob_store.clear();
 #endif

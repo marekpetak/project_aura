@@ -123,6 +123,7 @@ bool AppInit::recoverI2cBus(gpio_num_t sda, gpio_num_t scl) {
 
 void AppInit::initManagersAndConfig(Context &ctx, StorageManager::BootAction boot_action) {
     ctx.storage.begin(boot_action);
+    ctx.displayThresholds.begin(ctx.storage);
     ctx.networkManager.begin(ctx.storage);
     ctx.mqttManager.begin(ctx.storage, ctx.networkManager, ctx.mqttRuntimeState);
 
@@ -145,6 +146,7 @@ void AppInit::initManagersAndConfig(Context &ctx, StorageManager::BootAction boo
     ctx.networkManager.attachConnectivityRuntime(ctx.connectivityRuntime);
     ctx.networkManager.attachWebRuntime(ctx.webRuntimeState);
     ctx.networkManager.attachWebUiBridge(ctx.webUiBridge);
+    ctx.networkManager.attachDisplayThresholds(ctx.displayThresholds);
     ctx.networkManager.attachCommandQueue(ctx.networkCommandQueue);
     g_wifi_state_ctx.network = &ctx.networkManager;
     g_wifi_state_ctx.time_manager = &ctx.timeManager;

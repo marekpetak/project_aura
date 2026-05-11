@@ -326,6 +326,7 @@ UiController::UiController(const UiContext &context)
       connectivityRuntime(context.connectivityRuntime),
       mqttRuntimeState(context.mqttRuntimeState),
       webUiBridge(context.webUiBridge),
+      displayThresholds(context.displayThresholds),
       networkCommandQueue(context.networkCommandQueue),
       sensorManager(context.sensorManager),
       chartsHistory(context.chartsHistory),
@@ -846,6 +847,8 @@ void UiController::begin() {
         night_mode_on_enter();
     }
     init_ui_defaults();
+    display_thresholds_revision_ = displayThresholds.revision();
+    sync_display_threshold_labels();
     if (objects.label_boot_ver) {
         char version_text[32];
         snprintf(version_text, sizeof(version_text), "v%s", AppVersion::fullVersion());
@@ -1126,9 +1129,23 @@ void UiController::webRequestRestart() {
     WebHandlersRequestRestart();
 }
 
+void UiController::sync_display_threshold_revision() {
+    const uint32_t revision = displayThresholds.revision();
+    if (revision == display_thresholds_revision_) {
+        return;
+    }
+    display_thresholds_revision_ = revision;
+    poor_gas_background_alert_active_ = false;
+    high_co2_background_alert_active_ = false;
+    invalidate_active_graph_refresh_cache();
+    sync_display_threshold_labels();
+    data_dirty = true;
+}
+
 void UiController::poll(uint32_t now) {
     refreshConnectivitySnapshot();
     processWebUiBridgeCommands();
+    sync_display_threshold_revision();
     const bool co2_overlay_progress_active =
         co2_calib_overlay_mode_ == Co2CalibOverlayMode::CalibrationProgress ||
         co2_calib_overlay_mode_ == Co2CalibOverlayMode::AscProgress;
@@ -1356,6 +1373,77 @@ void UiController::safe_label_set_text_static(lv_obj_t *obj, const char *new_tex
     lv_label_set_text_static(obj, new_text);
 }
 
+void UiController::sync_display_threshold_labels() {
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
+    char buf[192];
+
+    auto format_range = [&](const DisplayThresholds::Range &r,
+                            const char *unit,
+                            bool temp_unit,
+                            uint8_t decimals) {
+        auto cvt = [&](float value) {
+            if (!temp_unit || temp_units_c) {
+                return value;
+            }
+            return (value * 9.0f / 5.0f) + 32.0f;
+        };
+        const char *fmt = decimals == 0
+            ? "Green: %.0f-%.0f%s\nYellow: %.0f-%.0f / %.0f-%.0f%s\nOrange: %.0f-%.0f / %.0f-%.0f%s\nRed: <%.0f / >%.0f%s"
+            : "Green: %.1f-%.1f%s\nYellow: %.1f-%.1f / %.1f-%.1f%s\nOrange: %.1f-%.1f / %.1f-%.1f%s\nRed: <%.1f / >%.1f%s";
+        snprintf(buf,
+                 sizeof(buf),
+                 fmt,
+                 cvt(r.good_min),
+                 cvt(r.good_max),
+                 unit,
+                 cvt(r.yellow_min),
+                 cvt(r.good_min),
+                 cvt(r.good_max),
+                 cvt(r.yellow_max),
+                 unit,
+                 cvt(r.orange_min),
+                 cvt(r.yellow_min),
+                 cvt(r.yellow_max),
+                 cvt(r.orange_max),
+                 unit,
+                 cvt(r.orange_min),
+                 cvt(r.orange_max),
+                 unit);
+    };
+
+    auto format_high = [&](const DisplayThresholds::High &h, const char *unit, uint8_t decimals) {
+        const char *fmt = decimals == 0
+            ? "Green: <=%.0f%s\nYellow: <=%.0f%s\nOrange: <=%.0f%s\nRed: >%.0f%s"
+            : "Green: <=%.1f%s\nYellow: <=%.1f%s\nOrange: <=%.1f%s\nRed: >%.1f%s";
+        snprintf(buf,
+                 sizeof(buf),
+                 fmt,
+                 h.green,
+                 unit,
+                 h.yellow,
+                 unit,
+                 h.orange,
+                 unit,
+                 h.orange,
+                 unit);
+    };
+
+    format_range(thresholds.temp, temp_units_c ? " C" : " F", true, 1);
+    safe_label_set_text(objects.temperature_info_thresholds, buf);
+
+    format_range(thresholds.rh, "%", false, 0);
+    safe_label_set_text(objects.rh_info_thresholds, buf);
+
+    format_high(thresholds.co2, " ppm", 0);
+    safe_label_set_text(objects.co2_info_thresholds, buf);
+
+    format_high(thresholds.hcho, " ppb", 0);
+    safe_label_set_text(objects.hcho_info_thresholds, buf);
+
+    format_high(thresholds.co, " ppm", 1);
+    safe_label_set_text(objects.co_info_thresholds, buf);
+}
+
 bool UiController::settings_has_unsaved_changes() const {
     return temp_offset_dirty || hum_offset_dirty || language_dirty;
 }
@@ -1451,54 +1539,50 @@ lv_color_t UiController::color_card_border() {
     return lv_color_hex(0xffe19756);
 }
 
+lv_color_t UiController::color_for_display_band(DisplayThresholds::Band band) {
+    switch (band) {
+        case DisplayThresholds::Band::Green:
+            return color_green();
+        case DisplayThresholds::Band::Yellow:
+            return color_yellow();
+        case DisplayThresholds::Band::Orange:
+            return color_orange();
+        case DisplayThresholds::Band::Red:
+            return color_red();
+        case DisplayThresholds::Band::Invalid:
+        default:
+            return color_inactive();
+    }
+}
+
 lv_color_t UiController::getTempColor(float t) {
-    if (t >= 20.0f && t <= 25.0f) return color_green();
-    if ((t >= 18.0f && t < 20.0f) || (t > 25.0f && t <= 26.0f)) return color_yellow();
-    if ((t >= 16.0f && t < 18.0f) || (t > 26.0f && t <= 28.0f)) return color_orange();
-    return color_red();
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
+    return color_for_display_band(DisplayThresholds::classifyRange(t, thresholds.temp));
 }
 
 lv_color_t UiController::getHumidityColor(float h) {
-    if (h >= 40.0f && h <= 60.0f) return color_green();
-    if ((h >= 30.0f && h < 40.0f) || (h > 60.0f && h <= 65.0f)) return color_yellow();
-    if ((h >= 20.0f && h < 30.0f) || (h > 65.0f && h <= 70.0f)) return color_orange();
-    return color_red();
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
+    return color_for_display_band(DisplayThresholds::classifyRange(h, thresholds.rh));
 }
 
 lv_color_t UiController::getAbsoluteHumidityColor(float ah) {
-    if (!isfinite(ah)) return color_inactive();
-    if (ah < 4.0f) return color_red();
-    if (ah < 5.0f) return color_orange();
-    if (ah < 7.0f) return color_yellow();
-    if (ah < 15.0f) return color_green();
-    if (ah <= 18.0f) return color_yellow();
-    if (ah <= 20.0f) return color_orange();
-    return color_red();
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
+    return color_for_display_band(DisplayThresholds::classifyRange(ah, thresholds.ah));
 }
 
 lv_color_t UiController::getDewPointColor(float dew_c) {
-    if (!isfinite(dew_c)) return color_inactive();
-    if (dew_c < 5.0f) return color_red();
-    if (dew_c <= 8.0f) return color_orange();
-    if (dew_c <= 10.0f) return color_yellow();
-    if (dew_c <= 16.0f) return color_green();
-    if (dew_c <= 18.0f) return color_yellow();
-    if (dew_c <= 21.0f) return color_orange();
-    return color_red();
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
+    return color_for_display_band(DisplayThresholds::classifyRange(dew_c, thresholds.dew_point));
 }
 
 lv_color_t UiController::getCO2Color(int co2) {
-    if (co2 < AQ_CO2_GREEN_MAX_PPM) return color_green();
-    if (co2 <= AQ_CO2_YELLOW_MAX_PPM) return color_yellow();
-    if (co2 <= AQ_CO2_ORANGE_MAX_PPM) return color_orange();
-    return color_red();
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
+    return color_for_display_band(DisplayThresholds::classifyHigh(static_cast<float>(co2), thresholds.co2));
 }
 
 lv_color_t UiController::getCOColor(float co_ppm) {
-    if (co_ppm < AQ_CO_GREEN_MAX_PPM) return color_green();
-    if (co_ppm <= AQ_CO_YELLOW_MAX_PPM) return color_yellow();
-    if (co_ppm <= AQ_CO_ORANGE_MAX_PPM) return color_orange();
-    return color_red();
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
+    return color_for_display_band(DisplayThresholds::classifyHigh(co_ppm, thresholds.co));
 }
 
 lv_color_t UiController::getPM25Color(float pm) {
@@ -1581,10 +1665,8 @@ lv_color_t UiController::getOptionalGasColor(DfrOptionalGasSensor::OptionalGasTy
 
 lv_color_t UiController::getHCHOColor(float hcho_ppb, bool valid) {
     if (!valid || !isfinite(hcho_ppb) || hcho_ppb < 0.0f) return color_inactive();
-    if (hcho_ppb < AQ_HCHO_GREEN_MAX_PPB) return color_green();
-    if (hcho_ppb <= AQ_HCHO_YELLOW_MAX_PPB) return color_yellow();
-    if (hcho_ppb <= AQ_HCHO_ORANGE_MAX_PPB) return color_orange();
-    return color_red();
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
+    return color_for_display_band(DisplayThresholds::classifyHigh(hcho_ppb, thresholds.hcho));
 }
 
 AirQuality UiController::getAirQuality(const SensorData &data) {
@@ -1625,6 +1707,7 @@ AirQuality UiController::getAirQuality(const SensorData &data) {
 }
 
 bool UiController::has_poor_gas_background_alert() {
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
     const bool hcho_valid = currentData.hcho_valid &&
                             isfinite(currentData.hcho) &&
                             currentData.hcho >= 0.0f;
@@ -1635,20 +1718,35 @@ bool UiController::has_poor_gas_background_alert() {
 
     if (!poor_gas_background_alert_active_) {
         poor_gas_background_alert_active_ =
-            (hcho_valid && currentData.hcho > AQ_HCHO_ORANGE_MAX_PPB) ||
-            (co_valid && currentData.co_ppm > AQ_CO_ORANGE_MAX_PPM);
+            (thresholds.background_alerts.hcho_enabled &&
+             hcho_valid &&
+             currentData.hcho > thresholds.hcho.orange) ||
+            (thresholds.background_alerts.co_enabled &&
+             co_valid &&
+             currentData.co_ppm > thresholds.co.orange);
         return poor_gas_background_alert_active_;
     }
 
-    const float hcho_exit_threshold = poor_gas_background_exit_threshold(AQ_HCHO_ORANGE_MAX_PPB);
-    const float co_exit_threshold = poor_gas_background_exit_threshold(AQ_CO_ORANGE_MAX_PPM);
-    const bool hcho_still_alert = hcho_valid && currentData.hcho >= hcho_exit_threshold;
-    const bool co_still_alert = co_valid && currentData.co_ppm >= co_exit_threshold;
+    const float hcho_exit_threshold = poor_gas_background_exit_threshold(thresholds.hcho.orange);
+    const float co_exit_threshold = poor_gas_background_exit_threshold(thresholds.co.orange);
+    const bool hcho_still_alert =
+        thresholds.background_alerts.hcho_enabled &&
+        hcho_valid &&
+        currentData.hcho >= hcho_exit_threshold;
+    const bool co_still_alert =
+        thresholds.background_alerts.co_enabled &&
+        co_valid &&
+        currentData.co_ppm >= co_exit_threshold;
     poor_gas_background_alert_active_ = hcho_still_alert || co_still_alert;
     return poor_gas_background_alert_active_;
 }
 
 bool UiController::has_high_co2_background_alert() {
+    const DisplayThresholds::Config thresholds = displayThresholds.snapshot();
+    if (!thresholds.background_alerts.co2_enabled) {
+        high_co2_background_alert_active_ = false;
+        return false;
+    }
     const bool co2_valid = currentData.co2_valid && currentData.co2 > 0;
 
     if (!high_co2_background_alert_active_) {
