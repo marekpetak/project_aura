@@ -33,6 +33,32 @@ void test_display_threshold_defaults_classify_current_visual_bands() {
                           static_cast<int>(DisplayThresholds::classifyHigh(101.0f, cfg.hcho)));
 }
 
+void test_display_threshold_boundaries_are_inclusive() {
+    const DisplayThresholds::Config cfg = DisplayThresholds::defaults();
+
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Green),
+                          static_cast<int>(DisplayThresholds::classifyHigh(800.0f, cfg.co2)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Yellow),
+                          static_cast<int>(DisplayThresholds::classifyHigh(1000.0f, cfg.co2)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Orange),
+                          static_cast<int>(DisplayThresholds::classifyHigh(1500.0f, cfg.co2)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Red),
+                          static_cast<int>(DisplayThresholds::classifyHigh(1500.1f, cfg.co2)));
+
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Orange),
+                          static_cast<int>(DisplayThresholds::classifyRange(20.0f, cfg.rh)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Yellow),
+                          static_cast<int>(DisplayThresholds::classifyRange(30.0f, cfg.rh)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Green),
+                          static_cast<int>(DisplayThresholds::classifyRange(40.0f, cfg.rh)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Green),
+                          static_cast<int>(DisplayThresholds::classifyRange(60.0f, cfg.rh)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Yellow),
+                          static_cast<int>(DisplayThresholds::classifyRange(65.0f, cfg.rh)));
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(DisplayThresholds::Band::Orange),
+                          static_cast<int>(DisplayThresholds::classifyRange(70.0f, cfg.rh)));
+}
+
 void test_display_threshold_validation_rejects_bad_order() {
     DisplayThresholds::Config cfg = DisplayThresholds::defaults();
     String error;
@@ -45,6 +71,25 @@ void test_display_threshold_validation_rejects_bad_order() {
     cfg.rh.good_min = cfg.rh.good_max;
     TEST_ASSERT_FALSE(DisplayThresholds::validate(cfg, &error));
     TEST_ASSERT_TRUE(error.length() > 0);
+}
+
+void test_display_threshold_validation_rejects_negative_rh_and_ah_only() {
+    DisplayThresholds::Config cfg = DisplayThresholds::defaults();
+    String error;
+
+    cfg.rh = {-1.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+    TEST_ASSERT_FALSE(DisplayThresholds::validate(cfg, &error));
+    TEST_ASSERT_TRUE(error.find("non-negative") != String::npos);
+
+    cfg = DisplayThresholds::defaults();
+    cfg.ah = {-1.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+    TEST_ASSERT_FALSE(DisplayThresholds::validate(cfg, &error));
+    TEST_ASSERT_TRUE(error.find("non-negative") != String::npos);
+
+    cfg = DisplayThresholds::defaults();
+    cfg.temp = {-30.0f, -20.0f, -10.0f, 10.0f, 20.0f, 30.0f};
+    cfg.dew_point = {-20.0f, -15.0f, -10.0f, 5.0f, 10.0f, 15.0f};
+    TEST_ASSERT_TRUE(DisplayThresholds::validate(cfg, &error));
 }
 
 void test_display_threshold_serialize_roundtrip_preserves_values_and_switches() {
@@ -108,7 +153,9 @@ void test_display_threshold_manager_falls_back_to_defaults_and_persists_reset() 
 int main(int, char **) {
     UNITY_BEGIN();
     RUN_TEST(test_display_threshold_defaults_classify_current_visual_bands);
+    RUN_TEST(test_display_threshold_boundaries_are_inclusive);
     RUN_TEST(test_display_threshold_validation_rejects_bad_order);
+    RUN_TEST(test_display_threshold_validation_rejects_negative_rh_and_ah_only);
     RUN_TEST(test_display_threshold_serialize_roundtrip_preserves_values_and_switches);
     RUN_TEST(test_display_threshold_partial_update_keeps_unspecified_values);
     RUN_TEST(test_display_threshold_manager_falls_back_to_defaults_and_persists_reset);

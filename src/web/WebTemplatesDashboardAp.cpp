@@ -1145,7 +1145,7 @@ function renderClimateOverview(sensors, derived) {
   const tempStatus  = metricStatus(temp, thresholds.temp);
   const rhStatus    = metricStatus(rh, thresholds.rh);
   const moldStatus  = metricStatus(mold, thresholds.mold);
-  const dpStatus    = metricStatus(dewPoint, thresholds.dewPoint, true);
+  const dpStatus    = metricStatus(dewPoint, thresholds.dewPoint);
   const ahStatus    = metricStatus(ah, thresholds.ah);
   const statusRank  = { good:0, moderate:1, bad:2, critical:3 };
   const candidates  = [tempStatus, rhStatus, moldStatus].filter(s => s in statusRank);

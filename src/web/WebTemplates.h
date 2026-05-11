@@ -2691,7 +2691,7 @@ static const char kThresholdsPageTemplate[] PROGMEM = R"HTML(
     <div><div class="brand">AURA</div><div class="sub">Display thresholds</div></div>
     <a class="btn" href="/dashboard">Back to dashboard</a>
   </div>
-  <div class="banner">These thresholds control visual colors only. AQI, DAC Auto, MQTT and sensor readings are unchanged.</div>
+  <div class="banner">These thresholds control display colors, status warnings, graph zones and alert wake behavior. AQI, DAC Auto, MQTT, history and raw sensor readings are unchanged.</div>
   <div class="grid" id="cards"></div>
   <div class="card" style="margin-top:14px">
     <h2>Background alerts</h2>
@@ -2720,9 +2720,9 @@ const HIGH_FIELDS = [
 ];
 const METRICS = [
   {key:'temp',label:'Temperature',unitC:'C',unitF:'F',type:'range',temp:true,digits:1},
-  {key:'rh',label:'Humidity',unit:'%',type:'range',digits:0},
+  {key:'rh',label:'Humidity',unit:'%',type:'range',digits:0,min:0},
   {key:'dew_point',label:'Dew Point',unitC:'C',unitF:'F',type:'range',temp:true,digits:1},
-  {key:'ah',label:'Absolute Humidity',unit:'g/m3',type:'range',digits:1},
+  {key:'ah',label:'Absolute Humidity',unit:'g/m3',type:'range',digits:1,min:0},
   {key:'co2',label:'CO2',unit:'ppm',type:'high',digits:0},
   {key:'hcho',label:'HCHO',unit:'ppb',type:'high',digits:0},
   {key:'co',label:'CO',unit:'ppm',type:'high',digits:1},
@@ -2739,6 +2739,7 @@ function toDisplay(v,m){return m.temp && !unitsC ? (v*9/5)+32 : v}
 function fromDisplay(v,m){return m.temp && !unitsC ? (v-32)*5/9 : v}
 function fmt(v,m){return Number(toDisplay(v,m)).toFixed(m.digits)}
 function unit(m){return m.temp ? (unitsC ? m.unitC : m.unitF) : m.unit}
+function parseInputValue(input){const raw=(input&&input.value!==undefined)?String(input.value).trim():'';return raw===''?NaN:Number(raw)}
 function setStatus(text,cls){const el=$('status');el.textContent=text;el.className='status '+(cls||'')}
 async function getJson(url){const r=await fetch(url,{cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
 async function postJson(url,payload){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload||{})});const j=await r.json();if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
@@ -2747,7 +2748,7 @@ function buildCards(){
     const fields = m.type === 'range' ? RANGE_FIELDS : HIGH_FIELDS;
     return `<div class="card" data-metric="${m.key}"><h2>${m.label}</h2><p>Unit: ${unit(m)}</p>${fields.map(f=>`
       <div class="row"><div><div class="label">${f[1]}</div><div class="hint">${f[2]}</div></div>
-      <input class="input" type="number" step="${m.digits?0.1:1}" data-key="${m.key}" data-field="${f[0]}"></div>`).join('')}</div>`;
+      <input class="input" type="number" step="${m.digits?0.1:1}" ${isNum(m.min)?`min="${m.min}"`:''} data-key="${m.key}" data-field="${f[0]}"></div>`).join('')}</div>`;
   }).join('');
   $('backgroundSwitches').innerHTML = BG.map(([key,label])=>`
     <div class="switch-row"><div><div class="label">${label}</div><div class="hint">Main-screen background only</div></div><div class="switch" data-bg="${key}"></div></div>`).join('');
@@ -2778,7 +2779,7 @@ function readForm(){
     const fields=m.type==='range'?RANGE_FIELDS:HIGH_FIELDS;
     fields.forEach(([field])=>{
       const input=document.querySelector(`input[data-key="${m.key}"][data-field="${field}"]`);
-      dst[field]=fromDisplay(Number(input.value),m);
+      dst[field]=fromDisplay(parseInputValue(input),m);
     });
     metrics[m.key]=dst;
   });
@@ -2797,9 +2798,10 @@ function validate(){
     const fields=m.type==='range'?RANGE_FIELDS:HIGH_FIELDS;
     const vals=fields.map(([field])=>{
       const input=document.querySelector(`input[data-key="${m.key}"][data-field="${field}"]`);
-      const v=Number(input.value);
+      const v=parseInputValue(input);
       if(!Number.isFinite(v)){input.classList.add('invalid');ok=false}
       if(m.type==='high' && v<0){input.classList.add('invalid');ok=false}
+      if(isNum(m.min) && v<m.min){input.classList.add('invalid');ok=false}
       return {input,v};
     });
     for(let i=1;i<vals.length;i++){
@@ -2807,7 +2809,7 @@ function validate(){
     }
   });
   $('saveBtn').disabled=!dirty||!ok;
-  if(!ok)setStatus('Fix overlapping thresholds before saving.','err');
+  if(!ok)setStatus('Fix invalid thresholds before saving.','err');
   else if(dirty)setStatus('Unsaved changes.','');
   else setStatus('Ready.','ok');
   return ok;

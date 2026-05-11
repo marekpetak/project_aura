@@ -45,11 +45,19 @@ bool validate_high(const High &h, const char *name, String *error) {
     return true;
 }
 
-bool validate_range(const Range &r, const char *name, String *error) {
+bool validate_range(const Range &r, const char *name, bool allow_negative, String *error) {
     if (!finite(r.orange_min) || !finite(r.yellow_min) || !finite(r.good_min) ||
         !finite(r.good_max) || !finite(r.yellow_max) || !finite(r.orange_max)) {
         if (error) {
             *error = String(name) + " thresholds must be finite";
+        }
+        return false;
+    }
+    if (!allow_negative &&
+        (r.orange_min < 0.0f || r.yellow_min < 0.0f || r.good_min < 0.0f ||
+         r.good_max < 0.0f || r.yellow_max < 0.0f || r.orange_max < 0.0f)) {
+        if (error) {
+            *error = String(name) + " thresholds must be non-negative";
         }
         return false;
     }
@@ -210,10 +218,10 @@ bool validate(const Config &cfg, String *error) {
         set_error(error, "Unsupported display thresholds version");
         return false;
     }
-    return validate_range(cfg.temp, "temp", error) &&
-           validate_range(cfg.rh, "rh", error) &&
-           validate_range(cfg.dew_point, "dew_point", error) &&
-           validate_range(cfg.ah, "ah", error) &&
+    return validate_range(cfg.temp, "temp", true, error) &&
+           validate_range(cfg.rh, "rh", false, error) &&
+           validate_range(cfg.dew_point, "dew_point", true, error) &&
+           validate_range(cfg.ah, "ah", false, error) &&
            validate_high(cfg.co2, "co2", error) &&
            validate_high(cfg.hcho, "hcho", error) &&
            validate_high(cfg.co, "co", error);

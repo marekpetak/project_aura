@@ -63,6 +63,25 @@ void test_web_threshold_api_utils_parse_rejects_non_boolean_switches() {
     TEST_ASSERT_TRUE(result.error_message.length() > 0);
 }
 
+void test_web_threshold_api_utils_parse_rejects_negative_rh_and_ah_thresholds() {
+    const DisplayThresholds::Config current = DisplayThresholds::defaults();
+
+    WebThresholdApiUtils::ParseResult result =
+        WebThresholdApiUtils::parseUpdateRequestBody(
+            "{\"metrics\":{\"rh\":{\"orange_min\":-1,\"yellow_min\":1,\"good_min\":2,"
+            "\"good_max\":3,\"yellow_max\":4,\"orange_max\":5}}}",
+            current);
+    TEST_ASSERT_FALSE(result.success);
+    TEST_ASSERT_TRUE(result.error_message.find("non-negative") != String::npos);
+
+    result = WebThresholdApiUtils::parseUpdateRequestBody(
+        "{\"metrics\":{\"ah\":{\"orange_min\":-1,\"yellow_min\":1,\"good_min\":2,"
+        "\"good_max\":3,\"yellow_max\":4,\"orange_max\":5}}}",
+        current);
+    TEST_ASSERT_FALSE(result.success);
+    TEST_ASSERT_TRUE(result.error_message.find("non-negative") != String::npos);
+}
+
 void test_web_threshold_api_utils_parse_accepts_switch_and_metric_update() {
     const DisplayThresholds::Config current = DisplayThresholds::defaults();
     const WebThresholdApiUtils::ParseResult result =
@@ -103,6 +122,7 @@ int main(int, char **) {
     RUN_TEST(test_web_threshold_api_utils_parse_rejects_invalid_without_update);
     RUN_TEST(test_web_threshold_api_utils_parse_rejects_non_numeric_fields);
     RUN_TEST(test_web_threshold_api_utils_parse_rejects_non_boolean_switches);
+    RUN_TEST(test_web_threshold_api_utils_parse_rejects_negative_rh_and_ah_thresholds);
     RUN_TEST(test_web_threshold_api_utils_parse_accepts_switch_and_metric_update);
     RUN_TEST(test_web_threshold_api_utils_fill_state_json_includes_factory_and_active);
     return UNITY_END();

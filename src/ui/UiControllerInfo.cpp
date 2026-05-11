@@ -306,12 +306,8 @@ void UiController::update_sensor_info_ui() {
         }
         case INFO_DP: {
             float dew_c = NAN;
-            float dew_c_rounded = NAN;
             if (currentData.temp_valid && currentData.hum_valid) {
                 dew_c = MathUtils::compute_dew_point_c(currentData.temperature, currentData.humidity);
-                if (isfinite(dew_c)) {
-                    dew_c_rounded = roundf(dew_c);
-                }
             }
             if (isfinite(dew_c)) {
                 float dew_display = dew_c;
@@ -325,8 +321,7 @@ void UiController::update_sensor_info_ui() {
                 safe_label_set_text(objects.label_sensor_value, UiText::ValueMissingShort());
             }
             safe_label_set_text(objects.label_sensor_info_unit, temp_units_c ? UiText::UnitC() : UiText::UnitF());
-            float dp_color_c = isfinite(dew_c_rounded) ? dew_c_rounded : dew_c;
-            lv_color_t dp_col = getDewPointColor(dp_color_c);
+            lv_color_t dp_col = getDewPointColor(dew_c);
             set_dot_color(objects.dot_sensor_info, alert_color_for_mode(dp_col));
             break;
         }
