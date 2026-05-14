@@ -19,6 +19,35 @@ You can add this as a new view (tab) to your existing dashboard.
 5. Paste the contents of `dashboard.yaml`.
 6. Click Save.
 
+## MQTT Setup & Connection
+Based on user findings, follow these steps to ensure the device communicates with Home Assistant:
+
+### 1. Install the Broker
+*   In Home Assistant, go to **Settings > Add-ons / Apps**.
+*   Search for and install the **Mosquitto Broker**.
+*   Start the Add-on (standard settings are usually sufficient).
+
+### 2. Create the Credentials
+*   Go to **Settings > People > Users**.
+*   Click **Add User** (Create a dedicated user, e.g., `aura_mqtt`).
+*   **Note:** This user is created in the main Home Assistant settings, not within the Mosquitto app settings.
+
+### 3. Configure the Aura Device
+*   Open **Settings > MQTT** on Aura device
+*   Access the Aura Web UI at `http://[DEVICE_IP]/mqtt`
+*   **Broker Address:** Set to **YOUT HOME ASSISTANT IP ADDRESS**.
+*   **Broker Port:** Set to **1883**. (Do not use 8123).
+*   **Username/Password:** Use the credentials for the user created in Step 2.
+*   **Discovery:** Check **Enable Home Assistant Discovery**
+*   Click **Save**. The device should now handshake with the broker.
+
+## Troubleshooting
+If sensors show as "Unavailable" or logs show "Not Authorised":
+*   **Logs:** Check the Mosquitto Broker logs in HA. If you see "Connection closed by client," verify the **Client ID** in the Aura UI is unique.
+*   **IP Address:** Ensure the Broker IP in the Aura settings is the internal IP of your Home Assistant instance.
+*   **Prefix:** Ensure the discovery prefix in both Aura and HA is set to the default `homeassistant`.
+*   Be patient, it might take several minutes to connect.
+
 ## Entity Configuration
 Entity IDs are derived from your `MQTT base topic`.
 
